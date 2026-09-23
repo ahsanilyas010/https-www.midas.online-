@@ -1,12 +1,29 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Headset, Video, Activity, ShieldCheck, Sparkles, ArrowLeft } from "lucide-react";
 import { LoginForm } from "./login-form";
 import { PersonaPicker } from "./persona-picker";
 import { BrandMark } from "@/components/brand/mark";
-import { BRAND, COMPANY } from "@/lib/brand";
+import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
 import { getStore } from "@/lib/demo/store";
+
+export const metadata: Metadata = {
+  title: "Try the live demo",
+  description:
+    "Explore CallMilalo with realistic sample data: pick a role (admin, manager, team lead, agent, QA or client) and start dialling, booking Zoom meetings and watching the live floor.",
+  alternates: { canonical: "/login" },
+  openGraph: {
+    type: "website",
+    siteName: BRAND.productName,
+    title: `Try the ${BRAND.productName} live demo`,
+    description: "Pick a role and explore the dialer, Zoom meetings and live floor with sample data.",
+    url: "/login",
+    // Overriding openGraph drops the inherited card, so name it again.
+    images: ["/opengraph-image"],
+  },
+};
 
 const HIGHLIGHTS = [
   { icon: Headset, title: "Power-dial workspace", text: "Scripts, dispositions and callbacks in one screen." },
@@ -81,7 +98,7 @@ export default async function LoginPage({
         </div>
 
         <p className="relative text-xs text-white/50">
-          {BRAND.productName} is a product of {COMPANY.legalName} · {COMPANY.address || COMPANY.country}. This demo uses sample data
+          {BRAND.productName} is a product of {COMPANY.legalName} · {companyAddressLine()}. This demo uses sample data
           only and resets whenever you like.
         </p>
       </div>

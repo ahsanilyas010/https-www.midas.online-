@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Mono, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
-import { BRAND } from "@/lib/brand";
+import { BRAND, COMPANY } from "@/lib/brand";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,8 +29,39 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: BRAND.productName,
-  description: BRAND.metaDescription,
+  metadataBase: new URL(siteUrl()),
+  title: { default: BRAND.seoTitle, template: `%s · ${BRAND.productName}` },
+  description: BRAND.seoDescription,
+  applicationName: BRAND.productName,
+  authors: [{ name: COMPANY.legalName }],
+  creator: COMPANY.legalName,
+  publisher: COMPANY.legalName,
+  category: "Business software",
+  formatDetection: { telephone: false, email: false, address: false },
+  openGraph: {
+    type: "website",
+    siteName: BRAND.productName,
+    title: BRAND.seoTitle,
+    description: BRAND.seoDescription,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: BRAND.seoTitle,
+    description: BRAND.seoDescription,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#4338ca",
 };
 
 export default function RootLayout({

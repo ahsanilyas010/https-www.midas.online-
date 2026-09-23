@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { requireProfile } from "@/lib/auth/current-profile";
 import { navFor } from "@/lib/nav";
 import { getCurrentSession } from "@/lib/actions/attendance";
@@ -7,6 +8,9 @@ import { getStore } from "@/lib/demo/store";
 import { getDialerState } from "@/lib/actions/dialer";
 import { providerMeta } from "@/lib/telephony/providers";
 import type { DialerInfo } from "@/components/dialer/dialer-context";
+
+// The signed-in demo app is not for search engines.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
