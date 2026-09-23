@@ -4,14 +4,14 @@
 // hardcoded string, so swapping branding is a one-file edit here, not a
 // repo-wide grep-and-replace.
 export const BRAND = {
-  productName: "Midas CRM",
-  metaDescription: "Midas CRM — call centre CRM, workforce platform and Zoom meetings in one place",
+  productName: "DialDesk",
+  metaDescription: "DialDesk — call centre CRM, workforce platform and Zoom meetings in one place",
   loginTagline: "Contact-centre CRM · Live floor · Zoom meetings",
-  processorBadgeLabel: "Midas",
-  processorLabel: "Midas",
-  emailFromName: "Midas",
-  emailFromDomainFallback: "mail.midas.online",
-  pdfFilenamePrefix: "midas-client-report",
-  agentCodePlaceholder: "MD-114",
-  website: "https://www.midas.online",
+  processorBadgeLabel: "DialDesk",
+  processorLabel: "DialDesk",
+  emailFromName: "DialDesk",
+  emailFromDomainFallback: "mail.dialdesk.demo",
+  pdfFilenamePrefix: "dialdesk-client-report",
+  agentCodePlaceholder: "DD-114",
+  website: "https://dialdesk.demo",
 };

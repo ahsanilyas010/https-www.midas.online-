@@ -3,6 +3,7 @@ import { navFor } from "@/lib/nav";
 import { getCurrentSession } from "@/lib/actions/attendance";
 import { getMyFollowups } from "@/lib/actions/followups";
 import { AppChrome } from "@/components/shell/app-chrome";
+import { getStore } from "@/lib/demo/store";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
@@ -15,8 +16,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ? await Promise.all([getCurrentSession(), getMyFollowups()])
     : [null, []];
 
+  // Demo bar "View as" list: every active person on the People page.
+  const demoAccounts = getStore()
+    .tables.profiles.filter((p) => p.is_active)
+    .map((p) => ({ id: p.id as string, name: p.full_name as string, role: p.role as string }));
+
   return (
-    <AppChrome profile={profile} initialSession={session} initialFollowups={followups} items={items}>
+    <AppChrome
+      profile={profile}
+      initialSession={session}
+      initialFollowups={followups}
+      items={items}
+      demoAccounts={demoAccounts}
+    >
       {children}
     </AppChrome>
   );

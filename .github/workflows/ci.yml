@@ -15,10 +15,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run lint
+      # Demo build: no environment variables or secrets are needed.
       - run: npm run build
-        env:
-          # Dummy values so the build's static analysis/type-check passes
-          # without touching a real project. No server code runs at build
-          # time that would actually hit these.
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key

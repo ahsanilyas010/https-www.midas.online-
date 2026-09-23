@@ -14,7 +14,7 @@ export function createClient() {
     subscribe: () => channel,
   };
   return {
-    channel: (_name: string) => channel,
-    removeChannel: (_channel: Channel) => Promise.resolve("ok" as const),
+    channel: (...args: unknown[]) => (void args, channel),
+    removeChannel: (...args: unknown[]) => (void args, Promise.resolve("ok" as const)),
   };
 }

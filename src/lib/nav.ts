@@ -18,7 +18,9 @@ export type NavIconName =
   | "Database"
   | "Lock"
   | "Headset"
-  | "Building2";
+  | "Building2"
+  | "Video"
+  | "PlugZap";
 
 export interface NavItem {
   href: string;
@@ -39,6 +41,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/compliance", label: "Compliance", icon: "ShieldCheck", roles: ["super_admin", "ops_manager"] },
   { href: "/admin/data", label: "Data", icon: "Database", roles: ["super_admin", "ops_manager"] },
   { href: "/client", label: "Client reports", icon: "Building2", roles: ["super_admin", "ops_manager"] },
+  { href: "/admin/integrations", label: "Integrations", icon: "PlugZap", roles: ["super_admin", "ops_manager"] },
   { href: "/admin/security", label: "Security & audit", icon: "Lock", roles: ["super_admin"] },
 ];
 
@@ -47,7 +50,14 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/workspace/leads", label: "My leads", icon: "Users", roles: ["agent"] },
   { href: "/client", label: "Reports", icon: "Building2", roles: ["client_viewer"] },
   { href: "/qa", label: "QA queue", icon: "ShieldCheck", roles: ["qa"] },
-  ...ADMIN_NAV,
+  ...ADMIN_NAV.slice(0, 1),
+  {
+    href: "/meetings",
+    label: "Zoom meetings",
+    icon: "Video",
+    roles: ["agent", "super_admin", "ops_manager", "team_lead", "qa", "client_viewer"],
+  },
+  ...ADMIN_NAV.slice(1),
 ];
 
 export function navFor(role: AppRole): NavItem[] {

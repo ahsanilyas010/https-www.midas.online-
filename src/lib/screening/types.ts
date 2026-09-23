@@ -21,11 +21,8 @@ export interface ScreeningProvider {
 }
 
 export class ProviderNotConfiguredError extends Error {
-  constructor(provider: string, missingEnvVars: string[]) {
-    super(
-      `${provider} is not configured — missing ${missingEnvVars.join(", ")}. ` +
-        `Real bureau integration needs a live account (spec section 9); until then, use ManualEvidenceProvider.`,
-    );
+  constructor(provider: string) {
+    super(`${provider} is not available in the demo build.`);
     this.name = "ProviderNotConfiguredError";
   }
 }

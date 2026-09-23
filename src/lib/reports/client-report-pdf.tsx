@@ -6,10 +6,10 @@ import type { ClientFunnelResult } from "./client-funnel";
 // Brand hexes from src/app/globals.css — react-pdf can't read CSS custom
 // properties, so these are copied literally. Keep them in sync if the
 // palette changes.
-const BRAND_BLUE = "#064288";
-const BRAND_ORANGE = "#f87026";
-const BRAND_GREEN = "#76b049";
-const INK = "#1a2230";
+const BRAND_BLUE = "#4338ca";
+const BRAND_ORANGE = "#f5b301";
+const BRAND_GREEN = "#10b981";
+const INK = "#16132d";
 const MUTED = "#6b7482";
 const LINE = "#e2e5ea";
 

@@ -474,12 +474,12 @@ export class DemoQueryBuilder implements PromiseLike<QueryResult> {
     if (opts?.head) this.head = true;
     return this;
   }
-  insert(values: Row | Row[], _opts?: unknown) {
+  insert(values: Row | Row[]) {
     this.mode = "insert";
     this.payload = values;
     return this;
   }
-  update(values: Row, _opts?: unknown) {
+  update(values: Row) {
     this.mode = "update";
     this.payload = values;
     return this;
@@ -491,7 +491,7 @@ export class DemoQueryBuilder implements PromiseLike<QueryResult> {
     this.ignoreDuplicates = !!opts?.ignoreDuplicates;
     return this;
   }
-  delete(_opts?: unknown) {
+  delete() {
     this.mode = "delete";
     return this;
   }
@@ -772,7 +772,7 @@ export class DemoQueryBuilder implements PromiseLike<QueryResult> {
       after_data: action === "DELETE" ? null : { ...row },
       created_at: nowIso(),
       ip: "127.0.0.1",
-      user_agent: "Midas demo",
+      user_agent: "DialDesk demo",
     });
   }
 }

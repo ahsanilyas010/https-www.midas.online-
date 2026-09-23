@@ -38,7 +38,7 @@ export async function createEmailTemplate(
     subject,
     body_html: bodyHtml,
     from_name: fromName,
-    from_email: `hello@${process.env.EMAIL_FROM_DOMAIN ?? BRAND.emailFromDomainFallback}`,
+    from_email: `hello@${BRAND.emailFromDomainFallback}`,
     // Auto-approved by the manager creating it — a separate approver flow
     // (someone other than the author) is a reasonable Phase-6-era
     // hardening, not blocking Phase 5's core send path.
@@ -97,7 +97,7 @@ export async function sendLeadEmail(
   }
 
   const unsubToken = signUnsubscribeToken(lead.email);
-  const unsubUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3000"}/api/unsubscribe?email=${encodeURIComponent(lead.email)}&token=${unsubToken}`;
+  const unsubUrl = `${BRAND.website}/api/unsubscribe?email=${encodeURIComponent(lead.email)}&token=${unsubToken}`;
 
   const mergeData = {
     first_name: lead.first_name,
@@ -113,7 +113,7 @@ export async function sendLeadEmail(
     `<hr><p style="font-size:11px;color:#6B7482;">${BRAND.productName}, on behalf of the client named above. ` +
     `<a href="${unsubUrl}">Unsubscribe</a></p>`;
 
-  const fromEmail = template.from_email ?? `hello@${process.env.EMAIL_FROM_DOMAIN ?? BRAND.emailFromDomainFallback}`;
+  const fromEmail = template.from_email ?? `hello@${BRAND.emailFromDomainFallback}`;
   const fromName = template.from_name ?? BRAND.emailFromName;
 
   const { data: sendRow, error: insertError } = await supabase

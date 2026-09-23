@@ -63,9 +63,9 @@ export default async function PerformancePage() {
     <div className="p-4">
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile className="stagger-1" icon={PhoneOutgoing} value={totals.calls} label="Calls attempted — 7d" accent="blue" />
-        <StatTile className="stagger-2" icon={PhoneIncoming} value={totals.connects} label="Connects — 7d" accent="orange" />
+        <StatTile className="stagger-2" icon={PhoneIncoming} value={totals.connects} label="Connects — 7d" accent="magenta" />
         <StatTile className="stagger-3" icon={Trophy} value={totals.conversions} label="Conversions — 7d" accent="green" />
-        <StatTile className="stagger-4" icon={Percent} value={contactRate} label="Contact rate — 7d" accent="blue" />
+        <StatTile className="stagger-4" icon={Percent} value={contactRate} label="Contact rate — 7d" accent="gold" />
       </div>
 
       <Card className="mb-4 animate-slide-up">

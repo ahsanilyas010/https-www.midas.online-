@@ -8,7 +8,7 @@ import { createDemoClient } from "@/lib/demo/client";
 // DEMO BUILD: there is no database connection. This returns an in-memory
 // client (src/lib/demo) that implements the same query-builder API over a
 // seeded dataset, so every page and action keeps its original Supabase
-// code. The signed-in demo user comes from the `midas_demo_user` cookie.
+// code. The signed-in demo user comes from the `dialdesk_demo_user` cookie.
 export async function createClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = await cookies();
 

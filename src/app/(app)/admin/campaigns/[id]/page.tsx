@@ -295,12 +295,9 @@ export default async function CampaignDetailPage({
               </div>
             )}
           </div>
-          {!process.env.RESEND_API_KEY && (
-            <p className="mt-3 rounded-md bg-warning-tint px-3 py-2 text-xs text-warning">
-              Demo mode — sends are logged and shown as delivered, but no real email
-              leaves the server. Set RESEND_API_KEY to send for real.
-            </p>
-          )}
+          <p className="mt-3 rounded-md bg-warning-tint px-3 py-2 text-xs text-warning">
+            Demo mode — sends are logged and shown as delivered, but no real email leaves the server.
+          </p>
         </TabsContent>
       </Tabs>
     </div>

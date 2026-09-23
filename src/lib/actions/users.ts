@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateTempPassword } from "@/lib/auth/generate-password";
+import { DEMO_PASSWORD } from "@/lib/demo/seed";
 import type { Enums } from "@/lib/supabase/types";
 
 export interface CreateUserResult {
@@ -49,7 +49,8 @@ export async function createUser(
   }
 
   const admin = createAdminClient();
-  const tempPassword = generateTempPassword();
+  // Demo build: every account shares the same password.
+  const tempPassword = DEMO_PASSWORD;
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
@@ -70,7 +71,7 @@ export async function createUser(
     client_id: clientId,
     timezone,
     allow_login_outside_shift: allowOutsideShift,
-    must_change_password: true,
+    must_change_password: false,
   });
 
   if (profileError) {
@@ -120,12 +121,12 @@ export async function resetPassword(
   if (!userId) return { error: "Missing user." };
 
   const admin = createAdminClient();
-  const tempPassword = generateTempPassword();
+  // Demo build: every account shares the same password.
+  const tempPassword = DEMO_PASSWORD;
 
   const { error } = await admin.auth.admin.updateUserById(userId, { password: tempPassword });
   if (error) return { error: error.message };
 
-  await admin.from("profiles").update({ must_change_password: true }).eq("id", userId);
 
   const hdrs = await headers();
   const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, User, CalendarPlus, Menu } from "lucide-react";
+import { LogOut, User, CalendarPlus, Menu, Search } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { BRAND } from "@/lib/brand";
 import { RequestLeaveDialog } from "@/components/shell/request-leave-dialog";
@@ -76,6 +76,9 @@ const TITLES: Record<string, string> = {
   security: "Security & audit",
   client: "Client reports",
   qa: "QA queue",
+  meetings: "Zoom meetings",
+  integrations: "Integrations",
+  leads: "My leads",
 };
 
 function useTitle() {
@@ -108,7 +111,7 @@ export function Header({
   }, []);
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-line bg-white px-2 sm:px-4">
+    <header className="relative z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-surface/80 px-2 backdrop-blur-md sm:px-4">
       <div className="flex min-w-0 items-center gap-2">
         <button
           onClick={onMenuClick}
@@ -117,7 +120,14 @@ export function Header({
         >
           <Menu className="h-4.5 w-4.5" />
         </button>
-        <h1 className="truncate text-sm font-semibold text-ink">{title}</h1>
+        <h1 className="truncate font-display text-base font-semibold text-ink">{title}</h1>
+        <button
+          onClick={() => window.dispatchEvent(new Event("dialdesk:open-palette"))}
+          className="ml-2 hidden cursor-pointer items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-1 text-xs text-muted transition-colors hover:border-brand-blue-tint-2 hover:text-ink lg:flex"
+        >
+          <Search className="h-3.5 w-3.5" /> Jump to…
+          <kbd className="rounded bg-surface px-1 text-[10px] ring-1 ring-line">Ctrl K</kbd>
+        </button>
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -139,8 +149,10 @@ export function Header({
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-canvas cursor-pointer">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback>{initials(profile.full_name)}</AvatarFallback>
+            <Avatar className="h-8 w-8 ring-2 ring-gold/60 ring-offset-1 ring-offset-surface">
+              <AvatarFallback className="bg-brand-gradient text-xs font-semibold text-white">
+                {initials(profile.full_name)}
+              </AvatarFallback>
             </Avatar>
             <div className="hidden text-left sm:block">
               <div className="text-xs font-medium leading-tight text-ink">{profile.full_name}</div>

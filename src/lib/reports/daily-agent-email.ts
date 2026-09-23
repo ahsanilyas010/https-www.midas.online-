@@ -22,7 +22,7 @@ function fmtHours(minutes: number) {
 // This is the daily counterpart to that page: same numbers, pushed to the
 // client's inbox instead of requiring a login.
 export function renderDailyClientReportEmail(stats: DailyClientReportStats) {
-  const dashboardUrl = `${process.env.APP_BASE_URL ?? "https://app.example.com"}/client`;
+  const dashboardUrl = `${BRAND.website}/client`;
   const subject = `Daily update — ${stats.clientName} — ${stats.day}`;
 
   const html = `

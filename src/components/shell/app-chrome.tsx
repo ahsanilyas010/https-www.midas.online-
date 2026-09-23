@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
 import { PageTransition } from "@/components/shell/page-transition";
+import { DemoBar, type DemoAccount } from "@/components/shell/demo-bar";
+import { CommandPalette } from "@/components/shell/command-palette";
 import type { NavItem } from "@/lib/nav";
 import type { Profile } from "@/lib/auth/current-profile";
 import type { CurrentSession } from "@/lib/actions/attendance";
@@ -21,12 +23,14 @@ export function AppChrome({
   profile,
   initialSession,
   initialFollowups,
+  demoAccounts,
   children,
 }: {
   items: NavItem[];
   profile: Profile;
   initialSession: CurrentSession | null;
   initialFollowups: FollowupRow[];
+  demoAccounts: DemoAccount[];
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -53,7 +57,8 @@ export function AppChrome({
         <Sidebar items={items} onNavigate={() => setMobileNavOpen(false)} />
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <DemoBar accounts={demoAccounts} currentId={profile.id} />
         <Header
           profile={profile}
           initialSession={initialSession}
@@ -62,6 +67,7 @@ export function AppChrome({
         />
         <PageTransition>{children}</PageTransition>
       </div>
+      <CommandPalette items={items} />
     </div>
   );
 }

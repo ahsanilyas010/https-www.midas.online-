@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 /**
- * Midas mark — a gold crown-shaped "M" on an indigo→magenta tile. Stands in
- * for the official midas.online logo until the real asset is dropped into
- * /public/brand (then swap this for an <img>).
+ * DialDesk mark — a gold handset with call waves on an indigo→magenta tile.
+ * Swap for a supplied logo by dropping it into /public/brand and replacing
+ * this component with an <img>.
  */
 export function BrandMark({ className, size = 28 }: { className?: string; size?: number }) {
   const id = useId().replace(/:/g, "");
@@ -32,14 +32,11 @@ export function BrandMark({ className, size = 28 }: { className?: string; size?:
       </defs>
       <rect x="2" y="2" width="44" height="44" rx="13" fill={`url(#${id}-bg)`} />
       <path
-        d="M11 33 L13.5 15 L19.5 24 L24 13 L28.5 24 L34.5 15 L37 33 Z"
+        d="M15.5 12.5c1-.9 2.6-.8 3.5.2l2.6 3c.8.9.8 2.3 0 3.2l-1.6 1.8c1.3 2.8 3.5 5 6.3 6.3l1.8-1.6c.9-.8 2.3-.8 3.2 0l3 2.6c1 .9 1.1 2.5.2 3.5l-1.5 1.7c-1.4 1.5-3.6 2.1-5.6 1.4-6.7-2.3-11.9-7.5-14.2-14.2-.7-2 0-4.2 1.4-5.6z"
         fill={`url(#${id}-gold)`}
-        stroke="#fff7db"
-        strokeWidth="1"
-        strokeLinejoin="round"
       />
-      <rect x="11" y="34.5" width="26" height="3" rx="1.5" fill={`url(#${id}-gold)`} />
-      <circle cx="24" cy="12" r="2" fill="#fff7db" />
+      <path d="M28 12.5a8 8 0 0 1 7.5 7.5" stroke="#fff7db" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+      <path d="M27.5 17.2a3.6 3.6 0 0 1 3.3 3.3" stroke="#fff7db" strokeWidth="2.2" strokeLinecap="round" fill="none" />
     </svg>
   );
 }

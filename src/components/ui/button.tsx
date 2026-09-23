@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium " +
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-medium " +
     "transition-[background-color,box-shadow,transform] duration-150 ease-out " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-blue " +
     "disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] cursor-pointer",
@@ -13,7 +13,13 @@ const buttonVariants = cva(
       variant: {
         // Primary blue — the only brand colour that carries white text.
         primary:
-          "bg-brand-blue text-white shadow-sm hover:-translate-y-px hover:bg-brand-blue-hover hover:shadow-md hover:shadow-brand-blue/25",
+          "bg-brand-gradient bg-[length:150%_100%] bg-left text-white shadow-sm shadow-brand-blue/30 hover:-translate-y-px hover:bg-right hover:shadow-lg hover:shadow-violet/30 transition-[background-position,box-shadow,transform]",
+        // DialDesk gold — the signature highlight action.
+        gold:
+          "bg-gold-gradient text-ink shadow-sm shadow-gold/30 hover:-translate-y-px hover:brightness-105 hover:shadow-lg hover:shadow-gold/40",
+        // Zoom-blue for meeting actions.
+        zoom:
+          "bg-[#0b5cff] text-white shadow-sm hover:-translate-y-px hover:bg-[#0a4fdb] hover:shadow-lg hover:shadow-[#0b5cff]/30",
         // Attention accent — dark ink text on orange, never white.
         accent:
           "bg-brand-orange text-ink shadow-sm hover:-translate-y-px hover:brightness-95 hover:shadow-md hover:shadow-brand-orange/30",

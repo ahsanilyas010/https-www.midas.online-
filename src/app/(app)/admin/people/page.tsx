@@ -1,3 +1,6 @@
+import { getStore } from "@/lib/demo/store";
+import { DEMO_PASSWORD } from "@/lib/demo/seed";
+import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth/current-profile";
 import { redirect } from "next/navigation";
@@ -38,6 +41,8 @@ export default async function PeoplePage() {
   ]);
 
   const canCreate = profile.role === "super_admin" || profile.role === "ops_manager";
+  // Demo build: every person has a login, all with the same password.
+  const loginEmail = new Map(getStore().tables.demo_auth.map((a) => [a.id as string, a.email as string]));
 
   return (
     <div className="p-4">
@@ -50,11 +55,18 @@ export default async function PeoplePage() {
         {canCreate && <CreateUserDialog teams={teams ?? []} clients={clients ?? []} />}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line bg-white">
-        <table className="w-full text-sm">
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-gold/40 bg-gold-tint px-3 py-2 text-xs text-gold-text">
+        <KeyRound className="h-4 w-4" />
+        Demo logins: each person signs in with the email shown below and the shared password
+        <span className="rounded-md bg-white px-1.5 py-0.5 font-mono font-semibold text-ink ring-1 ring-gold/40">{DEMO_PASSWORD}</span>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
               <th className="px-3 py-2 font-medium">Name</th>
+              <th className="px-3 py-2 font-medium">Login</th>
               <th className="px-3 py-2 font-medium">Role</th>
               <th className="px-3 py-2 font-medium">Team</th>
               <th className="px-3 py-2 font-medium">Agent code</th>
@@ -83,6 +95,7 @@ export default async function PeoplePage() {
                     )}
                   </div>
                 </td>
+                <td className="px-3 py-1.5 font-mono text-xs text-muted">{loginEmail.get(p.id) ?? "—"}</td>
                 <td className="px-3 py-1.5">
                   <Badge variant="blue">{ROLE_LABEL[p.role]}</Badge>
                 </td>
@@ -114,7 +127,7 @@ export default async function PeoplePage() {
             ))}
             {(people ?? []).length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted">
+                <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted">
                   No one here yet. Create the first account above.
                 </td>
               </tr>

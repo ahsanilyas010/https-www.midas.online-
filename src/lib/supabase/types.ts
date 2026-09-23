@@ -1,7 +1,4 @@
-// Generated from the live Supabase project (uvgekzergvtbvvhvuyyh).
-// Regenerate after every migration:
-//   supabase gen types typescript --project-id uvgekzergvtbvvhvuyyh > src/lib/supabase/types.ts
-// or via the Supabase MCP `generate_typescript_types` tool.
+// Database types for the app schema (supabase/migrations), plus the demo-only Zoom tables.
 
 export type Json =
   | string
@@ -1988,6 +1985,147 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          id: string
+          provider: string
+          connected: boolean
+          account_email: string | null
+          account_name: string | null
+          plan: string | null
+          connected_at: string | null
+          connected_by: string | null
+          settings: Json
+        }
+        Insert: {
+          id: string
+          provider: string
+          connected: boolean
+          account_email?: string | null
+          account_name?: string | null
+          plan?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          settings?: Json
+        }
+        Update: {
+          id?: string
+          provider?: string
+          connected?: boolean
+          account_email?: string | null
+          account_name?: string | null
+          plan?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          settings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_meetings: {
+        Row: {
+          id: string
+          zoom_meeting_id: string
+          topic: string
+          agenda: string | null
+          start_time: string
+          duration_minutes: number
+          timezone: string
+          join_url: string
+          start_url: string
+          password: string | null
+          host_id: string
+          lead_id: string | null
+          campaign_id: string | null
+          invitee_name: string | null
+          invitee_email: string | null
+          status: string
+          source: string
+          participants: number | null
+          actual_duration_minutes: number | null
+          recording_url: string | null
+          ai_summary: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          zoom_meeting_id: string
+          topic: string
+          agenda?: string | null
+          start_time: string
+          duration_minutes?: number
+          timezone: string
+          join_url: string
+          start_url: string
+          password?: string | null
+          host_id: string
+          lead_id?: string | null
+          campaign_id?: string | null
+          invitee_name?: string | null
+          invitee_email?: string | null
+          status?: string
+          source: string
+          participants?: number | null
+          actual_duration_minutes?: number | null
+          recording_url?: string | null
+          ai_summary?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          zoom_meeting_id?: string
+          topic?: string
+          agenda?: string | null
+          start_time?: string
+          duration_minutes?: number
+          timezone?: string
+          join_url?: string
+          start_url?: string
+          password?: string | null
+          host_id?: string
+          lead_id?: string | null
+          campaign_id?: string | null
+          invitee_name?: string | null
+          invitee_email?: string | null
+          status?: string
+          source?: string
+          participants?: number | null
+          actual_duration_minutes?: number | null
+          recording_url?: string | null
+          ai_summary?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_meetings_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_meetings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_meetings_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]

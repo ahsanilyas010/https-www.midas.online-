@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 
 export interface ActionResult {
   error?: string;
+  email?: string;
 }
 
 export async function signIn(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -30,7 +31,7 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
 
   if (error) {
     // Deliberately generic — don't reveal whether the account exists.
-    return { error: "Incorrect email or password." };
+    return { error: "Incorrect email or password.", email };
   }
 
   const hdrs = await headers();

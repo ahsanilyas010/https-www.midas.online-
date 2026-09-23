@@ -16,6 +16,11 @@ const badgeVariants = cva(
         // Green = earned confirmation only.
         confirm: "bg-brand-green-tint text-brand-green-text",
         accent: "bg-brand-orange-tint text-brand-orange-text",
+        gold: "bg-gold-tint text-gold-text ring-1 ring-gold/30",
+        violet: "bg-violet-tint text-violet",
+        magenta: "bg-magenta-tint text-magenta",
+        teal: "bg-teal-tint text-teal",
+        zoom: "bg-[#e8f0ff] text-[#0b5cff]",
       },
     },
     defaultVariants: { variant: "neutral" },

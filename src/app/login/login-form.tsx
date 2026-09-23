@@ -31,7 +31,7 @@ export function LoginForm({ next }: { next?: string }) {
           <input type="hidden" name="next" value={next ?? "/"} />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="username" required autoFocus />
+            <Input id="email" name="email" type="email" autoComplete="username" required autoFocus defaultValue={state?.email ?? ""} key={state?.email ?? "email"} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="password">Password</Label>

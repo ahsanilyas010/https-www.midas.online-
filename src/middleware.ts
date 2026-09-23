@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // DEMO BUILD: sign-in is a cookie naming one of the seeded demo users (set
 // by the login page's persona picker). No Supabase session to refresh.
-const DEMO_COOKIE = "midas_demo_user";
-const PUBLIC_PATHS = ["/login", "/reset-password", "/api/zoom/webhook", "/api/unsubscribe", "/api/leads/inbound"];
+const DEMO_COOKIE = "dialdesk_demo_user";
+const PUBLIC_PATHS = ["/login", "/reset-password", "/api/unsubscribe", "/api/leads/inbound"];
 
 export async function middleware(request: NextRequest) {
   const signedIn = Boolean(request.cookies.get(DEMO_COOKIE)?.value);
@@ -28,6 +28,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|brand/|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon|brand/|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

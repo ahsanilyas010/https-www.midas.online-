@@ -3,7 +3,8 @@ import { LoginForm } from "./login-form";
 import { PersonaPicker } from "./persona-picker";
 import { BrandMark } from "@/components/brand/mark";
 import { BRAND } from "@/lib/brand";
-import { DEMO_PERSONAS } from "@/lib/demo/seed";
+import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
+import { AccountList } from "./account-list";
 import { getStore } from "@/lib/demo/store";
 
 const HIGHLIGHTS = [
@@ -19,7 +20,16 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const profiles = getStore().tables.profiles;
+  const store = getStore();
+  const profiles = store.tables.profiles;
+  const accounts = store.tables.demo_auth
+    .map((a) => {
+      const p = profiles.find((x) => x.id === a.id);
+      return p && p.is_active
+        ? { id: a.id as string, email: a.email as string, name: p.full_name as string, role: p.role as string, team: (store.tables.teams.find((t) => t.id === p.team_id)?.name as string) ?? null }
+        : null;
+    })
+    .filter((a): a is NonNullable<typeof a> => a !== null);
   const personas = DEMO_PERSONAS.map((p) => ({
     ...p,
     name: (profiles.find((x) => x.id === p.id)?.full_name as string) ?? p.title,
@@ -28,10 +38,10 @@ export default async function LoginPage({
   return (
     <div className="relative grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* Hero */}
-      <div className="midas-hero relative hidden overflow-hidden p-10 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="midas-orb midas-orb-1" aria-hidden />
-        <div className="midas-orb midas-orb-2" aria-hidden />
-        <div className="midas-orb midas-orb-3" aria-hidden />
+      <div className="brand-hero relative hidden overflow-hidden p-10 text-white lg:flex lg:flex-col lg:justify-between">
+        <div className="brand-orb brand-orb-1" aria-hidden />
+        <div className="brand-orb brand-orb-2" aria-hidden />
+        <div className="brand-orb brand-orb-3" aria-hidden />
 
         <div className="relative flex items-center gap-3">
           <div className="rounded-2xl bg-white/10 p-2.5 ring-1 ring-white/20 backdrop-blur">
@@ -48,7 +58,7 @@ export default async function LoginPage({
             <Sparkles className="h-3.5 w-3.5" /> Interactive demo
           </span>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight">
-            Turn every call into <span className="text-gold-gradient">gold.</span>
+            Every call, <span className="text-gold-gradient">one desk.</span>
           </h2>
           <p className="mt-3 text-sm text-white/75">
             A contact-centre CRM with a dial workspace, live floor, attendance, QA, compliance and
@@ -76,7 +86,7 @@ export default async function LoginPage({
 
       {/* Sign-in */}
       <div className="relative flex items-center justify-center overflow-hidden bg-canvas px-4 py-10">
-        <div className="midas-mesh absolute inset-0" aria-hidden />
+        <div className="brand-mesh absolute inset-0" aria-hidden />
         <div className="relative w-full max-w-xl animate-slide-up">
           <div className="mb-6 flex flex-col items-center gap-2 text-center lg:hidden">
             <BrandMark size={40} />
@@ -91,17 +101,26 @@ export default async function LoginPage({
 
           <PersonaPicker personas={personas} next={next} />
 
-          <details className="group mt-6 rounded-xl border border-line bg-surface/80 p-4 backdrop-blur">
-            <summary className="cursor-pointer select-none text-sm font-medium text-ink">
-              Prefer the classic sign-in form?
-            </summary>
-            <p className="mt-2 text-xs text-muted">
-              Use any demo email (e.g. <span className="tabular">agent@midas.demo</span>) with any password.
-            </p>
-            <div className="mt-3">
-              <LoginForm next={next} />
+          <div className="mt-6 rounded-xl border border-line bg-surface/90 p-4 shadow-sm backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-ink">All demo accounts</div>
+              <div className="text-xs text-muted">
+                Same password for everyone:{" "}
+                <span className="rounded-md bg-gold-tint px-1.5 py-0.5 font-mono font-semibold text-gold-text ring-1 ring-gold/40">
+                  {DEMO_PASSWORD}
+                </span>
+              </div>
             </div>
-          </details>
+            <AccountList accounts={accounts} next={next} />
+            <details className="group mt-3">
+              <summary className="cursor-pointer select-none text-xs font-medium text-brand-blue">
+                Sign in with email and password instead
+              </summary>
+              <div className="mt-3">
+                <LoginForm next={next} />
+              </div>
+            </details>
+          </div>
         </div>
       </div>
     </div>

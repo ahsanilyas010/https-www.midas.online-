@@ -117,9 +117,9 @@ export default async function ClientReportsPage({
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile className="stagger-1" icon={Users} value={totals.loaded} label="Leads loaded" accent="blue" />
-        <StatTile className="stagger-2" icon={PhoneCall} value={totals.contacted} label="Contacted" accent="orange" />
+        <StatTile className="stagger-2" icon={PhoneCall} value={totals.contacted} label="Contacted" accent="violet" />
         <StatTile className="stagger-3" icon={CheckCircle2} value={totals.converted} label="Converted" accent="green" />
-        <StatTile className="stagger-4" icon={TrendingUp} value={conversionRate} label="Conversion rate" accent="blue" />
+        <StatTile className="stagger-4" icon={TrendingUp} value={conversionRate} label="Conversion rate" accent="gold" />
       </div>
 
       <Card className="mb-4 animate-slide-up">

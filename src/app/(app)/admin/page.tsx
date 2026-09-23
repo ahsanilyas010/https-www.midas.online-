@@ -5,6 +5,8 @@ import { Activity, Radio, UserCheck, PhoneCall, Coffee, MoonStar, PhoneOutgoing,
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatTile } from "@/components/ui/stat-tile";
+import Link from "next/link";
+import { Video, ArrowRight } from "lucide-react";
 
 // Aux states (00000000000014_attendance_schema.sql) grouped into the four
 // tiles below — a per-state tile each would be too many for a glance-able
@@ -84,34 +86,49 @@ export default async function LiveFloorPage() {
     callsToday.calls > 0 ? `${Math.round((callsToday.connects / callsToday.calls) * 100)}%` : "—";
 
   return (
-    <div className="p-4">
-      <Card className="mb-4 animate-slide-up">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="flex items-center gap-2">
-            <Radio className="h-3.5 w-3.5 animate-pulse-dot text-brand-green-text" /> Live floor
-          </CardTitle>
-          <span className="text-xs text-muted">{totalAgents} agents assigned across campaigns</span>
-        </CardHeader>
-      </Card>
+    <div className="p-4 sm:p-6">
+      <div className="brand-banner mb-5 animate-slide-up p-5 sm:p-6">
+        <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/80">
+              <Radio className="h-3.5 w-3.5 animate-pulse-dot text-emerald-300" /> Live floor
+            </div>
+            <h2 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">
+              Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"},{" "}
+              <span className="text-gold-gradient">{profile.full_name.split(" ")[0]}</span>
+            </h2>
+            <p className="mt-1 text-sm text-white/80">
+              {totalAgents} agents assigned across {(campaigns ?? []).length} campaigns · {callsToday.calls} calls and{" "}
+              {callsToday.conversions} conversions so far today.
+            </p>
+          </div>
+          <Link
+            href="/meetings"
+            className="inline-flex items-center gap-1.5 self-start rounded-lg bg-white/15 px-3 py-2 text-sm font-medium ring-1 ring-white/25 backdrop-blur transition hover:bg-white/25 sm:self-auto"
+          >
+            <Video className="h-4 w-4" /> Zoom meetings <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
 
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Right now</p>
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile className="stagger-1" icon={UserCheck} value={auxCounts.available} label="Available" accent="green" />
-        <StatTile className="stagger-2" icon={PhoneCall} value={auxCounts.on_call} label="On call / wrap-up" accent="blue" />
-        <StatTile className="stagger-3" icon={Coffee} value={auxCounts.break} label="On break" accent="orange" />
-        <StatTile className="stagger-4" icon={MoonStar} value={auxCounts.away} label="Idle / offline" accent="blue" />
+        <StatTile className="stagger-2" icon={PhoneCall} value={auxCounts.on_call} label="On call / wrap-up" accent="violet" />
+        <StatTile className="stagger-3" icon={Coffee} value={auxCounts.break} label="On break" accent="gold" />
+        <StatTile className="stagger-4" icon={MoonStar} value={auxCounts.away} label="Idle / offline" accent="teal" />
       </div>
 
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Today so far</p>
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile className="stagger-1" icon={PhoneOutgoing} value={callsToday.calls} label="Calls attempted" accent="blue" />
-        <StatTile className="stagger-2" icon={PhoneIncoming} value={callsToday.connects} label="Connects" accent="orange" />
+        <StatTile className="stagger-2" icon={PhoneIncoming} value={callsToday.connects} label="Connects" accent="magenta" />
         <StatTile className="stagger-3" icon={Trophy} value={callsToday.conversions} label="Conversions" accent="green" />
-        <StatTile className="stagger-4" icon={Percent} value={contactRateToday} label="Contact rate" accent="blue" />
+        <StatTile className="stagger-4" icon={Percent} value={contactRateToday} label="Contact rate" accent="gold" />
       </div>
 
       {(campaigns ?? []).length === 0 ? (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-line bg-white">
+        <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-line bg-surface">
           <div className="text-center">
             <Activity className="mx-auto mb-2 h-6 w-6 text-muted" />
             <p className="text-sm text-muted">

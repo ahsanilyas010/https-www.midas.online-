@@ -1,14 +1,12 @@
 {
-  "name": "callingcrm",
+  "name": "dialdesk-demo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "bootstrap-admin": "tsx scripts/bootstrap-super-admin.ts",
-    "test:rls": "vitest run tests/rls.test.ts"
+    "lint": "eslint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
@@ -25,7 +23,6 @@
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",
     "@react-pdf/renderer": "^4.5.1",
-    "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

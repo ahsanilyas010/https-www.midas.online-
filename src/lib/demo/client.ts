@@ -1,10 +1,11 @@
 import "server-only";
 import { getStore, newId, nowIso } from "./store";
 import { DemoQueryBuilder } from "./query";
+import { DEMO_PASSWORD } from "./seed";
 import { runRpc } from "./rpc";
 import type { DemoAuthContext } from "./rls";
 
-export const DEMO_COOKIE = "midas_demo_user";
+export const DEMO_COOKIE = "dialdesk_demo_user";
 
 export interface CookieJar {
   get(name: string): string | undefined;
@@ -24,7 +25,7 @@ function authContextFor(userId: string | null, bypass = false): DemoAuthContext 
 }
 
 function emailFor(userId: string) {
-  return (getStore().tables.demo_auth.find((a) => a.id === userId)?.email as string) ?? `${userId}@midas.demo`;
+  return (getStore().tables.demo_auth.find((a) => a.id === userId)?.email as string) ?? `${userId}@dialdesk.demo`;
 }
 
 const noopChannel = {
@@ -85,11 +86,11 @@ export function createDemoClient(opts: { jar?: CookieJar; bypassRls?: boolean } 
         const id = currentUserId();
         return { data: { session: id ? { user: { id, email: emailFor(id) } } : null }, error: null };
       },
-      async signInWithPassword({ email }: { email: string; password: string }) {
+      async signInWithPassword({ email, password }: { email: string; password: string }) {
         const store = getStore();
         const account = store.tables.demo_auth.find((a) => String(a.email).toLowerCase() === email.toLowerCase());
         const profile = account && store.tables.profiles.find((p) => p.id === account.id && p.is_active);
-        if (!account || !profile) {
+        if (!account || !profile || password !== (account.password ?? DEMO_PASSWORD)) {
           return { data: { user: null, session: null }, error: { message: "Invalid login credentials" } };
         }
         opts.jar?.set(DEMO_COOKIE, String(account.id));
@@ -110,7 +111,7 @@ export function createDemoClient(opts: { jar?: CookieJar; bypassRls?: boolean } 
             return { data: { user: null }, error: { message: "A user with this email address has already been registered" } };
           }
           const id = newId();
-          store.tables.demo_auth.push({ id, email, created_at: nowIso() });
+          store.tables.demo_auth.push({ id, email, password: DEMO_PASSWORD, created_at: nowIso() });
           return { data: { user: { id, email } }, error: null };
         },
         async deleteUser(id: string) {
