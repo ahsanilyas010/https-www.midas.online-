@@ -1,0 +1,82 @@
+name: Nightly database backup
+
+# Spec section 1: the Supabase free tier has no backups. Losing this
+# database loses the client's lead data and the compliance evidence trail —
+# a business-ending event, not an inconvenience. This is not optional.
+#
+# pg_dump -> gzip -> encrypt (openssl, symmetric key) -> upload to Supabase
+# Storage (primary) and S3 (off-site copy). Neither destination ever sees
+# the plaintext dump.
+#
+# Required repository secrets:
+#   DATABASE_URL             postgres connection string (direct, not pooler)
+#   BACKUP_ENCRYPTION_KEY    passphrase for openssl -aes-256-cbc
+#   SUPABASE_URL             https://<ref>.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY
+#   BACKUP_S3_BUCKET
+#   AWS_ACCESS_KEY_ID
+#   AWS_SECRET_ACCESS_KEY
+#   AWS_REGION                (defaults to us-east-1 if unset)
+#
+# To restore: download the .sql.gz.enc object, then:
+#   openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:$BACKUP_ENCRYPTION_KEY \
+#     -in backup.sql.gz.enc | gunzip | psql "$SCRATCH_DATABASE_URL"
+
+on:
+  schedule:
+    - cron: "0 22 * * *" # 02:00 PKT / 22:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump, compress, encrypt
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          FILENAME="abpo-command-${STAMP}.sql.gz.enc"
+          echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
+
+          pg_dump "$DATABASE_URL" --no-owner --no-privileges --format=plain \
+            | gzip \
+            | openssl enc -aes-256-cbc -pbkdf2 -salt \
+                -pass "pass:${BACKUP_ENCRYPTION_KEY}" \
+                -out "$FILENAME"
+
+          ls -lh "$FILENAME"
+
+      - name: Upload to Supabase Storage (primary)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          curl -sSf -X POST \
+            "${SUPABASE_URL}/storage/v1/object/backups/${FILENAME}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${FILENAME}"
+
+      - name: Upload to S3 (off-site copy)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          pip install --quiet awscli
+          aws s3 cp "$FILENAME" "s3://${BACKUP_S3_BUCKET}/nightly/${FILENAME}"
+
+      - name: Clean up local copy
+        if: always()
+        run: rm -f "*.sql.gz.enc"

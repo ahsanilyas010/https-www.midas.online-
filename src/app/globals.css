@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+/*
+ * DialDesk — brand tokens.
+ * Colours sampled directly from the Assorted logo master. Exact hex, not
+ * approximations. Blue is the only brand colour that carries white text
+ * (9.80:1), so blue is primary/action. Orange is the attention accent and
+ * green is the earned confirmation colour — both take dark ink text only,
+ * never white. The three hues also double as the app's decorative accent
+ * rotation (nav icon chips, stat tiles, gradients) — kept to these three
+ * rather than inventing off-brand colours, so "colorful" still reads as
+ * on-brand rather than as a generic template palette.
+ */
+:root {
+  --brand-blue: #064288;
+  --brand-blue-hover: #053567;
+  --brand-green: #76b049;
+  --brand-orange: #f87026;
+
+  --brand-green-text: #578236;
+  --brand-orange-text: #cd4d07;
+
+  --brand-blue-tint: #e1e8f1;
+  --brand-blue-tint-2: #c1d0e1;
+  --brand-green-tint: #eff6e9;
+  --brand-green-tint-2: #ddebd2;
+  --brand-orange-tint: #feeee5;
+  --brand-orange-tint-2: #fddbc9;
+
+  --brand-gradient: linear-gradient(135deg, var(--brand-blue) 0%, #1d63b8 45%, var(--brand-green) 100%);
+
+  --danger: #c4342b;
+  --danger-tint: #fbe9e7;
+  --warning: #d89614;
+  --warning-tint: #fbf1dc;
+  --ink: #14181f;
+  --muted: #6b7482;
+  --line: #e3e6ea;
+  --surface: #ffffff;
+  --canvas: #f6f7f9;
+
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-blue-hover: var(--brand-blue-hover);
+  --color-brand-green: var(--brand-green);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-green-text: var(--brand-green-text);
+  --color-brand-orange-text: var(--brand-orange-text);
+  --color-brand-blue-tint: var(--brand-blue-tint);
+  --color-brand-blue-tint-2: var(--brand-blue-tint-2);
+  --color-brand-green-tint: var(--brand-green-tint);
+  --color-brand-green-tint-2: var(--brand-green-tint-2);
+  --color-brand-orange-tint: var(--brand-orange-tint);
+  --color-brand-orange-tint-2: var(--brand-orange-tint-2);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+  --color-canvas: var(--canvas);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-outfit);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --animate-fade-in: fade-in 0.18s ease-out;
+  --animate-slide-up: slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-in-right: slide-in-right 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Every heading in the app (h1-h6, including CardTitle) picks up the
+   display face automatically — a one-line change here rather than editing
+   every page's headings individually. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.tabular {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+/* Staggered entrance for grids of cards/tiles that all mount at once
+   (stat tile rows, campaign grids) — same animate-slide-up keyframe,
+   just offset so they cascade in rather than popping together. */
+.stagger-1 {
+  animation-delay: 40ms;
+}
+.stagger-2 {
+  animation-delay: 80ms;
+}
+.stagger-3 {
+  animation-delay: 120ms;
+}
+.stagger-4 {
+  animation-delay: 160ms;
+}
+.stagger-5 {
+  animation-delay: 200ms;
+}
+.stagger-6 {
+  animation-delay: 240ms;
+}
+
+/* Hover lift for interactive cards/tiles. */
+.hover-lift {
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -8px rgb(0 0 0 / 0.18);
+}
+
+/* Respect reduced-motion preference — every animation degrades to an
+   instant state change rather than skipping the final frame. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
