@@ -8,7 +8,7 @@ import { RunScreeningDialog } from "./run-screening-dialog";
 
 export default async function CompliancePage() {
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "qa"].includes(profile.role)) redirect("/");
+  if (!["super_admin", "ops_manager", "qa"].includes(profile.role)) redirect("/start");
 
   const supabase = await createClient();
   const [

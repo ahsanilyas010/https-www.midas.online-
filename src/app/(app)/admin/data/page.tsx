@@ -14,7 +14,7 @@ interface DataSourceConfig {
 
 export default async function DataPage() {
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/");
+  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/start");
 
   const supabase = await createClient();
   const [

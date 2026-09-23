@@ -46,7 +46,7 @@ export default async function ClientReportsPage({
   // database layer (see get_client_funnel in migration 27), not just by
   // what this page chooses to render.
   const profile = await requireProfile();
-  if (!["client_viewer", "super_admin", "ops_manager"].includes(profile.role)) redirect("/");
+  if (!["client_viewer", "super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
 
   const isManager = profile.role === "super_admin" || profile.role === "ops_manager";
   const { client: clientIdParam } = await searchParams;

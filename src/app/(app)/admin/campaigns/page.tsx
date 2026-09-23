@@ -11,7 +11,7 @@ import { BRAND } from "@/lib/brand";
 
 export default async function CampaignsPage() {
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/");
+  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
 
   const supabase = await createClient();
   const [{ data: campaigns }, { data: clients }] = await Promise.all([

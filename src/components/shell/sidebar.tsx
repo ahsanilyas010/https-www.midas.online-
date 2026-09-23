@@ -81,7 +81,11 @@ export function Sidebar({ items, onNavigate }: { items: NavItem[]; onNavigate?: 
         <div className="pointer-events-none absolute -left-16 top-24 h-48 w-48 rounded-full bg-violet/30 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -right-20 bottom-20 h-48 w-48 rounded-full bg-gold/15 blur-3xl" aria-hidden />
 
-        <div className="relative flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
+        <Link
+          href="/"
+          title={`${BRAND.productName} home`}
+          className="relative flex h-14 items-center gap-2.5 border-b border-white/10 px-4 transition-colors hover:bg-white/[0.04]"
+        >
           <BrandMark size={28} />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
@@ -89,7 +93,7 @@ export function Sidebar({ items, onNavigate }: { items: NavItem[]; onNavigate?: 
               <div className="text-[10px] uppercase tracking-[0.14em] text-gold-soft/80">Contact centre</div>
             </div>
           )}
-        </div>
+        </Link>
 
         <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3">
           {items.map((item, idx) => {

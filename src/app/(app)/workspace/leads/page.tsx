@@ -9,7 +9,7 @@ import { PromoteContactDialog } from "./promote-contact-dialog";
 
 export default async function MyLeadsPage() {
   const profile = await requireProfile();
-  if (profile.role !== "agent") redirect("/");
+  if (profile.role !== "agent") redirect("/start");
 
   const supabase = await createClient();
   const {

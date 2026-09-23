@@ -28,6 +28,23 @@ It is a copy of the CallingCRM codebase with four changes:
    switch roles or reset data, a softphone in the dial workspace and
    celebrations on conversions.
 
+## Company
+
+CallMilalo is a product of **Assorted Business LLC** (United States). The
+company name, address, phone and email live in `COMPANY` in
+`src/lib/brand.ts`; empty fields are hidden, so fill them in there when
+they're ready and they'll appear in the landing-page footer and on the
+sign-in page.
+
+## Landing page
+
+`/` is a public marketing page covering every feature: dial workspace,
+bring-your-own dialer (with an interactive provider switcher), Zoom
+meetings, live floor, attendance, QA, compliance, data sourcing, client
+portal, security, roles and an FAQ. "Try the live demo" goes to the role
+picker at `/login`; signed-in visitors get "Open the app" (`/start`, which
+sends each role to its home screen).
+
 ## Demo logins
 
 Pick a role on the login page, or sign in with any account below. **Every

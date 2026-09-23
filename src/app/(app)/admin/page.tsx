@@ -33,7 +33,7 @@ export default async function LiveFloorPage() {
   // typing the URL. (RLS scoped what they'd see to their own campaigns,
   // so this was never a data leak — just an inconsistency.)
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/");
+  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/start");
 
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);

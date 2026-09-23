@@ -13,7 +13,7 @@ export interface ActionResult {
 export async function signIn(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/");
+  const next = String(formData.get("next") ?? "/start");
 
   if (!email || !password) {
     return { error: "Enter your email and password." };
@@ -54,7 +54,7 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/");
 }
 
 export async function changePassword(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -97,5 +97,5 @@ export async function changePassword(_prev: ActionResult, formData: FormData): P
     event: "changed_by_user",
   });
 
-  redirect("/");
+  redirect("/start");
 }

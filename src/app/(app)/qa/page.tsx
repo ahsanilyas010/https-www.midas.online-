@@ -6,7 +6,7 @@ import { ReviewDialog } from "./review-dialog";
 
 export default async function QaQueuePage() {
   const profile = await requireProfile();
-  if (!["qa", "super_admin", "ops_manager"].includes(profile.role)) redirect("/");
+  if (!["qa", "super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
 
   const [calls, scorecard] = await Promise.all([getCallsNeedingReview(), getActiveScorecard()]);
 

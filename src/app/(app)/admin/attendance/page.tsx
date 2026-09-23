@@ -22,7 +22,7 @@ const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>["variant"]
 
 export default async function AttendancePage() {
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/");
+  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/start");
 
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);

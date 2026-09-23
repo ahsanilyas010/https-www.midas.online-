@@ -21,7 +21,7 @@ const ROLE_LABEL: Record<string, string> = {
 export default async function PeoplePage() {
   const profile = await requireProfile();
   if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) {
-    redirect("/");
+    redirect("/start");
   }
 
   const supabase = await createClient();

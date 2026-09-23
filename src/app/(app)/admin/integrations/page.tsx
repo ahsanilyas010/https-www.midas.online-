@@ -11,7 +11,7 @@ import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 
 export default async function IntegrationsPage() {
   const profile = await requireProfile();
-  if (profile.role !== "super_admin" && profile.role !== "ops_manager") redirect("/");
+  if (profile.role !== "super_admin" && profile.role !== "ops_manager") redirect("/start");
 
   const [zoom, meetings, dialer, calls] = await Promise.all([
     getZoomIntegration(),
