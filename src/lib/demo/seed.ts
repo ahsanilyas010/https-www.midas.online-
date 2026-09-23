@@ -927,6 +927,59 @@ export function buildSeed(): DemoStore {
     settings: { auto_recording: "cloud", waiting_room: true, ai_companion: true, add_to_followups: true },
   });
 
+  // --- Dialer / telephony ---
+  // The client's dialer subscription (switchable on the Integrations page)
+  // plus a call log that mirrors the dialled call attempts above.
+  const DIALER_NUMBERS = ["+442038076512", "+441615550199", "+15125550143"];
+  table("integrations").push({
+    id: "dialer",
+    provider: "zoom_phone",
+    connected: true,
+    account_email: "calls@dialdesk.demo",
+    account_name: "DialDesk Contact Centre",
+    plan: "Zoom Phone Pro (8 licences)",
+    connected_at: iso(now - 30 * DAY),
+    connected_by: DEMO_IDS.admin,
+    settings: {
+      caller_id: DIALER_NUMBERS[0],
+      numbers: DIALER_NUMBERS,
+      dial_mode: "click_to_call",
+      record_calls: true,
+      local_presence: true,
+      auto_log_calls: true,
+      agent_extension: "",
+      credentials_masked: { account_id: "••••7Q2k", client_id: "••••hG4x", client_secret: "••••••••" },
+    },
+  });
+  const leadById = new Map(leads.map((l) => [l.id, l]));
+  [...attempts]
+    .sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)))
+    .slice(0, 60)
+    .forEach((a) => {
+      const l = leadById.get(a.lead_id)!;
+      const talk = (a.talk_seconds as number) ?? 0;
+      const connected = talk > 30;
+      const isUS = l.country_code === "US";
+      table("dialer_calls").push({
+        id: genId(),
+        provider: "zoom_phone",
+        provider_call_id: `zoom_phone_${String(a.id).slice(-8)}`,
+        direction: "outbound",
+        from_number: isUS ? DIALER_NUMBERS[2] : DIALER_NUMBERS[0],
+        to_number: l.phone_e164,
+        lead_id: l.id,
+        campaign_id: a.campaign_id,
+        agent_id: a.agent_id,
+        status: connected ? "completed" : "missed",
+        started_at: a.started_at,
+        answered_at: connected ? iso(new Date(a.started_at as string).getTime() + 6000) : null,
+        ended_at: a.ended_at,
+        duration_seconds: talk,
+        recording_url: connected ? `https://zoom.us/recording/demo-${String(a.id).slice(-6)}` : null,
+        created_at: a.started_at,
+      });
+    });
+
   // Tables that start empty but must exist.
   ["client_agent_labels", "campaign_fields", "rate_limit_hits"].forEach((n) => table(n));
 

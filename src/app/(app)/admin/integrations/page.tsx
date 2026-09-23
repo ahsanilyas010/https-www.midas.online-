@@ -5,12 +5,32 @@ import { getZoomIntegration, listZoomMeetings } from "@/lib/actions/zoom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ZoomIntegrationCard } from "./zoom-integration-card";
+import { DialerIntegration } from "./dialer-integration";
+import { getDialerState, listRecentCalls, previewDialerRequest } from "@/lib/actions/dialer";
+import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 
 export default async function IntegrationsPage() {
   const profile = await requireProfile();
   if (profile.role !== "super_admin" && profile.role !== "ops_manager") redirect("/");
 
-  const [zoom, meetings] = await Promise.all([getZoomIntegration(), listZoomMeetings()]);
+  const [zoom, meetings, dialer, calls] = await Promise.all([
+    getZoomIntegration(),
+    listZoomMeetings(),
+    getDialerState(),
+    listRecentCalls(500),
+  ]);
+  const previews = Object.fromEntries(
+    await Promise.all(DIALER_PROVIDERS.map(async (p) => [p.key, await previewDialerRequest(p.key)] as const)),
+  );
+  const today = new Date().toISOString().slice(0, 10);
+  const todays = calls.filter((c) => c.started_at.slice(0, 10) === today);
+  const answered = calls.filter((c) => c.status === "completed");
+  const avg = answered.length ? Math.round(answered.reduce((s, c) => s + c.duration_seconds, 0) / answered.length) : 0;
+  const stats = {
+    callsToday: todays.length,
+    connectRate: calls.length ? `${Math.round((answered.length / calls.length) * 100)}%` : "—",
+    avgDuration: `${Math.floor(avg / 60)}m ${String(avg % 60).padStart(2, "0")}s`,
+  };
 
   const others = [
     { icon: Mail, name: "Email", text: "Template emails to leads with unsubscribe handling. Sends are simulated." },
@@ -24,8 +44,17 @@ export default async function IntegrationsPage() {
     <div className="space-y-5 p-4 sm:p-6">
       <div>
         <h2 className="font-display text-xl font-semibold text-ink">Integrations</h2>
-        <p className="text-sm text-muted">Connect the tools your floor already uses. Zoom is fully wired into the dial workspace.</p>
+        <p className="text-sm text-muted">
+          Connect the tools your floor already uses: the dialer your team subscribes to for calls, and Zoom for video meetings.
+        </p>
       </div>
+
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Calling</h3>
+        <DialerIntegration state={dialer} previews={previews} stats={stats} />
+      </section>
+
+      <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted">Video meetings</h3>
 
       <ZoomIntegrationCard
         integration={zoom}

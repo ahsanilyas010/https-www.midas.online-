@@ -7,6 +7,8 @@ import { Header } from "@/components/shell/header";
 import { PageTransition } from "@/components/shell/page-transition";
 import { DemoBar, type DemoAccount } from "@/components/shell/demo-bar";
 import { CommandPalette } from "@/components/shell/command-palette";
+import { DialerProvider, type DialerInfo } from "@/components/dialer/dialer-context";
+import { Softphone } from "@/components/dialer/softphone";
 import type { NavItem } from "@/lib/nav";
 import type { Profile } from "@/lib/auth/current-profile";
 import type { CurrentSession } from "@/lib/actions/attendance";
@@ -24,6 +26,7 @@ export function AppChrome({
   initialSession,
   initialFollowups,
   demoAccounts,
+  dialer,
   children,
 }: {
   items: NavItem[];
@@ -31,43 +34,47 @@ export function AppChrome({
   initialSession: CurrentSession | null;
   initialFollowups: FollowupRow[];
   demoAccounts: DemoAccount[];
+  dialer: DialerInfo;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <AnimatePresence>
-        {mobileNavOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 md:hidden"
-            onClick={() => setMobileNavOpen(false)}
+    <DialerProvider info={dialer}>
+      <div className="flex h-screen w-full overflow-hidden">
+        <AnimatePresence>
+          {mobileNavOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/30 md:hidden"
+              onClick={() => setMobileNavOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        <div
+          className={`fixed inset-y-0 left-0 z-50 md:static md:z-auto ${
+            mobileNavOpen ? "flex" : "hidden md:flex"
+          }`}
+        >
+          <Sidebar items={items} onNavigate={() => setMobileNavOpen(false)} />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <DemoBar accounts={demoAccounts} currentId={profile.id} />
+          <Header
+            profile={profile}
+            initialSession={initialSession}
+            initialFollowups={initialFollowups}
+            onMenuClick={() => setMobileNavOpen(true)}
           />
-        )}
-      </AnimatePresence>
-
-      <div
-        className={`fixed inset-y-0 left-0 z-50 md:static md:z-auto ${
-          mobileNavOpen ? "flex" : "hidden md:flex"
-        }`}
-      >
-        <Sidebar items={items} onNavigate={() => setMobileNavOpen(false)} />
+          <PageTransition>{children}</PageTransition>
+        </div>
+        <CommandPalette items={items} />
+        <Softphone />
       </div>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <DemoBar accounts={demoAccounts} currentId={profile.id} />
-        <Header
-          profile={profile}
-          initialSession={initialSession}
-          initialFollowups={initialFollowups}
-          onMenuClick={() => setMobileNavOpen(true)}
-        />
-        <PageTransition>{children}</PageTransition>
-      </div>
-      <CommandPalette items={items} />
-    </div>
+    </DialerProvider>
   );
 }

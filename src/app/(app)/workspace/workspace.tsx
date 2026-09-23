@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { ScheduleMeetingDialog } from "@/components/zoom/schedule-meeting-dialog";
 import { Confetti } from "@/components/ui/confetti";
 import { SimpleMarkdown } from "@/components/ui/simple-markdown";
+import { useDialer, formatDuration } from "@/components/dialer/dialer-context";
 import { cn } from "@/lib/utils";
 import { priorContact } from "@/lib/leads/prior-contact";
 import { LeadDetailsDialog } from "@/app/(app)/admin/campaigns/[id]/lead-details-dialog";
@@ -81,35 +82,6 @@ function fmt(s: number) {
 
 const WIN_CODES = new Set(["connected_interested", "appointment_set", "interested_follow_up"]);
 
-type CallState = "idle" | "ringing" | "connected";
-
-// Simulated softphone: ringing -> connected with a live talk timer. The demo
-// has no telephony provider, so this stands in for a click-to-call dialer.
-function useSoftphone(onHangUp: () => void) {
-  const [state, setState] = useState<CallState>("idle");
-  const [seconds, setSeconds] = useState(0);
-  useEffect(() => {
-    if (state === "ringing") {
-      const t = setTimeout(() => setState("connected"), 2200);
-      return () => clearTimeout(t);
-    }
-    if (state === "connected") {
-      setSeconds(0);
-      const id = setInterval(() => setSeconds((s) => s + 1), 1000);
-      return () => clearInterval(id);
-    }
-  }, [state]);
-  return {
-    state,
-    seconds,
-    dial: () => setState("ringing"),
-    hangUp: () => {
-      setState("idle");
-      onHangUp();
-    },
-  };
-}
-
 export function Workspace({
   agentName,
   agentTimezone,
@@ -147,7 +119,18 @@ export function Workspace({
 
   const selected = dispositions.find((d) => d.id === dispositionId);
   const wrapSeconds = useWrapTimer(touched);
-  const phone = useSoftphone(() => setTouched(true));
+  const dialer = useDialer();
+  const leadCall = dialer.call.leadId && dialer.call.leadId === lead?.id ? dialer.call : null;
+  const onLeadCall = leadCall && ["dialing", "ringing", "connected"].includes(leadCall.phase);
+
+  // When a call to this lead ends, start wrap-up and jump to the disposition.
+  useEffect(() => {
+    const ended = dialer.call.lastEnded;
+    if (!ended || !lead || ended.leadId !== lead.id) return;
+    setTouched(true);
+    setTimeout(() => dispositionTriggerRef.current?.focus(), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialer.call.endedCount]);
 
   function resetPanel() {
     setDispositionId("");
@@ -216,7 +199,7 @@ export function Workspace({
         toast.warning(result.warning, { duration: 8000 });
       }
 
-      if (phone.state !== "idle") phone.hangUp();
+      if (onLeadCall) dialer.hangUp();
       resetPanel();
       advanceQueue();
     });
@@ -273,6 +256,19 @@ export function Workspace({
           <span className="hidden sm:inline">{agentName}</span>
         </div>
         <div className="flex items-center gap-3 text-[11px] tabular text-muted">
+          {dialer.info.connected ? (
+            <span className="hidden items-center gap-1.5 md:flex">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded text-[8px] font-bold text-white"
+                style={{ background: dialer.info.providerColor }}
+              >
+                {dialer.info.providerInitials}
+              </span>
+              {dialer.info.providerName} · {dialer.info.callerId}
+            </span>
+          ) : (
+            <span className="rounded-full bg-warning-tint px-2 py-0.5 font-medium text-warning">No dialer connected</span>
+          )}
           <span className="flex items-center gap-1 rounded-full bg-gold-tint px-2 py-0.5 font-medium text-gold-text">
             <Target className="h-3 w-3" /> {savedToday} logged this session
           </span>
@@ -405,28 +401,48 @@ export function Workspace({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {phone.state === "idle" ? (
-                    <Button variant="confirm" onClick={phone.dial}>
+                  {!onLeadCall ? (
+                    <Button
+                      variant="confirm"
+                      onClick={() =>
+                        dialer.dial({
+                          number: lead.phone_e164,
+                          name: [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.company_name,
+                          leadId: lead.id,
+                        })
+                      }
+                    >
                       <PhoneCall className="h-4 w-4" /> Call
+                      {dialer.info.connected && dialer.info.providerName && (
+                        <span className="rounded bg-black/10 px-1.5 text-[10px] font-medium">{dialer.info.providerName}</span>
+                      )}
                     </Button>
                   ) : (
-                    <Button variant="danger" onClick={phone.hangUp}>
+                    <Button variant="danger" onClick={dialer.hangUp}>
                       <PhoneOff className="h-4 w-4" /> Hang up
                     </Button>
                   )}
                   <AnimatePresence>
-                    {phone.state !== "idle" && (
+                    {onLeadCall && leadCall && (
                       <motion.span
                         initial={{ opacity: 0, x: -6 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0 }}
                         className={cn(
                           "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-                          phone.state === "ringing" ? "bg-warning-tint text-warning" : "bg-brand-green-tint text-brand-green-text animate-ring",
+                          leadCall.phase === "connected" ? "bg-brand-green-tint text-brand-green-text animate-ring" : "bg-warning-tint text-warning",
                         )}
                       >
-                        <span className={cn("h-2 w-2 rounded-full", phone.state === "ringing" ? "bg-warning animate-pulse-dot" : "bg-brand-green")} />
-                        {phone.state === "ringing" ? "Ringing…" : <span className="tabular">Connected {fmt(phone.seconds)}</span>}
+                        <span className={cn("h-2 w-2 rounded-full", leadCall.phase === "connected" ? "bg-brand-green" : "bg-warning animate-pulse-dot")} />
+                        {leadCall.phase === "connected" ? (
+                          <span className="tabular">
+                            {leadCall.onHold ? "On hold" : "Connected"} {formatDuration(leadCall.seconds)}
+                          </span>
+                        ) : leadCall.phase === "ringing" ? (
+                          "Ringing…"
+                        ) : (
+                          `Dialling via ${dialer.info.providerName}…`
+                        )}
                       </motion.span>
                     )}
                   </AnimatePresence>
