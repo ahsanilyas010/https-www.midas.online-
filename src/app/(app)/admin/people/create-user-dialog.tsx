@@ -61,13 +61,23 @@ function SubmitButton() {
   );
 }
 
-export function CreateUserDialog({
-  teams,
-  clients,
-}: {
+type DialogProps = {
   teams: { id: string; name: string }[];
   clients: { id: string; name: string }[];
-}) {
+};
+
+// Remounted after each successful create so the next one starts from a
+// blank form (useActionState can't be reset in place).
+export function CreateUserDialog(props: DialogProps) {
+  const [round, setRound] = useState(0);
+  return <CreateUserDialogRound key={round} {...props} onFinished={() => setRound((r) => r + 1)} />;
+}
+
+function CreateUserDialogRound({
+  teams,
+  clients,
+  onFinished,
+}: DialogProps & { onFinished: () => void }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(createUser, initialState);
   const [role, setRole] = useState("agent");
@@ -90,6 +100,7 @@ export function CreateUserDialog({
     setOpen(next);
     if (!next) {
       router.refresh();
+      if (state.tempPassword) onFinished();
     }
   }
 

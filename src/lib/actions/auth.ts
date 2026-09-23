@@ -4,6 +4,12 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { accounts, AccountError } from "@/lib/accounts";
+import { getWorkspaceContext, setSessionCookie } from "@/lib/accounts/session";
+
+function safeNext(next: string) {
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/start";
+}
 
 export interface ActionResult {
   error?: string;
@@ -24,6 +30,19 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   const allowed = await checkRateLimit("login", `${ipForLimit}:${email.toLowerCase()}`, 10, 300);
   if (!allowed) {
     return { error: "Too many attempts. Wait a few minutes and try again." };
+  }
+
+  // Customer accounts first (sign-ups and the people they add), then the
+  // demo logins.
+  try {
+    const session = await accounts().signIn(email, password);
+    await setSessionCookie(session.token, session.maxAgeSeconds);
+    redirect(session.member.mustChangePassword ? "/change-password" : safeNext(next));
+  } catch (e) {
+    if (e instanceof AccountError && (e.code === "disabled" || e.code === "unavailable")) {
+      return { error: e.message, email };
+    }
+    if (!(e instanceof AccountError)) throw e; // includes redirect()
   }
 
   const supabase = await createClient();
@@ -48,7 +67,7 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
     .eq("id", data.user.id)
     .single();
 
-  redirect(profile?.must_change_password ? "/change-password" : next);
+  redirect(profile?.must_change_password ? "/change-password" : safeNext(next));
 }
 
 export async function signOut() {
@@ -72,11 +91,21 @@ export async function changePassword(_prev: ActionResult, formData: FormData): P
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?signed_out=1");
 
-  const { error } = await supabase.auth.updateUser({ password });
-  if (error) {
-    return { error: error.message };
+  const ws = await getWorkspaceContext();
+  if (ws) {
+    try {
+      await accounts().setPassword(user!.id, password);
+      await accounts().updateMember(user!.id, { mustChangePassword: false });
+    } catch (e) {
+      return { error: e instanceof AccountError ? e.message : "Could not change the password." };
+    }
+  } else {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      return { error: error.message };
+    }
   }
 
   const { error: profileError } = await supabase

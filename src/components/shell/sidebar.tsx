@@ -19,6 +19,7 @@ import {
   Building2,
   Video,
   PlugZap,
+  CreditCard,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const ICON_MAP: Record<NavIconName, LucideIcon> = {
   Building2,
   Video,
   PlugZap,
+  CreditCard,
 };
 
 // Per-icon (not per-position) gradient so a section always keeps the same
@@ -60,6 +62,7 @@ const ICON_GRADIENT: Record<NavIconName, string> = {
   Building2: "from-[#22d3ee] to-[var(--teal)]",
   Video: "from-[#60a5fa] to-[#0b5cff]",
   PlugZap: "from-[#c084fc] to-[var(--magenta)]",
+  CreditCard: "from-[var(--gold)] to-[#f59e0b]",
 };
 
 export function Sidebar({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
@@ -148,7 +151,7 @@ export function Sidebar({ items, onNavigate }: { items: NavItem[]; onNavigate?: 
         {!collapsed && (
           <div className="relative mx-3 mb-3 rounded-xl bg-white/[0.06] p-3 ring-1 ring-white/10">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-gold-soft">
-              <Sparkles className="h-3.5 w-3.5" /> Demo workspace
+              <Sparkles className="h-3.5 w-3.5" /> Quick tip
             </div>
             <p className="mt-1 text-[11px] leading-snug text-white/60">
               Press <kbd className="rounded bg-white/10 px-1">Ctrl</kbd> + <kbd className="rounded bg-white/10 px-1">K</kbd> to jump anywhere.

@@ -11,7 +11,7 @@ export default async function ChangePasswordPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?signed_out=1");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">

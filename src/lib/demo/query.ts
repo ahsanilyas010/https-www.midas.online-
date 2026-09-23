@@ -651,7 +651,7 @@ export class DemoQueryBuilder implements PromiseLike<QueryResult> {
   }
 
   private shape(rows: Row[]): Row[] {
-    const store = getStore();
+    const store = this.auth.store ?? getStore();
     const nodes = parseSelect(this.selectStr);
     return rows
       .map((r) => project(r, nodes, this.table, store, this.auth))
@@ -659,7 +659,7 @@ export class DemoQueryBuilder implements PromiseLike<QueryResult> {
   }
 
   private execute(): QueryResult {
-    const store = getStore();
+    const store = this.auth.store ?? getStore();
     switch (this.mode) {
       case "select":
         return this.runSelect(store);

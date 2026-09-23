@@ -7,10 +7,11 @@ import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
+import { FREE_AGENT_SEATS } from "@/lib/pricing";
 import { getStore } from "@/lib/demo/store";
 
 export const metadata: Metadata = {
-  title: "Try the live demo",
+  title: "Sign in or try the live demo",
   description:
     "Explore CallMilalo with realistic sample data: pick a role (admin, manager, team lead, agent, QA or client) and start dialling, booking Zoom meetings and watching the live floor.",
   alternates: { canonical: "/login" },
@@ -115,13 +116,27 @@ export default async function LoginPage({
           </Link>
           <div className="mb-6 flex flex-col items-center gap-2 text-center lg:hidden">
             <BrandMark size={40} />
-            <h1 className="font-display text-xl font-semibold text-ink">{BRAND.productName}</h1>
             <p className="text-xs text-muted">{BRAND.loginTagline}</p>
           </div>
 
-          <h2 className="font-display text-2xl font-semibold text-ink">Choose a demo role</h2>
+          <h1 className="font-display text-2xl font-semibold text-ink">Sign in to {BRAND.productName}</h1>
           <p className="mt-1 text-sm text-muted">
-            Each role sees the app the way that person would. You can switch any time from the demo bar.
+            New here?{" "}
+            <Link href="/signup" className="font-semibold text-brand-blue hover:underline">
+              Create a free workspace
+            </Link>{" "}
+            with {FREE_AGENT_SEATS} agents on us.
+          </p>
+          <div className="mt-4">
+            <LoginForm next={next} />
+          </div>
+
+          <div id="demo" className="mt-10 flex scroll-mt-6 items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+            <span className="h-px flex-1 bg-line" /> Or explore the live demo <span className="h-px flex-1 bg-line" />
+          </div>
+          <h2 className="mt-6 font-display text-xl font-semibold text-ink">Choose a demo role</h2>
+          <p className="mt-1 text-sm text-muted">
+            Sample data only. Each role sees the app the way that person would, and you can switch any time from the demo bar.
           </p>
 
           <PersonaPicker personas={personas} next={next} />
@@ -137,14 +152,6 @@ export default async function LoginPage({
               </div>
             </div>
             <AccountList accounts={accounts} next={next} />
-            <details className="group mt-3">
-              <summary className="cursor-pointer select-none text-xs font-medium text-brand-blue">
-                Sign in with email and password instead
-              </summary>
-              <div className="mt-3">
-                <LoginForm next={next} />
-              </div>
-            </details>
           </div>
         </div>
       </div>

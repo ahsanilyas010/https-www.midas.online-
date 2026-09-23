@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Building2, Mail, MapPin, MessageCircle, Phone, PlayCircle, Tag } from "lucide-react";
+import { ArrowRight, Building2, Mail, MapPin, MessageCircle, Phone, PlayCircle, Sparkles, Tag } from "lucide-react";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { absoluteUrl, siteUrl } from "@/lib/site";
 import { PRICING } from "@/lib/pricing";
@@ -139,8 +139,9 @@ export default function ContactPage() {
             {/* Next steps */}
             <div className="flex flex-col gap-4">
               {[
-                { href: "/login", icon: PlayCircle, title: "Try the live demo", text: "Six roles, sample data, no sign-up." },
-                { href: "/pricing", icon: Tag, title: "See pricing", text: `First ${PRICING.freeUsers} users free, then $${PRICING.tiers[0].perUser}/user/month.` },
+                { href: "/signup", icon: PlayCircle, title: "Start free", text: `${PRICING.freeUsers} agents free, set up in two minutes.` },
+                { href: "/login#demo", icon: Sparkles, title: "Try the live demo", text: "Six roles, sample data, no sign-up." },
+                { href: "/pricing", icon: Tag, title: "See pricing", text: `First ${PRICING.freeUsers} agents free, then $${PRICING.tiers[0].perUser}/agent/month.` },
               ].map(({ href, icon: Icon, title, text }) => (
                 <Link
                   key={href}

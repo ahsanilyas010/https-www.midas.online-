@@ -54,7 +54,7 @@ function closeAux(store: DemoStore, sessionId: unknown) {
 }
 
 export function runRpc(fn: string, args: Record<string, unknown>, auth: DemoAuthContext): RpcResult {
-  const store = getStore();
+  const store = auth.store ?? getStore();
   const t = store.tables;
   store.version++;
 

@@ -13,14 +13,14 @@ import { cn } from "@/lib/utils";
 const [growth, scale] = PRICING.tiers;
 
 export const metadata: Metadata = {
-  title: "Pricing: first 3 users free",
-  description: `${BRAND.productName} pricing: your first ${PRICING.freeUsers} users are free, then $${growth.perUser} per user per month, dropping to $${scale.perUser} from user ${growth.upTo + 1}. Every feature on every plan; bring your own dialer.`,
+  title: "Pricing: first 3 agents free",
+  description: `${BRAND.productName} pricing: your first ${PRICING.freeUsers} agents are free, then $${growth.perUser} per agent per month, dropping to $${scale.perUser} from agent ${growth.upTo + 1}. Admins, managers and QA are always free.`,
   alternates: { canonical: "/pricing" },
   openGraph: {
     type: "website",
     siteName: BRAND.productName,
-    title: `${BRAND.productName} pricing: first ${PRICING.freeUsers} users free`,
-    description: `Then $${growth.perUser}/user/month, $${scale.perUser} from user ${growth.upTo + 1}. Every feature included.`,
+    title: `${BRAND.productName} pricing: first ${PRICING.freeUsers} agents free`,
+    description: `Then $${growth.perUser}/agent/month, $${scale.perUser} from agent ${growth.upTo + 1}. Every feature included.`,
     url: "/pricing",
     images: ["/opengraph-image"],
   },
@@ -55,7 +55,7 @@ function structuredData() {
         operatingSystem: "Web browser",
         publisher: { "@id": org["@id"] },
         offers: [
-          { "@type": "Offer", name: `Starter (1–${PRICING.freeUsers} users)`, price: 0, priceCurrency: PRICING.currency, url: absoluteUrl("/pricing") },
+          { "@type": "Offer", name: `Starter (1–${PRICING.freeUsers} agents)`, price: 0, priceCurrency: PRICING.currency, url: absoluteUrl("/pricing") },
           ...PRICING.tiers.map((t, i) => ({
             "@type": "Offer",
             name: i === 0 ? "Growth" : "Scale",
@@ -65,8 +65,8 @@ function structuredData() {
               "@type": "UnitPriceSpecification",
               price: t.perUser,
               priceCurrency: PRICING.currency,
-              unitText: "user per month",
-              referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitText: "user", unitCode: "C62" },
+              unitText: "agent per month",
+              referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitText: "agent", unitCode: "C62" },
             },
           })),
         ],
@@ -101,11 +101,11 @@ export default function PricingPage() {
               <Sparkles className="h-3.5 w-3.5" /> Every feature on every plan
             </span>
             <h1 className="mt-5 font-display text-4xl font-semibold leading-[1.1] sm:text-5xl">
-              Your first {PRICING.freeUsers} users are <span className="text-gold-gradient">free.</span>
+              Your first {PRICING.freeUsers} agents are <span className="text-gold-gradient">free.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/75">
-              Then ${growth.perUser} per user per month, dropping to ${scale.perUser} from user {growth.upTo + 1}. No per-minute fees, no setup fees.
-              Calls run on the dialer you already pay for.
+              Then ${growth.perUser} per agent per month, dropping to ${scale.perUser} from agent {growth.upTo + 1}. Admins, managers, team leads and QA
+              are always free. No per-minute fees, no setup fees.
             </p>
           </div>
         </section>
@@ -158,7 +158,7 @@ export default function PricingPage() {
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-blue">Estimate</div>
             <h2 className="mt-3 font-display text-3xl font-semibold text-ink sm:text-4xl">What would your team pay?</h2>
             <p className="mt-3 text-muted">
-              Prices are graduated: the first {PRICING.freeUsers} users are always free, and the ${scale.perUser} rate applies to every user above {growth.upTo}.
+              Prices are graduated: the first {PRICING.freeUsers} agents are always free, and the ${scale.perUser} rate applies to every agent above {growth.upTo}.
             </p>
           </Reveal>
           <Reveal className="mx-auto mt-10 max-w-5xl">
@@ -170,7 +170,7 @@ export default function PricingPage() {
         <section className="bg-surface px-4 py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-semibold text-ink">Included in every plan</h2>
-            <p className="mt-3 text-muted">No feature gates. A 3-person team gets the same product as a 300-seat floor.</p>
+            <p className="mt-3 text-muted">No feature gates. A 3-agent team gets the same product as a 300-seat floor.</p>
           </Reveal>
           <ul className="mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {INCLUDED.map((f) => (
@@ -206,14 +206,14 @@ export default function PricingPage() {
           <div className="brand-hero relative mx-auto max-w-5xl overflow-hidden rounded-3xl px-6 py-14 text-center text-white">
             <div className="brand-orb brand-orb-2" aria-hidden />
             <div className="relative">
-              <h2 className="font-display text-3xl font-semibold">See it before you pay a cent</h2>
-              <p className="mx-auto mt-3 max-w-lg text-white/70">Explore the full product with sample data, or talk to us about your floor.</p>
+              <h2 className="font-display text-3xl font-semibold">Start free today</h2>
+              <p className="mx-auto mt-3 max-w-lg text-white/70">Create your workspace in two minutes: {PRICING.freeUsers} agents free, no card needed.</p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <Link href="/login" className="inline-flex items-center gap-1.5 rounded-xl bg-gold-gradient px-5 py-3 text-sm font-semibold text-ink shadow-lg shadow-gold/20 hover:brightness-105">
-                  Try the live demo <ArrowRight className="h-4 w-4" />
+                <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-xl bg-gold-gradient px-5 py-3 text-sm font-semibold text-ink shadow-lg shadow-gold/20 hover:brightness-105">
+                  Start free <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/contact" className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/25 hover:bg-white/15">
-                  Contact us
+                <Link href="/login#demo" className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/25 hover:bg-white/15">
+                  Try the live demo
                 </Link>
               </div>
             </div>

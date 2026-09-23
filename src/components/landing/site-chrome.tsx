@@ -3,16 +3,22 @@ import { cookies } from "next/headers";
 import { ArrowRight } from "lucide-react";
 import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
+import { MetaPixel } from "@/components/marketing/meta-pixel";
+import { AttributionCapture } from "@/components/marketing/attribution";
+import { SESSION_COOKIE } from "@/lib/accounts/session";
 
 // Header and footer shared by the public pages (landing, pricing, contact).
 
+// The header's main button: "Start free" for visitors, "Open the app" once
+// signed in (to a workspace or the demo).
 export async function demoCta() {
-  const signedIn = Boolean((await cookies()).get("callmilalo_demo_user")?.value);
+  const jar = await cookies();
+  const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value || jar.get("callmilalo_demo_user")?.value);
   return {
     signedIn,
-    href: signedIn ? "/start" : "/login",
-    label: signedIn ? "Open the app" : "Try the live demo",
-    shortLabel: signedIn ? "App" : "Demo",
+    href: signedIn ? "/start" : "/signup",
+    label: signedIn ? "Open the app" : "Start free",
+    shortLabel: signedIn ? "App" : "Start free",
   };
 }
 
@@ -28,6 +34,9 @@ const NAV = [
 export async function SiteHeader() {
   const cta = await demoCta();
   return (
+    <>
+    <MetaPixel />
+    <AttributionCapture />
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-midnight/70 backdrop-blur-xl">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
         <Link href="/" className="flex items-center gap-2.5 text-white">
@@ -42,13 +51,15 @@ export async function SiteHeader() {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/pricing" className="rounded-lg px-2 py-2 text-sm font-medium text-white/80 hover:text-white md:hidden">
-            Pricing
-          </Link>
           {!cta.signedIn && (
-            <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/80 hover:text-white sm:block">
-              Sign in
-            </Link>
+            <>
+              <Link href="/login" className="rounded-lg px-2 py-2 text-sm font-medium text-white/80 hover:text-white sm:px-3">
+                Sign in
+              </Link>
+              <Link href="/login#demo" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/80 hover:text-white lg:block">
+                Live demo
+              </Link>
+            </>
           )}
           <Link
             href={cta.href}
@@ -60,6 +71,7 @@ export async function SiteHeader() {
         </div>
       </nav>
     </header>
+    </>
   );
 }
 
@@ -82,7 +94,10 @@ const FOOTER_COLUMNS = [
       { href: "/contact", label: "Contact us" },
       { href: "/#roles", label: "Roles" },
       { href: "/#faq", label: "FAQ" },
-      { href: "/login", label: "Live demo" },
+      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms" },
+      { href: "/signup", label: "Start free" },
+      { href: "/login#demo", label: "Live demo" },
     ],
   },
 ];

@@ -16,9 +16,9 @@ export function PricingCalculator() {
 
   const [growth, scale] = PRICING.tiers;
   const bands = [
-    { label: `First ${PRICING.freeUsers} users`, count: Math.min(users, PRICING.freeUsers), rate: 0 },
-    { label: `Users ${PRICING.freeUsers + 1}–${growth.upTo}`, count: Math.max(0, Math.min(users, growth.upTo) - PRICING.freeUsers), rate: growth.perUser },
-    { label: `Users ${growth.upTo + 1}–${scale.upTo}`, count: Math.max(0, Math.min(users, scale.upTo) - growth.upTo), rate: scale.perUser },
+    { label: `First ${PRICING.freeUsers} agents`, count: Math.min(users, PRICING.freeUsers), rate: 0 },
+    { label: `Agents ${PRICING.freeUsers + 1}–${growth.upTo}`, count: Math.max(0, Math.min(users, growth.upTo) - PRICING.freeUsers), rate: growth.perUser },
+    { label: `Agents ${growth.upTo + 1}–${scale.upTo}`, count: Math.max(0, Math.min(users, scale.upTo) - growth.upTo), rate: scale.perUser },
   ];
   const perMonth = annual ? annualMonthlyPrice(users) : monthlyPrice(users);
   const pct = ((users - 1) / (SLIDER_MAX - 1)) * 100;
@@ -28,7 +28,7 @@ export function PricingCalculator() {
       <div className="p-6 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <label htmlFor="users" className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
-            <Users className="h-5 w-5 text-brand-blue" /> How many users?
+            <Users className="h-5 w-5 text-brand-blue" /> How many agents?
           </label>
           <div role="group" aria-label="Billing period" className="inline-flex rounded-full bg-canvas p-1 text-xs font-semibold">
             {[
@@ -53,7 +53,7 @@ export function PricingCalculator() {
 
         <div className="mt-8 flex items-end gap-3">
           <span className="font-display text-6xl font-semibold tabular text-ink">{custom ? `${SELF_SERVE_MAX_USERS}+` : users}</span>
-          <span className="pb-2 text-sm text-muted">{users === 1 ? "user" : "users"}</span>
+          <span className="pb-2 text-sm text-muted">{users === 1 ? "agent" : "agents"}</span>
         </div>
         <input
           id="users"
@@ -62,7 +62,7 @@ export function PricingCalculator() {
           max={SLIDER_MAX}
           value={users}
           onChange={(e) => setUsers(Number(e.target.value))}
-          aria-valuetext={`${users} users`}
+          aria-valuetext={`${users} agents`}
           className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full accent-[var(--brand-blue)]"
           style={{ background: `linear-gradient(90deg, var(--brand-blue) ${pct}%, var(--line) ${pct}%)` }}
         />
@@ -96,7 +96,7 @@ export function PricingCalculator() {
             <>
               <div className="mt-3 font-display text-4xl font-semibold">Let&apos;s talk</div>
               <p className="mt-2 text-sm text-white/70">
-                Above {SELF_SERVE_MAX_USERS} users we put together volume pricing for your floor.
+                Above {SELF_SERVE_MAX_USERS} agents we put together volume pricing for your floor.
               </p>
             </>
           ) : (
@@ -107,21 +107,21 @@ export function PricingCalculator() {
               </div>
               <p className="mt-2 text-sm text-white/70">
                 {perMonth === 0
-                  ? `Free: up to ${PRICING.freeUsers} users cost nothing.`
+                  ? `Free: up to ${PRICING.freeUsers} agents cost nothing.`
                   : annual
                     ? `${formatUsd(perMonth * 12)} billed yearly (${PRICING.annualMonthsCharged} months charged).`
-                    : `About ${formatUsd(perMonth / users)} per user on average.`}
+                    : `About ${formatUsd(perMonth / users)} per agent on average.`}
               </p>
             </>
           )}
         </div>
         <div className="relative space-y-3">
-          <p className="text-xs text-white/60">Call minutes are billed by your own dialer provider. Client portal logins are free.</p>
+          <p className="text-xs text-white/60">Admins, managers, QA and client logins are free. Call minutes are billed by your dialer provider.</p>
           <Link
-            href={custom || perMonth > 0 ? "/contact" : "/login"}
+            href={custom ? "/contact" : "/signup"}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gold-gradient px-4 py-3 text-sm font-semibold text-ink shadow-lg shadow-gold/20 hover:brightness-105"
           >
-            {custom ? "Contact sales" : perMonth > 0 ? "Get started" : "Try the live demo"} <ArrowRight className="h-4 w-4" />
+            {custom ? "Contact sales" : "Start free"} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
