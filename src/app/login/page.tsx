@@ -4,7 +4,7 @@ import { Headset, Video, Activity, ShieldCheck, Sparkles, ArrowLeft } from "luci
 import { LoginForm } from "./login-form";
 import { PersonaPicker } from "./persona-picker";
 import { BrandMark } from "@/components/brand/mark";
-import { BRAND, COMPANY } from "@/lib/brand";
+import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
 import { getStore } from "@/lib/demo/store";
@@ -98,7 +98,7 @@ export default async function LoginPage({
         </div>
 
         <p className="relative text-xs text-white/50">
-          {BRAND.productName} is a product of {COMPANY.legalName} · {COMPANY.address || COMPANY.country}. This demo uses sample data
+          {BRAND.productName} is a product of {COMPANY.legalName} · {companyAddressLine()}. This demo uses sample data
           only and resets whenever you like.
         </p>
       </div>

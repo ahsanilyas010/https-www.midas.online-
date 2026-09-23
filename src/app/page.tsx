@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import {
   ArrowRight,
   Headset,
@@ -34,11 +33,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand/mark";
-import { BRAND, COMPANY } from "@/lib/brand";
+import { BRAND } from "@/lib/brand";
 import { absoluteUrl, siteUrl } from "@/lib/site";
 import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 import { Reveal } from "@/components/landing/reveal";
 import { DialerShowcase } from "@/components/landing/dialer-showcase";
+import { SiteHeader, SiteFooter, demoCta } from "@/components/landing/site-chrome";
+import { PRICING } from "@/lib/pricing";
+import { jsonLdHtml, organizationJsonLd } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   title: { absolute: `${BRAND.productName} — contact-centre CRM that dials with your phone system` },
@@ -90,6 +92,10 @@ const FAQ: { q: string; a: string }[] = [
   {
     q: "Can our clients see their results?",
     a: "Yes. Each client gets its own read-only login showing their funnel, call outcomes and agent activity, with downloadable PDF reports. Agents can be shown by name or anonymised.",
+  },
+  {
+    q: "How much does it cost?",
+    a: `The first ${PRICING.freeUsers} users are free on every account. After that it's $${PRICING.tiers[0].perUser} per user per month, dropping to $${PRICING.tiers[1].perUser} from user ${PRICING.tiers[0].upTo + 1}. Call minutes are billed by your own dialer provider, not by CallMilalo.`,
   },
   {
     q: "Is the demo using real data?",
@@ -199,33 +205,9 @@ function HeroMock() {
     </div>
   );
 }
-const FOOTER_LINKS = [
-  { href: "#features", label: "All features" },
-  { href: "#workspace", label: "Dial workspace" },
-  { href: "#dialer", label: "Bring your own dialer" },
-  { href: "#zoom", label: "Zoom meetings" },
-  { href: "#floor", label: "Live floor" },
-  { href: "#compliance", label: "Compliance" },
-  { href: "#roles", label: "Roles" },
-  { href: "#faq", label: "FAQ" },
-];
-
 // schema.org JSON-LD: who makes it, what it is, and the FAQ.
 function structuredData() {
-  const org = {
-    "@type": "Organization",
-    "@id": absoluteUrl("/#organization"),
-    name: COMPANY.legalName,
-    url: siteUrl(),
-    logo: absoluteUrl("/icon"),
-    address: {
-      "@type": "PostalAddress",
-      addressCountry: "US",
-      ...(COMPANY.address ? { streetAddress: COMPANY.address } : {}),
-    },
-    ...(COMPANY.email ? { email: COMPANY.email } : {}),
-    ...(COMPANY.phone ? { telephone: COMPANY.phone } : {}),
-  };
+  const org = organizationJsonLd();
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -248,6 +230,14 @@ function structuredData() {
         description: BRAND.seoDescription,
         image: absoluteUrl("/opengraph-image"),
         featureList: FEATURES.map((f) => f.title),
+        offers: {
+          "@type": "AggregateOffer",
+          priceCurrency: PRICING.currency,
+          lowPrice: 0,
+          highPrice: PRICING.tiers[0].perUser,
+          offerCount: PRICING.tiers.length + 1,
+          url: absoluteUrl("/pricing"),
+        },
         publisher: { "@id": org["@id"] },
       },
       {
@@ -263,47 +253,15 @@ function structuredData() {
 }
 
 export default async function LandingPage() {
-  const signedIn = Boolean((await cookies()).get("callmilalo_demo_user")?.value);
-  const primaryHref = signedIn ? "/start" : "/login";
-  const primaryLabel = signedIn ? "Open the app" : "Try the live demo";
+  const { href: primaryHref, label: primaryLabel } = await demoCta();
 
   return (
     <div className="min-h-screen bg-canvas">
       <script
         type="application/ld+json"
-        // Static, server-built JSON; "<" is escaped so it can't close the tag.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }}
+        dangerouslySetInnerHTML={jsonLdHtml(structuredData())}
       />
-      {/* Nav */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-midnight/70 backdrop-blur-xl">
-        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link href="/" className="flex items-center gap-2.5 text-white">
-            <BrandMark size={30} />
-            <span className="font-display text-lg font-semibold">{BRAND.productName}</span>
-          </Link>
-          <div className="hidden items-center gap-6 text-sm text-white/70 md:flex">
-            <a href="#features" className="hover:text-white">Features</a>
-            <a href="#dialer" className="hover:text-white">Dialer</a>
-            <a href="#zoom" className="hover:text-white">Zoom</a>
-            <a href="#compliance" className="hover:text-white">Compliance</a>
-            <a href="#roles" className="hover:text-white">Roles</a>
-            <a href="#faq" className="hover:text-white">FAQ</a>
-          </div>
-          <div className="flex items-center gap-2">
-            {!signedIn && (
-              <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/80 hover:text-white sm:block">
-                Sign in
-              </Link>
-            )}
-            <Link
-              href={primaryHref}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gold-gradient px-4 py-2 text-sm font-semibold text-ink shadow-lg shadow-gold/20 transition hover:brightness-105"
-            >
-              {primaryLabel} <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main>
       {/* Hero */}
@@ -663,50 +621,7 @@ export default async function LandingPage() {
 
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-line bg-surface px-4 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-muted sm:flex-row">
-          <div className="flex items-center gap-2">
-            <BrandMark size={24} />
-            <span className="font-display font-semibold text-ink">{BRAND.productName}</span>
-            <span className="hidden sm:inline">· {BRAND.loginTagline}</span>
-          </div>
-          <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            {FOOTER_LINKS.map((l) => (
-              <a key={l.href} href={l.href} className="hover:text-ink">
-                {l.label}
-              </a>
-            ))}
-            <Link href={primaryHref} className="font-medium text-brand-blue hover:underline">
-              {primaryLabel}
-            </Link>
-          </nav>
-        </div>
-        <div className="mx-auto mt-6 flex max-w-6xl flex-col gap-1.5 border-t border-line pt-6 text-center text-xs text-muted sm:text-left">
-          <p className="text-sm text-ink">
-            {BRAND.productName} is a product of <span className="font-semibold">{COMPANY.legalName}</span>
-          </p>
-          <p>{COMPANY.address || COMPANY.country}</p>
-          {(COMPANY.phone || COMPANY.email) && (
-            <p className="flex flex-wrap justify-center gap-x-4 sm:justify-start">
-              {COMPANY.phone && (
-                <a href={`tel:${COMPANY.phone.replace(/\s+/g, "")}`} className="hover:text-brand-blue">
-                  {COMPANY.phone}
-                </a>
-              )}
-              {COMPANY.email && (
-                <a href={`mailto:${COMPANY.email}`} className="hover:text-brand-blue">
-                  {COMPANY.email}
-                </a>
-              )}
-            </p>
-          )}
-          <p className="mt-2">
-            © {new Date().getFullYear()} {COMPANY.legalName}. All rights reserved. Third-party names belong to their owners and are shown to
-            indicate compatibility.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

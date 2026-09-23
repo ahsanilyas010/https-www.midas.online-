@@ -23,14 +23,29 @@ export const BRAND = {
     "CallMilalo is a contact-centre CRM with a dial workspace, bring-your-own dialer (Zoom Phone, Dialpad, Aircall, RingCentral), Zoom meetings, QA and compliance.",
 };
 
-// The company behind the product, shown in the landing-page footer and on
-// the sign-in page. Leave a field empty ("") and it is simply not shown —
-// fill in the street address, phone and email here when they're ready.
+// The company behind the product, shown on the contact page, in the site
+// footer and on the sign-in page. Leave a field empty ("") and it is simply
+// not shown; fill in the phone, email and WhatsApp link when they're ready.
 export const COMPANY = {
   legalName: "Assorted Business LLC",
   country: "United States",
-  address: "", // e.g. "123 Main Street, Suite 100, City, ST 12345"
+  address: {
+    street: "470 Schooleys Mountain Rd",
+    city: "Hackettstown",
+    region: "NJ",
+    postalCode: "07840",
+    countryCode: "US",
+  },
   phone: "", // e.g. "+1 555 010 0000"
   email: "", // e.g. "hello@callmilalo.com"
+  // WhatsApp chat link, e.g. "https://wa.me/15550100000". Until it's set the
+  // contact page shows the button as "coming soon".
+  whatsappUrl: "",
 };
+
+// "470 Schooleys Mountain Rd, Hackettstown, NJ 07840, US"
+export function companyAddressLine(): string {
+  const a = COMPANY.address;
+  return `${a.street}, ${a.city}, ${a.region} ${a.postalCode}, ${a.countryCode}`;
+}
 

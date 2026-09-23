@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
       { source: "/signin", destination: "/login", permanent: true },
       { source: "/sign-in", destination: "/login", permanent: true },
       { source: "/features", destination: "/#features", permanent: true },
+      { source: "/plans", destination: "/pricing", permanent: true },
+      { source: "/contact-us", destination: "/contact", permanent: true },
     ];
   },
 };
