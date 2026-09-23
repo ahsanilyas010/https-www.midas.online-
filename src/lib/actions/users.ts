@@ -48,13 +48,6 @@ export async function createUser(
     return { error: "Name and email are required." };
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return {
-      error:
-        "SUPABASE_SERVICE_ROLE_KEY is not set on the server yet — paste it into .env.local (see the comment there) and restart the app.",
-    };
-  }
-
   const admin = createAdminClient();
   const tempPassword = generateTempPassword();
 

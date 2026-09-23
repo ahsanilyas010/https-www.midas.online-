@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe-token";
 import { checkRateLimit } from "@/lib/rate-limit";
-import type { Database } from "@/lib/supabase/types";
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -18,10 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid or expired unsubscribe link." }, { status: 400 });
   }
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("email_suppression")

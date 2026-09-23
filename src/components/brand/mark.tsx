@@ -1,14 +1,14 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 /**
- * Placeholder brand mark — three interlocking gears in the exact brand
- * hexes, standing in for the real DialDesk logo (`3.png` / SVG) which
- * hasn't been supplied to this build. Swap for the real asset by dropping
- * files into /public/brand and replacing this component's usages with
- * <img src="/brand/dialdesk-mark.png" ... /> per spec section 2.
+ * Midas mark — a gold crown-shaped "M" on an indigo→magenta tile. Stands in
+ * for the official midas.online logo until the real asset is dropped into
+ * /public/brand (then swap this for an <img>).
  */
 export function BrandMark({ className, size = 28 }: { className?: string; size?: number }) {
+  const id = useId().replace(/:/g, "");
   return (
     <svg
       viewBox="0 0 48 48"
@@ -18,9 +18,28 @@ export function BrandMark({ className, size = 28 }: { className?: string; size?:
       role="img"
       aria-label={BRAND.productName}
     >
-      <circle cx="18" cy="18" r="9" fill="var(--brand-blue)" />
-      <circle cx="32" cy="16" r="6.5" fill="var(--brand-orange)" />
-      <circle cx="24" cy="32" r="7.5" fill="var(--brand-green)" />
+      <defs>
+        <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="var(--brand-blue)" />
+          <stop offset="55%" stopColor="var(--violet)" />
+          <stop offset="100%" stopColor="var(--magenta)" />
+        </linearGradient>
+        <linearGradient id={`${id}-gold`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fde68a" />
+          <stop offset="55%" stopColor="var(--gold)" />
+          <stop offset="100%" stopColor="#d97706" />
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="44" height="44" rx="13" fill={`url(#${id}-bg)`} />
+      <path
+        d="M11 33 L13.5 15 L19.5 24 L24 13 L28.5 24 L34.5 15 L37 33 Z"
+        fill={`url(#${id}-gold)`}
+        stroke="#fff7db"
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+      <rect x="11" y="34.5" width="26" height="3" rx="1.5" fill={`url(#${id}-gold)`} />
+      <circle cx="24" cy="12" r="2" fill="#fff7db" />
     </svg>
   );
 }

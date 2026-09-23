@@ -1,47 +1,67 @@
 @import "tailwindcss";
 
 /*
- * DialDesk — brand tokens.
- * Colours sampled directly from the Assorted logo master. Exact hex, not
- * approximations. Blue is the only brand colour that carries white text
- * (9.80:1), so blue is primary/action. Orange is the attention accent and
- * green is the earned confirmation colour — both take dark ink text only,
- * never white. The three hues also double as the app's decorative accent
- * rotation (nav icon chips, stat tiles, gradients) — kept to these three
- * rather than inventing off-brand colours, so "colorful" still reads as
- * on-brand rather than as a generic template palette.
+ * Midas CRM — brand tokens.
+ *
+ * Palette inspired by midas.online: a deep "midnight" base, a royal
+ * indigo -> violet -> magenta gradient for primary surfaces, and Midas gold
+ * as the signature accent. Every colour in the app is read from these
+ * variables, so matching the website's exact hex values later is a
+ * one-block edit here.
+ *
+ * Token names keep the original blue/green/orange roles so every existing
+ * component picks up the new palette without edits:
+ *   brand-blue   -> primary (indigo; carries white text)
+ *   brand-orange -> attention accent (amber/orange; dark text)
+ *   brand-green  -> confirmation (emerald; dark text)
  */
 :root {
-  --brand-blue: #064288;
-  --brand-blue-hover: #053567;
-  --brand-green: #76b049;
-  --brand-orange: #f87026;
+  --brand-blue: #4338ca;
+  --brand-blue-hover: #3730a3;
+  --brand-green: #10b981;
+  --brand-orange: #fb923c;
 
-  --brand-green-text: #578236;
-  --brand-orange-text: #cd4d07;
+  --brand-green-text: #047857;
+  --brand-orange-text: #c2410c;
 
-  --brand-blue-tint: #e1e8f1;
-  --brand-blue-tint-2: #c1d0e1;
-  --brand-green-tint: #eff6e9;
-  --brand-green-tint-2: #ddebd2;
-  --brand-orange-tint: #feeee5;
-  --brand-orange-tint-2: #fddbc9;
+  --brand-blue-tint: #eceafd;
+  --brand-blue-tint-2: #d6d2fb;
+  --brand-green-tint: #e7f8f1;
+  --brand-green-tint-2: #c8f0df;
+  --brand-orange-tint: #fff1e6;
+  --brand-orange-tint-2: #ffdcc2;
 
-  --brand-gradient: linear-gradient(135deg, var(--brand-blue) 0%, #1d63b8 45%, var(--brand-green) 100%);
+  /* Midas signature colours */
+  --gold: #f5b301;
+  --gold-soft: #fcd772;
+  --gold-text: #a16207;
+  --gold-tint: #fff7db;
+  --violet: #7c3aed;
+  --violet-tint: #f3ecff;
+  --magenta: #db2777;
+  --magenta-tint: #fdeaf3;
+  --teal: #0891b2;
+  --teal-tint: #e3f6fb;
+  --midnight: #0d0a2b;
+  --midnight-2: #1b1450;
 
-  --danger: #c4342b;
-  --danger-tint: #fbe9e7;
-  --warning: #d89614;
-  --warning-tint: #fbf1dc;
-  --ink: #14181f;
-  --muted: #6b7482;
-  --line: #e3e6ea;
+  --brand-gradient: linear-gradient(135deg, var(--brand-blue) 0%, var(--violet) 55%, var(--magenta) 100%);
+  --gold-gradient: linear-gradient(135deg, #fde68a 0%, var(--gold) 45%, #d97706 100%);
+  --midnight-gradient: linear-gradient(180deg, var(--midnight) 0%, var(--midnight-2) 100%);
+
+  --danger: #dc2626;
+  --danger-tint: #fdecec;
+  --warning: #b45309;
+  --warning-tint: #fef3c7;
+  --ink: #16132d;
+  --muted: #6b6889;
+  --line: #e6e3f3;
   --surface: #ffffff;
-  --canvas: #f6f7f9;
+  --canvas: #f6f5fc;
 
   --background: var(--canvas);
   --foreground: var(--ink);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -57,6 +77,18 @@
   --color-brand-green-tint-2: var(--brand-green-tint-2);
   --color-brand-orange-tint: var(--brand-orange-tint);
   --color-brand-orange-tint-2: var(--brand-orange-tint-2);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-text: var(--gold-text);
+  --color-gold-tint: var(--gold-tint);
+  --color-violet: var(--violet);
+  --color-violet-tint: var(--violet-tint);
+  --color-magenta: var(--magenta);
+  --color-magenta-tint: var(--magenta-tint);
+  --color-teal: var(--teal);
+  --color-teal-tint: var(--teal-tint);
+  --color-midnight: var(--midnight);
+  --color-midnight-2: var(--midnight-2);
   --color-danger: var(--danger);
   --color-danger-tint: var(--danger-tint);
   --color-warning: var(--warning);
@@ -82,6 +114,9 @@
   --animate-slide-up: slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-slide-in-right: slide-in-right 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
+  --animate-float: float 9s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-ring: ring 1.6s ease-out infinite;
 
   @keyframes fade-in {
     from {
@@ -109,6 +144,31 @@
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(0, -18px, 0) scale(1.05);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes ring {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-green) 55%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 12px transparent;
     }
   }
   @keyframes pulse-dot {
@@ -179,8 +239,115 @@ h6 {
     box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px -8px rgb(0 0 0 / 0.18);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--brand-blue) 35%, transparent);
+}
+
+/* ---------- Midas decorative utilities ---------- */
+
+.bg-brand-gradient {
+  background-image: var(--brand-gradient);
+}
+.bg-gold-gradient {
+  background-image: var(--gold-gradient);
+}
+.bg-midnight-gradient {
+  background-image: var(--midnight-gradient);
+}
+.text-gold-gradient {
+  background-image: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-brand-gradient {
+  background-image: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Login hero and page banners: midnight base with glowing colour orbs. */
+.midas-hero {
+  background:
+    radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--violet) 55%, transparent) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--magenta) 40%, transparent) 0%, transparent 45%),
+    var(--midnight-gradient);
+}
+.midas-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  animation: var(--animate-float);
+  pointer-events: none;
+}
+.midas-orb-1 {
+  width: 320px;
+  height: 320px;
+  top: -80px;
+  right: -60px;
+  background: var(--gold);
+  opacity: 0.35;
+}
+.midas-orb-2 {
+  width: 260px;
+  height: 260px;
+  bottom: 10%;
+  left: -80px;
+  background: var(--brand-blue);
+  animation-delay: -3s;
+}
+.midas-orb-3 {
+  width: 200px;
+  height: 200px;
+  top: 40%;
+  right: 25%;
+  background: var(--teal);
+  opacity: 0.3;
+  animation-delay: -6s;
+}
+.midas-mesh {
+  background:
+    radial-gradient(circle at 10% 10%, var(--violet-tint) 0%, transparent 40%),
+    radial-gradient(circle at 90% 0%, var(--gold-tint) 0%, transparent 35%),
+    radial-gradient(circle at 80% 100%, var(--teal-tint) 0%, transparent 40%);
+}
+
+/* Glossy gradient banner used at the top of main pages. */
+.midas-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--radius) + 4px);
+  color: white;
+  background:
+    radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--gold) 55%, transparent) 0%, transparent 40%),
+    var(--brand-gradient);
+  box-shadow: 0 18px 40px -20px color-mix(in srgb, var(--violet) 70%, transparent);
+}
+.midas-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.12) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  pointer-events: none;
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, var(--gold) 0%, #fff6d5 50%, var(--gold) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: var(--animate-shimmer);
+}
+
+/* Subtle scrollbars that match the palette. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-blue-tint-2) transparent;
 }
 
 /* Respect reduced-motion preference — every animation degrades to an

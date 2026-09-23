@@ -1,31 +1,36 @@
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { createDemoClient } from "@/lib/demo/client";
 
-// Server Component / Server Action / Route Handler client. Reads and writes
-// the auth cookie via Next's cookies() so RLS sees the real auth.uid().
-export async function createClient() {
+// Server Component / Server Action / Route Handler client.
+//
+// DEMO BUILD: there is no database connection. This returns an in-memory
+// client (src/lib/demo) that implements the same query-builder API over a
+// seeded dataset, so every page and action keeps its original Supabase
+// code. The signed-in demo user comes from the `midas_demo_user` cookie.
+export async function createClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Called from a Server Component with no writable cookie jar —
-            // the middleware refresh path covers session renewal instead.
-          }
-        },
+  const client = createDemoClient({
+    jar: {
+      get: (name) => cookieStore.get(name)?.value,
+      set: (name, value) => {
+        try {
+          cookieStore.set(name, value, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 7 });
+        } catch {
+          // Read-only cookie jar (Server Component render) — ignore.
+        }
+      },
+      delete: (name) => {
+        try {
+          cookieStore.delete(name);
+        } catch {
+          // Read-only cookie jar — ignore.
+        }
       },
     },
-  );
+  });
+
+  return client as unknown as SupabaseClient<Database>;
 }

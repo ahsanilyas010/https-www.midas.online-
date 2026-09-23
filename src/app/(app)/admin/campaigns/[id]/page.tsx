@@ -297,8 +297,8 @@ export default async function CampaignDetailPage({
           </div>
           {!process.env.RESEND_API_KEY && (
             <p className="mt-3 rounded-md bg-warning-tint px-3 py-2 text-xs text-warning">
-              RESEND_API_KEY isn&rsquo;t set — sends are logged to email_sends but won&rsquo;t
-              actually deliver until it is.
+              Demo mode — sends are logged and shown as delivered, but no real email
+              leaves the server. Set RESEND_API_KEY to send for real.
             </p>
           )}
         </TabsContent>
