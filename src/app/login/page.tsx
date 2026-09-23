@@ -58,7 +58,7 @@ export default async function LoginPage({
             <Sparkles className="h-3.5 w-3.5" /> Interactive demo
           </span>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight">
-            Every call, <span className="text-gold-gradient">one desk.</span>
+            Every call, <span className="text-gold-gradient">connected.</span>
           </h2>
           <p className="mt-3 text-sm text-white/75">
             A contact-centre CRM with a dial workspace, live floor, attendance, QA, compliance and

@@ -108,8 +108,8 @@ export async function connectDialer(providerKey: string, credentials: Record<str
     id: "dialer",
     provider: meta.key,
     connected: true,
-    account_email: "calls@dialdesk.demo",
-    account_name: "DialDesk Contact Centre",
+    account_email: "calls@callmilalo.demo",
+    account_name: "CallMilalo Contact Centre",
     plan: `${meta.name} (demo account)`,
     connected_at: new Date().toISOString(),
     connected_by: user.id,
@@ -243,7 +243,7 @@ export async function updateCall(callId: string, status: "connected" | "complete
     const answered = call.answered_at ? new Date(call.answered_at).getTime() : null;
     patch.duration_seconds = answered ? Math.round((Date.now() - answered) / 1000) : 0;
     const state = await getDialerState();
-    if (answered && state.settings.record_calls) patch.recording_url = `https://recordings.dialdesk.demo/${call.provider_call_id}`;
+    if (answered && state.settings.record_calls) patch.recording_url = `https://recordings.callmilalo.demo/${call.provider_call_id}`;
     if (!answered) patch.status = "missed";
   }
   const { error } = await supabase.from("dialer_calls").update(patch).eq("id", callId);

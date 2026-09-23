@@ -15,7 +15,7 @@ export interface DemoStore {
   seededAt: string;
 }
 
-const KEY = "__dialdeskDemoStore";
+const KEY = "__callmilaloDemoStore";
 
 export function getStore(): DemoStore {
   const g = globalThis as unknown as Record<string, DemoStore | undefined>;

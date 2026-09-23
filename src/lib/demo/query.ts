@@ -775,7 +775,7 @@ export class DemoQueryBuilder implements PromiseLike<QueryResult> {
       after_data: action === "DELETE" ? null : { ...row },
       created_at: nowIso(),
       ip: "127.0.0.1",
-      user_agent: "DialDesk demo",
+      user_agent: "CallMilalo demo",
     });
   }
 }

@@ -46,9 +46,9 @@ function icsFor(topic: string, startIso: string, minutes: number, url: string) {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//DialDesk//Zoom//EN",
+    "PRODID:-//CallMilalo//Zoom//EN",
     "BEGIN:VEVENT",
-    `UID:${start}-${Math.random().toString(36).slice(2)}@dialdesk.demo`,
+    `UID:${start}-${Math.random().toString(36).slice(2)}@callmilalo.demo`,
     `DTSTAMP:${fmt(Date.now())}`,
     `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(start + minutes * 60_000)}`,

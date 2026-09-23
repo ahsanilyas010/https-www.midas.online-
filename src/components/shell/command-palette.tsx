@@ -27,10 +27,10 @@ export function CommandPalette({ items }: { items: NavItem[] }) {
       setOpen(true);
     }
     window.addEventListener("keydown", onKey);
-    window.addEventListener("dialdesk:open-palette", onOpen);
+    window.addEventListener("callmilalo:open-palette", onOpen);
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("dialdesk:open-palette", onOpen);
+      window.removeEventListener("callmilalo:open-palette", onOpen);
     };
   }, []);
 

@@ -6,7 +6,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 // don't already have a link for.
 function secret(): string {
   // Demo build: a fixed secret so unsubscribe links work with no config.
-  return "dialdesk-demo-unsubscribe-secret";
+  return "callmilalo-demo-unsubscribe-secret";
 }
 
 export function signUnsubscribeToken(email: string): string {
