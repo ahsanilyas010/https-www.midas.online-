@@ -135,6 +135,7 @@ const PROFILE_FK: Record<string, string> = {
   email_sends: "agent_id",
   shift_assignments: "user_id",
   zoom_meetings: "host_id",
+  dialer_calls: "agent_id",
 };
 
 function singular(table: string) {
@@ -390,6 +391,7 @@ const DEFAULTS: Record<string, () => Row> = {
   aux_logs: () => ({ started_at: nowIso(), ended_at: null }),
   unphoned_contacts: () => ({ custom: {}, updated_at: nowIso() }),
   zoom_meetings: () => ({ status: "scheduled", duration_minutes: 30 }),
+  dialer_calls: () => ({ direction: "outbound", status: "ringing", started_at: nowIso(), duration_seconds: 0, answered_at: null, ended_at: null, recording_url: null }),
 };
 
 // Tables whose writes show up on the Security & audit page, mirroring the
@@ -406,6 +408,7 @@ const AUDITED = new Set([
   "shifts",
   "leave_requests",
   "zoom_meetings",
+  "integrations",
 ]);
 
 function withDefaults(table: string, row: Row, store: DemoStore): Row {

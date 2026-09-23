@@ -4,6 +4,9 @@ import { getCurrentSession } from "@/lib/actions/attendance";
 import { getMyFollowups } from "@/lib/actions/followups";
 import { AppChrome } from "@/components/shell/app-chrome";
 import { getStore } from "@/lib/demo/store";
+import { getDialerState } from "@/lib/actions/dialer";
+import { providerMeta } from "@/lib/telephony/providers";
+import type { DialerInfo } from "@/components/dialer/dialer-context";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
@@ -15,6 +18,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [session, followups] = isStaff
     ? await Promise.all([getCurrentSession(), getMyFollowups()])
     : [null, []];
+
+  // The softphone is for staff; client logins only see reports.
+  const dialerState = isStaff ? await getDialerState() : null;
+  const meta = providerMeta(dialerState?.provider);
+  const dialer: DialerInfo = {
+    enabled: isStaff,
+    connected: Boolean(dialerState?.connected),
+    providerKey: meta?.key ?? null,
+    providerName: meta?.name ?? null,
+    providerColor: meta?.color ?? "#6b6889",
+    providerInitials: meta?.initials ?? "—",
+    callerId: dialerState?.settings.caller_id || null,
+    numbers: dialerState?.settings.numbers ?? [],
+    recordCalls: dialerState?.settings.record_calls ?? false,
+    canManage: profile.role === "super_admin" || profile.role === "ops_manager",
+  };
 
   // Demo bar "View as" list: every active person on the People page.
   const demoAccounts = getStore()
@@ -28,6 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       initialFollowups={followups}
       items={items}
       demoAccounts={demoAccounts}
+      dialer={dialer}
     >
       {children}
     </AppChrome>

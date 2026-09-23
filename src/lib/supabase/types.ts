@@ -651,6 +651,85 @@ export type Database = {
         }
         Relationships: []
       }
+      dialer_calls: {
+        Row: {
+          id: string
+          provider: string
+          provider_call_id: string
+          direction: string
+          from_number: string
+          to_number: string
+          lead_id: string | null
+          campaign_id: string | null
+          agent_id: string
+          status: string
+          started_at: string
+          answered_at: string | null
+          ended_at: string | null
+          duration_seconds: number
+          recording_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          provider: string
+          provider_call_id: string
+          direction?: string
+          from_number: string
+          to_number: string
+          lead_id?: string | null
+          campaign_id?: string | null
+          agent_id: string
+          status?: string
+          started_at?: string
+          answered_at?: string | null
+          ended_at?: string | null
+          duration_seconds?: number
+          recording_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          provider?: string
+          provider_call_id?: string
+          direction?: string
+          from_number?: string
+          to_number?: string
+          lead_id?: string | null
+          campaign_id?: string | null
+          agent_id?: string
+          status?: string
+          started_at?: string
+          answered_at?: string | null
+          ended_at?: string | null
+          duration_seconds?: number
+          recording_url?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialer_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialer_calls_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispositions: {
         Row: {
           campaign_id: string | null

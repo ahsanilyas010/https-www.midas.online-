@@ -29,6 +29,7 @@ export function applyRls(table: string, rows: Row[], auth: DemoAuthContext, stor
         return rows.filter((r) => r.assigned_to === auth.userId);
       case "call_attempts":
       case "email_sends":
+      case "dialer_calls":
         return rows.filter((r) => r.agent_id === auth.userId);
       default:
         return rows;
