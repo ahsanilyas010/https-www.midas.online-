@@ -62,7 +62,7 @@ export const DEMO_IDS = {
 
 // Every demo account — one per person on the People page — signs in with
 // this same password.
-export const DEMO_PASSWORD = "DialDesk@123";
+export const DEMO_PASSWORD = "CallMilalo@123";
 
 export interface DemoPersona {
   id: string;
@@ -75,42 +75,42 @@ export interface DemoPersona {
 export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: DEMO_IDS.admin,
-    email: "admin@dialdesk.demo",
+    email: "admin@callmilalo.demo",
     role: "super_admin",
     title: "Super admin",
     blurb: "Full control: live floor, campaigns, people, compliance, Zoom and audit.",
   },
   {
     id: DEMO_IDS.ops,
-    email: "ops@dialdesk.demo",
+    email: "ops@callmilalo.demo",
     role: "ops_manager",
     title: "Operations manager",
     blurb: "Runs campaigns, assigns data, approves leave and tracks performance.",
   },
   {
     id: DEMO_IDS.leadFalcons,
-    email: "teamlead@dialdesk.demo",
+    email: "teamlead@callmilalo.demo",
     role: "team_lead",
     title: "Team lead",
     blurb: "Watches the live floor and coaches their team.",
   },
   {
     id: DEMO_IDS.agents[0],
-    email: "agent@dialdesk.demo",
+    email: "agent@callmilalo.demo",
     role: "agent",
     title: "Calling agent",
     blurb: "Dials leads, logs outcomes, books Zoom meetings and manages callbacks.",
   },
   {
     id: DEMO_IDS.qa,
-    email: "qa@dialdesk.demo",
+    email: "qa@callmilalo.demo",
     role: "qa",
     title: "Quality analyst",
     blurb: "Scores recorded calls against the QA scorecard.",
   },
   {
     id: DEMO_IDS.client,
-    email: "client@dialdesk.demo",
+    email: "client@callmilalo.demo",
     role: "client_viewer",
     title: "Client viewer",
     blurb: "Read-only client portal: funnel, outcomes, agent activity and reports.",
@@ -284,19 +284,19 @@ export function buildSeed(): DemoStore {
   table("profiles").push(
     person(DEMO_IDS.admin, "Alex Morgan", "super_admin"),
     person(DEMO_IDS.ops, "Hira Khan", "ops_manager"),
-    person(DEMO_IDS.leadFalcons, "Bilal Ahmed", "team_lead", { team_id: DEMO_IDS.teamFalcons, agent_code: "DD-TL1" }),
-    person(DEMO_IDS.leadEagles, "Ayesha Siddiqui", "team_lead", { team_id: DEMO_IDS.teamEagles, agent_code: "DD-TL2" }),
+    person(DEMO_IDS.leadFalcons, "Bilal Ahmed", "team_lead", { team_id: DEMO_IDS.teamFalcons, agent_code: "CM-TL1" }),
+    person(DEMO_IDS.leadEagles, "Ayesha Siddiqui", "team_lead", { team_id: DEMO_IDS.teamEagles, agent_code: "CM-TL2" }),
     person(DEMO_IDS.qa, "Fatima Noor", "qa"),
     person(DEMO_IDS.client, "Oliver Bennett", "client_viewer", { client_id: DEMO_IDS.clients[0], timezone: "Europe/London" }),
     ...AGENT_NAMES.map((name, i) =>
       person(DEMO_IDS.agents[i], name, "agent", {
-        agent_code: `DD-${101 + i}`,
+        agent_code: `CM-${101 + i}`,
         team_id: i < 4 ? DEMO_IDS.teamFalcons : DEMO_IDS.teamEagles,
       }),
     ),
     // One deactivated account so the People page shows the full lifecycle.
     person(fixedId(1, 30), "Kamran Butt", "agent", {
-      agent_code: "DD-099",
+      agent_code: "CM-099",
       team_id: DEMO_IDS.teamEagles,
       is_active: false,
       last_login_at: iso(now - 40 * DAY),
@@ -304,10 +304,10 @@ export function buildSeed(): DemoStore {
   );
 
   // A login for every person on the People page: the persona emails above
-  // for the headline roles, firstname@dialdesk.demo for everyone else.
+  // for the headline roles, firstname@callmilalo.demo for everyone else.
   const personaEmail = new Map(DEMO_PERSONAS.map((p) => [p.id, p.email]));
   for (const p of table("profiles")) {
-    const email = personaEmail.get(p.id as string) ?? `${String(p.full_name).split(" ")[0].toLowerCase()}@dialdesk.demo`;
+    const email = personaEmail.get(p.id as string) ?? `${String(p.full_name).split(" ")[0].toLowerCase()}@callmilalo.demo`;
     table("demo_auth").push({ id: p.id, email, password: DEMO_PASSWORD });
   }
 
@@ -761,9 +761,9 @@ export function buildSeed(): DemoStore {
 
   // --- email ---
   table("email_templates").push(
-    { id: fixedId(10, 1), campaign_id: DEMO_IDS.campaigns[0], name: "Roof survey confirmation", subject: "Your free roof health check, {{first_name}}", body_html: "<p>Hi {{first_name}},</p><p>Thanks for your time on the phone today. Your free roof health check is booked — our surveyor will confirm the exact slot shortly.</p><p>Kind regards,<br>Northwind Roofing</p>", body_text: null, from_name: "Northwind Roofing", from_email: "hello@mail.dialdesk.demo", reply_to: "bookings@northwind-roofing.example", merge_fields: ["first_name"], requires_approval: false, approved_at: iso(now - 20 * DAY), approved_by: DEMO_IDS.ops, is_active: true, created_at: iso(now - 20 * DAY) },
-    { id: fixedId(10, 2), campaign_id: null, name: "Zoom meeting follow-up", subject: "Your Zoom call with us, {{first_name}}", body_html: "<p>Hi {{first_name}},</p><p>As promised, here's a summary of our call. I've sent a separate Zoom invite for the consultation.</p><p>Speak soon!</p>", body_text: null, from_name: "DialDesk", from_email: "hello@mail.dialdesk.demo", reply_to: null, merge_fields: ["first_name"], requires_approval: false, approved_at: iso(now - 10 * DAY), approved_by: DEMO_IDS.admin, is_active: true, created_at: iso(now - 10 * DAY) },
-    { id: fixedId(10, 3), campaign_id: DEMO_IDS.campaigns[3], name: "SEO audit — what to expect", subject: "3 quick wins for {{company_name}}", body_html: "<p>Hi {{first_name}},</p><p>Ahead of our Zoom audit, here are the three areas we'll look at…</p>", body_text: null, from_name: "Crescent Digital", from_email: "hello@mail.dialdesk.demo", reply_to: null, merge_fields: ["first_name", "company_name"], requires_approval: false, approved_at: iso(now - 7 * DAY), approved_by: DEMO_IDS.ops, is_active: true, created_at: iso(now - 7 * DAY) },
+    { id: fixedId(10, 1), campaign_id: DEMO_IDS.campaigns[0], name: "Roof survey confirmation", subject: "Your free roof health check, {{first_name}}", body_html: "<p>Hi {{first_name}},</p><p>Thanks for your time on the phone today. Your free roof health check is booked — our surveyor will confirm the exact slot shortly.</p><p>Kind regards,<br>Northwind Roofing</p>", body_text: null, from_name: "Northwind Roofing", from_email: "hello@mail.callmilalo.demo", reply_to: "bookings@northwind-roofing.example", merge_fields: ["first_name"], requires_approval: false, approved_at: iso(now - 20 * DAY), approved_by: DEMO_IDS.ops, is_active: true, created_at: iso(now - 20 * DAY) },
+    { id: fixedId(10, 2), campaign_id: null, name: "Zoom meeting follow-up", subject: "Your Zoom call with us, {{first_name}}", body_html: "<p>Hi {{first_name}},</p><p>As promised, here's a summary of our call. I've sent a separate Zoom invite for the consultation.</p><p>Speak soon!</p>", body_text: null, from_name: "CallMilalo", from_email: "hello@mail.callmilalo.demo", reply_to: null, merge_fields: ["first_name"], requires_approval: false, approved_at: iso(now - 10 * DAY), approved_by: DEMO_IDS.admin, is_active: true, created_at: iso(now - 10 * DAY) },
+    { id: fixedId(10, 3), campaign_id: DEMO_IDS.campaigns[3], name: "SEO audit — what to expect", subject: "3 quick wins for {{company_name}}", body_html: "<p>Hi {{first_name}},</p><p>Ahead of our Zoom audit, here are the three areas we'll look at…</p>", body_text: null, from_name: "Crescent Digital", from_email: "hello@mail.callmilalo.demo", reply_to: null, merge_fields: ["first_name", "company_name"], requires_approval: false, approved_at: iso(now - 7 * DAY), approved_by: DEMO_IDS.ops, is_active: true, created_at: iso(now - 7 * DAY) },
   );
   const emailLeads = leads.filter((l) => l.status === "qualified" || l.status === "converted").slice(0, 14);
   emailLeads.forEach((l, i) => {
@@ -919,8 +919,8 @@ export function buildSeed(): DemoStore {
     id: "zoom",
     provider: "zoom",
     connected: true,
-    account_email: "calls@dialdesk.demo",
-    account_name: "DialDesk Contact Centre",
+    account_email: "calls@callmilalo.demo",
+    account_name: "CallMilalo Contact Centre",
     plan: "Zoom Workplace Business",
     connected_at: iso(now - 30 * DAY),
     connected_by: DEMO_IDS.admin,
@@ -935,8 +935,8 @@ export function buildSeed(): DemoStore {
     id: "dialer",
     provider: "zoom_phone",
     connected: true,
-    account_email: "calls@dialdesk.demo",
-    account_name: "DialDesk Contact Centre",
+    account_email: "calls@callmilalo.demo",
+    account_name: "CallMilalo Contact Centre",
     plan: "Zoom Phone Pro (8 licences)",
     connected_at: iso(now - 30 * DAY),
     connected_by: DEMO_IDS.admin,

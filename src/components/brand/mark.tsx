@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 /**
- * DialDesk mark — a gold handset with call waves on an indigo→magenta tile.
+ * CallMilalo mark — a gold handset with call waves on an indigo→magenta tile.
  * Swap for a supplied logo by dropping it into /public/brand and replacing
  * this component with an <img>.
  */

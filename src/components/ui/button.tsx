@@ -14,7 +14,7 @@ const buttonVariants = cva(
         // Primary blue — the only brand colour that carries white text.
         primary:
           "bg-brand-gradient bg-[length:150%_100%] bg-left text-white shadow-sm shadow-brand-blue/30 hover:-translate-y-px hover:bg-right hover:shadow-lg hover:shadow-violet/30 transition-[background-position,box-shadow,transform]",
-        // DialDesk gold — the signature highlight action.
+        // CallMilalo gold — the signature highlight action.
         gold:
           "bg-gold-gradient text-ink shadow-sm shadow-gold/30 hover:-translate-y-px hover:brightness-105 hover:shadow-lg hover:shadow-gold/40",
         // Zoom-blue for meeting actions.

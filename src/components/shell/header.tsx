@@ -122,7 +122,7 @@ export function Header({
         </button>
         <h1 className="truncate font-display text-base font-semibold text-ink">{title}</h1>
         <button
-          onClick={() => window.dispatchEvent(new Event("dialdesk:open-palette"))}
+          onClick={() => window.dispatchEvent(new Event("callmilalo:open-palette"))}
           className="ml-2 hidden cursor-pointer items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-1 text-xs text-muted transition-colors hover:border-brand-blue-tint-2 hover:text-ink lg:flex"
         >
           <Search className="h-3.5 w-3.5" /> Jump to…

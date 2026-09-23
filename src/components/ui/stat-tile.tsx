@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CountUp } from "@/components/ui/count-up";
 
 // Decorative (non-semantic) accent rotation shared by stat tiles and nav
-// icons — the DialDesk palette: indigo, gold, emerald, amber, violet, magenta
+// icons — the CallMilalo palette: indigo, gold, emerald, amber, violet, magenta
 // and teal. Semantic colours (danger/warning) are never used here.
 export type AccentColor = "blue" | "green" | "orange" | "gold" | "violet" | "magenta" | "teal";
 

@@ -1,4 +1,4 @@
-# DialDesk — interactive demo
+# CallMilalo — interactive demo
 
 A contact-centre CRM and workforce platform, packaged as a **self-contained
 demo** for showing prospects the product with **dummy data only**. No real
@@ -31,19 +31,19 @@ It is a copy of the CallingCRM codebase with four changes:
 ## Demo logins
 
 Pick a role on the login page, or sign in with any account below. **Every
-account uses the same password: `DialDesk@123`.**
+account uses the same password: `CallMilalo@123`.**
 
 | Role | Email |
 | --- | --- |
-| Super admin | admin@dialdesk.demo |
-| Ops manager | ops@dialdesk.demo |
-| Team lead | teamlead@dialdesk.demo, ayesha@dialdesk.demo |
-| QA | qa@dialdesk.demo |
-| Agent | agent@dialdesk.demo, zara@, hamza@, mariam@, ali@, noor@, saad@, iqra@dialdesk.demo |
-| Client viewer | client@dialdesk.demo |
+| Super admin | admin@callmilalo.demo |
+| Ops manager | ops@callmilalo.demo |
+| Team lead | teamlead@callmilalo.demo, ayesha@callmilalo.demo |
+| QA | qa@callmilalo.demo |
+| Agent | agent@callmilalo.demo, zara@, hamza@, mariam@, ali@, noor@, saad@, iqra@callmilalo.demo |
+| Client viewer | client@callmilalo.demo |
 
 The People page (`/admin/people`) lists every login. Users created there
-also get `DialDesk@123`.
+also get `CallMilalo@123`.
 
 ## Run locally
 

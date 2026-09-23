@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // DEMO BUILD: sign-in is a cookie naming one of the seeded demo users (set
 // by the login page's persona picker). No Supabase session to refresh.
-const DEMO_COOKIE = "dialdesk_demo_user";
+const DEMO_COOKIE = "callmilalo_demo_user";
 const PUBLIC_PATHS = ["/login", "/reset-password", "/api/unsubscribe", "/api/leads/inbound"];
 
 export async function middleware(request: NextRequest) {
