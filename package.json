@@ -2,6 +2,9 @@
   "name": "callmilalo-demo",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -29,6 +32,7 @@
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
     "exceljs": "^4.4.0",
+    "firebase-admin": "^14.4.0",
     "framer-motion": "^12.42.2",
     "libphonenumber-js": "^1.13.9",
     "lucide-react": "^1.27.0",
@@ -39,6 +43,7 @@
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
+    "stripe": "^22.6.2",
     "tailwind-merge": "^3.6.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"

@@ -4,6 +4,10 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DEMO_PASSWORD } from "@/lib/demo/seed";
+import { generateTempPassword } from "@/lib/auth/generate-password";
+import { accounts, AccountError, type Role } from "@/lib/accounts";
+import { getWorkspaceContext } from "@/lib/accounts/session";
+import { activeAgentCount, seatLimitMessage } from "@/lib/accounts/limits";
 import type { Enums } from "@/lib/supabase/types";
 
 export interface CreateUserResult {
@@ -46,6 +50,39 @@ export async function createUser(
 
   if (!fullName || !email) {
     return { error: "Name and email are required." };
+  }
+
+  // A customer workspace: the login goes into the accounts backend
+  // (Firebase) with a one-time password, and agents need a free seat.
+  const ws = await getWorkspaceContext();
+  if (ws) {
+    if (role === "agent" && activeAgentCount(ws.store) >= ws.workspace.agentSeats) {
+      return { error: seatLimitMessage(ws.workspace.agentSeats) };
+    }
+    const tempPassword = generateTempPassword();
+    let uid: string;
+    try {
+      uid = (await accounts().createMember({ workspaceId: ws.workspace.id, email, password: tempPassword, fullName, role: role as Role })).uid;
+    } catch (e) {
+      return { error: e instanceof AccountError ? e.message : "Could not create the login. Try again." };
+    }
+    const wsAdmin = createAdminClient(ws.store);
+    await wsAdmin.from("profiles").upsert({
+      id: uid,
+      full_name: fullName,
+      agent_code: agentCode,
+      role,
+      team_id: teamId,
+      client_id: clientId,
+      timezone,
+      allow_login_outside_shift: allowOutsideShift,
+      must_change_password: true,
+    });
+    await wsAdmin.from("credential_events").insert([
+      { user_id: uid, actor_id: caller.id, event: "created" },
+      { user_id: uid, actor_id: caller.id, event: "temp_issued" },
+    ]);
+    return { tempPassword, fullName };
   }
 
   const admin = createAdminClient();
@@ -119,6 +156,22 @@ export async function resetPassword(
 
   const userId = String(formData.get("user_id") ?? "");
   if (!userId) return { error: "Missing user." };
+
+  const ws = await getWorkspaceContext();
+  if (ws) {
+    if (!ws.members.some((m) => m.uid === userId)) return { error: "Unknown user." };
+    const tempPassword = generateTempPassword();
+    try {
+      await accounts().setPassword(userId, tempPassword);
+      await accounts().updateMember(userId, { mustChangePassword: true });
+    } catch (e) {
+      return { error: e instanceof AccountError ? e.message : "Could not reset the password." };
+    }
+    const wsAdmin = createAdminClient(ws.store);
+    await wsAdmin.from("profiles").update({ must_change_password: true }).eq("id", userId);
+    await wsAdmin.from("credential_events").insert({ user_id: userId, actor_id: caller.id, event: "reset_by_admin" });
+    return { tempPassword };
+  }
 
   const admin = createAdminClient();
   // Demo build: every account shares the same password.

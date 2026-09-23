@@ -95,7 +95,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does it cost?",
-    a: `The first ${PRICING.freeUsers} users are free on every account. After that it's $${PRICING.tiers[0].perUser} per user per month, dropping to $${PRICING.tiers[1].perUser} from user ${PRICING.tiers[0].upTo + 1}. Call minutes are billed by your own dialer provider, not by CallMilalo.`,
+    a: `The first ${PRICING.freeUsers} agents are free on every workspace, and admins, managers, team leads and QA are always free. After that it's $${PRICING.tiers[0].perUser} per agent per month, dropping to $${PRICING.tiers[1].perUser} from agent ${PRICING.tiers[0].upTo + 1}. Call minutes are billed by your own dialer provider, not by CallMilalo.`,
   },
   {
     q: "Is the demo using real data?",
@@ -286,17 +286,17 @@ export default async function LandingPage() {
                 href={primaryHref}
                 className="inline-flex items-center gap-2 rounded-xl bg-gold-gradient px-6 py-3 text-base font-semibold text-ink shadow-xl shadow-gold/25 transition hover:-translate-y-0.5 hover:brightness-105"
               >
-                <PlayCircle className="h-5 w-5" /> {primaryLabel}
+                {primaryLabel} <ArrowRight className="h-5 w-5" />
               </Link>
-              <a
-                href="#features"
+              <Link
+                href="/login#demo"
                 className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-6 py-3 text-base font-medium text-white ring-1 ring-white/20 transition hover:bg-white/15"
               >
-                See every feature
-              </a>
+                <PlayCircle className="h-5 w-5" /> Try the live demo
+              </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/65">
-              {["No sign-up needed", "Six roles to explore", "Sample data only"].map((t) => (
+              {[`${PRICING.freeUsers} agents free forever`, "No card needed", "Set up in 2 minutes"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5">
                   <Check className="h-4 w-4 text-emerald-300" /> {t}
                 </span>
@@ -565,7 +565,7 @@ export default async function LandingPage() {
         <div className="mx-auto mt-12 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ROLES.map((r, i) => (
             <Reveal key={r.title} delay={(i % 3) * 0.06}>
-              <Link href={primaryHref} className="group hover-lift flex h-full items-start gap-3 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+              <Link href="/login#demo" className="group hover-lift flex h-full items-start gap-3 rounded-2xl border border-line bg-surface p-5 shadow-sm">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-blue-tint text-brand-blue transition group-hover:bg-brand-gradient group-hover:text-white">
                   <r.icon className="h-5 w-5" />
                 </span>
@@ -604,16 +604,24 @@ export default async function LandingPage() {
         <Reveal>
           <div className="brand-banner mx-auto max-w-5xl px-6 py-14 text-center sm:px-12">
             <div className="relative z-10">
-              <h2 className="font-display text-3xl font-semibold sm:text-4xl">See {BRAND.productName} in action</h2>
+              <h2 className="font-display text-3xl font-semibold sm:text-4xl">Start with {PRICING.freeUsers} agents, free</h2>
               <p className="mx-auto mt-3 max-w-xl text-white/80">
-                Explore the full product with realistic sample data. Pick a role and start dialling, booking Zoom meetings and watching the floor.
+                Create your workspace in two minutes. Every feature included, no card needed. Add seats only when your floor grows.
               </p>
-              <Link
-                href={primaryHref}
-                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-base font-semibold text-ink shadow-xl transition hover:-translate-y-0.5"
-              >
-                <PlayCircle className="h-5 w-5 text-brand-blue" /> {primaryLabel}
-              </Link>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link
+                  href={primaryHref}
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-base font-semibold text-ink shadow-xl transition hover:-translate-y-0.5"
+                >
+                  {primaryLabel} <ArrowRight className="h-5 w-5 text-brand-blue" />
+                </Link>
+                <Link
+                  href="/login#demo"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-6 py-3 text-base font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/15"
+                >
+                  <PlayCircle className="h-5 w-5" /> Try the live demo
+                </Link>
+              </div>
             </div>
           </div>
         </Reveal>

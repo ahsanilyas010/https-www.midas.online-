@@ -49,3 +49,10 @@ export function companyAddressLine(): string {
   return `${a.street}, ${a.city}, ${a.region} ${a.postalCode}, ${a.countryCode}`;
 }
 
+
+// Marketing tags. Fill in when ready; empty means the tag isn't loaded.
+export const MARKETING = {
+  // Meta (Facebook/Instagram) Pixel ID from Events Manager, e.g. "1234567890123456".
+  // Tracks PageView on public pages and CompleteRegistration on sign-up.
+  metaPixelId: "",
+};

@@ -71,10 +71,65 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Sign-ups, Firebase and Stripe
+
+Visitors can create their own workspace at **/signup** (the target for ad
+campaigns). A new workspace gets **3 agents free**; admins, ops managers,
+team leads, QA and client logins are always free. Adding a 4th agent sends
+the admin to **Plan & billing** (`/admin/billing`), where they choose seats
+and pay by card on Stripe's hosted checkout.
+
+| Piece | Where | Switched on by |
+|---|---|---|
+| Logins, workspaces, plans, people | Firebase Auth + Firestore (`src/lib/accounts`) | `FIREBASE_*` env vars |
+| Card payments, subscriptions, invoices | Stripe Checkout + customer portal (`src/lib/billing`) | `STRIPE_*` env vars |
+| Ad tracking | Meta Pixel (`MARKETING.metaPixelId` in `src/lib/brand.ts`) | the pixel ID |
+| Prices | `src/lib/pricing.ts` | edit the file |
+
+Without the Firebase variables, sign-ups are kept in server memory (fine
+for trying the flow on a preview, not for real customers). Without Stripe,
+**Plan & billing** offers a no-payment "preview upgrade" while accounts are
+in memory, and a "contact us" note once Firebase is connected.
+
+**Current limit:** logins, workspaces, plans and people are stored in
+Firebase, but the CRM records a workspace creates (campaigns, leads, calls,
+attendance…) are still held in server memory, like the demo. Moving them
+to Firestore is the next phase and should land before real customers
+start working in the app.
+
+### Firebase setup
+1. Create a project at console.firebase.google.com.
+2. **Authentication → Sign-in method:** enable **Email/Password**.
+3. **Firestore Database:** create it in production mode. The app only
+   accesses Firestore from the server with a service account, so the
+   default "deny all" client rules are correct.
+4. **Project settings → Service accounts → Generate new private key.** From
+   the JSON: `project_id` → `FIREBASE_PROJECT_ID`, `client_email` →
+   `FIREBASE_CLIENT_EMAIL`, `private_key` → `FIREBASE_PRIVATE_KEY`.
+5. **Project settings → General → Web API key** → `FIREBASE_WEB_API_KEY`.
+
+Firestore collections: `workspaces/{id}` (name, plan, agentSeats,
+billing, sign-up source incl. utm/fbclid) and `members/{uid}` (workspace,
+role, name, active).
+
+### Stripe setup
+1. **Product catalogue → Add product** "CallMilalo agent seat", recurring
+   monthly, pricing model **Graduated**, per unit: 1–3 → $0, 4–50 → $10,
+   51–200 → $8. Copy the price ID → `STRIPE_PRICE_ID`.
+2. **Developers → API keys** → secret key → `STRIPE_SECRET_KEY`.
+3. **Developers → Webhooks → Add endpoint**
+   `https://<your-domain>/api/billing/webhook` with events
+   `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted` → signing secret →
+   `STRIPE_WEBHOOK_SECRET`.
+4. **Settings → Billing → Customer portal:** turn it on and allow updating
+   quantities and payment methods.
+
 ## Deploy to Vercel
 
 1. Import this repository in Vercel (framework: Next.js; defaults are fine).
-2. No environment variables are needed. Deploy.
+2. The demo needs no environment variables. For real sign-ups and payments,
+   add the Firebase and Stripe variables from `.env.example` (see above).
 3. Add your domain under **Project → Settings → Domains**.
 
 ### How demo data behaves when hosted

@@ -20,7 +20,8 @@ export type NavIconName =
   | "Headset"
   | "Building2"
   | "Video"
-  | "PlugZap";
+  | "PlugZap"
+  | "CreditCard";
 
 export interface NavItem {
   href: string;
@@ -43,6 +44,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/client", label: "Client reports", icon: "Building2", roles: ["super_admin", "ops_manager"] },
   { href: "/admin/integrations", label: "Integrations", icon: "PlugZap", roles: ["super_admin", "ops_manager"] },
   { href: "/admin/security", label: "Security & audit", icon: "Lock", roles: ["super_admin"] },
+  { href: "/admin/billing", label: "Plan & billing", icon: "CreditCard", roles: ["super_admin"] },
 ];
 
 export const PRIMARY_NAV: NavItem[] = [

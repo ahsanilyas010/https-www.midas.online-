@@ -1,4 +1,6 @@
 import { getStore } from "@/lib/demo/store";
+import { getWorkspaceContext } from "@/lib/accounts/session";
+import { activeAgentCount } from "@/lib/accounts/limits";
 import { DEMO_PASSWORD } from "@/lib/demo/seed";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -41,8 +43,12 @@ export default async function PeoplePage() {
   ]);
 
   const canCreate = profile.role === "super_admin" || profile.role === "ops_manager";
-  // Demo build: every person has a login, all with the same password.
-  const loginEmail = new Map(getStore().tables.demo_auth.map((a) => [a.id as string, a.email as string]));
+  // Customers' logins come from their accounts; in the demo every person
+  // has a login with the same password.
+  const ws = await getWorkspaceContext();
+  const loginEmail = ws
+    ? new Map(ws.members.map((m) => [m.uid, m.email]))
+    : new Map(getStore().tables.demo_auth.map((a) => [a.id as string, a.email as string]));
 
   return (
     <div className="p-4">
@@ -55,11 +61,19 @@ export default async function PeoplePage() {
         {canCreate && <CreateUserDialog teams={teams ?? []} clients={clients ?? []} />}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-gold/40 bg-gold-tint px-3 py-2 text-xs text-gold-text">
-        <KeyRound className="h-4 w-4" />
-        Demo logins: each person signs in with the email shown below and the shared password
-        <span className="rounded-md bg-white px-1.5 py-0.5 font-mono font-semibold text-ink ring-1 ring-gold/40">{DEMO_PASSWORD}</span>
-      </div>
+      {ws ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3 py-2 text-xs text-muted">
+          <KeyRound className="h-4 w-4 text-brand-blue" />
+          {ws.workspace.plan === "free" ? "Free plan" : "Your plan"}: {activeAgentCount(ws.store)} of {ws.workspace.agentSeats} agent seats used.
+          Admins, managers, team leads, QA and client logins don&apos;t use a seat.
+        </div>
+      ) : (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-gold/40 bg-gold-tint px-3 py-2 text-xs text-gold-text">
+          <KeyRound className="h-4 w-4" />
+          Demo logins: each person signs in with the email shown below and the shared password
+          <span className="rounded-md bg-white px-1.5 py-0.5 font-mono font-semibold text-ink ring-1 ring-gold/40">{DEMO_PASSWORD}</span>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[760px] text-sm">

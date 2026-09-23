@@ -15,7 +15,7 @@ export default async function MyLeadsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?signed_out=1");
 
   // RLS (leads_select) already scopes this to leads assigned to the caller
   // — the explicit filter here is just for query efficiency, not security.

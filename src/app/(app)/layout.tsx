@@ -5,6 +5,8 @@ import { getCurrentSession } from "@/lib/actions/attendance";
 import { getMyFollowups } from "@/lib/actions/followups";
 import { AppChrome } from "@/components/shell/app-chrome";
 import { getStore } from "@/lib/demo/store";
+import { getWorkspaceContext } from "@/lib/accounts/session";
+import { activeAgentCount } from "@/lib/accounts/limits";
 import { getDialerState } from "@/lib/actions/dialer";
 import { providerMeta } from "@/lib/telephony/providers";
 import type { DialerInfo } from "@/components/dialer/dialer-context";
@@ -39,10 +41,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     canManage: profile.role === "super_admin" || profile.role === "ops_manager",
   };
 
-  // Demo bar "View as" list: every active person on the People page.
-  const demoAccounts = getStore()
-    .tables.profiles.filter((p) => p.is_active)
-    .map((p) => ({ id: p.id as string, name: p.full_name as string, role: p.role as string }));
+  // Customers see their plan; the demo gets the "View as" list of every
+  // active person on the People page.
+  const ws = await getWorkspaceContext();
+  const planInfo = ws
+    ? {
+        workspaceName: ws.workspace.name,
+        plan: ws.workspace.plan,
+        agentsUsed: activeAgentCount(ws.store),
+        agentSeats: ws.workspace.agentSeats,
+        canManageBilling: profile.role === "super_admin",
+      }
+    : null;
+  const demoAccounts = ws
+    ? []
+    : getStore()
+        .tables.profiles.filter((p) => p.is_active)
+        .map((p) => ({ id: p.id as string, name: p.full_name as string, role: p.role as string }));
 
   return (
     <AppChrome
@@ -51,6 +66,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       initialFollowups={followups}
       items={items}
       demoAccounts={demoAccounts}
+      planInfo={planInfo}
       dialer={dialer}
     >
       {children}

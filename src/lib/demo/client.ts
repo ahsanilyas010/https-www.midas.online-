@@ -1,5 +1,5 @@
 import "server-only";
-import { getStore, newId, nowIso } from "./store";
+import { getStore, newId, nowIso, type DemoStore } from "./store";
 import { DemoQueryBuilder } from "./query";
 import { DEMO_PASSWORD } from "./seed";
 import { runRpc } from "./rpc";
@@ -13,15 +13,25 @@ export interface CookieJar {
   delete(name: string): void;
 }
 
-function authContextFor(userId: string | null, bypass = false): DemoAuthContext {
-  if (!userId) return { userId: null, role: null, clientId: null, bypass };
-  const profile = getStore().tables.profiles.find((p) => p.id === userId);
+function authContextFor(userId: string | null, store: DemoStore, bypass = false): DemoAuthContext {
+  if (!userId) return { userId: null, role: null, clientId: null, bypass, store };
+  const profile = store.tables.profiles.find((p) => p.id === userId);
   return {
     userId,
     role: (profile?.role as string) ?? null,
     clientId: (profile?.client_id as string) ?? null,
     bypass,
+    store,
   };
+}
+
+// A signed-in customer: their workspace's data and their own identity,
+// resolved by the caller from the session cookie (src/lib/accounts).
+export interface WorkspaceBinding {
+  store: DemoStore;
+  userId: string;
+  email: string;
+  onSignOut?: () => Promise<void>;
 }
 
 function emailFor(userId: string) {
@@ -42,14 +52,17 @@ const noopChannel = {
 
 // Builds a Supabase-shaped client backed by the in-memory store. `jar` is
 // optional: route handlers and the service-role client don't carry a user.
-export function createDemoClient(opts: { jar?: CookieJar; bypassRls?: boolean } = {}) {
+export function createDemoClient(opts: { jar?: CookieJar; bypassRls?: boolean; workspace?: WorkspaceBinding } = {}) {
+  const ws = opts.workspace;
+  const store = () => ws?.store ?? getStore();
   const currentUserId = () => {
-    const id = opts.jar?.get(DEMO_COOKIE) ?? null;
+    const id = ws ? ws.userId : (opts.jar?.get(DEMO_COOKIE) ?? null);
     if (!id) return null;
-    const exists = getStore().tables.profiles.some((p) => p.id === id && p.is_active);
+    const exists = store().tables.profiles.some((p) => p.id === id && p.is_active);
     return exists ? id : null;
   };
-  const ctx = () => authContextFor(currentUserId(), opts.bypassRls);
+  const emailOf = (id: string) => (ws ? ws.email : emailFor(id));
+  const ctx = () => authContextFor(currentUserId(), store(), opts.bypassRls);
 
   return {
     from(table: string) {
@@ -80,11 +93,11 @@ export function createDemoClient(opts: { jar?: CookieJar; bypassRls?: boolean } 
       async getUser() {
         const id = currentUserId();
         if (!id) return { data: { user: null }, error: { message: "Auth session missing!" } };
-        return { data: { user: { id, email: emailFor(id), role: "authenticated" } }, error: null };
+        return { data: { user: { id, email: emailOf(id), role: "authenticated" } }, error: null };
       },
       async getSession() {
         const id = currentUserId();
-        return { data: { session: id ? { user: { id, email: emailFor(id) } } : null }, error: null };
+        return { data: { session: id ? { user: { id, email: emailOf(id) } } : null }, error: null };
       },
       async signInWithPassword({ email, password }: { email: string; password: string }) {
         const store = getStore();
@@ -99,6 +112,7 @@ export function createDemoClient(opts: { jar?: CookieJar; bypassRls?: boolean } 
       },
       async signOut() {
         opts.jar?.delete(DEMO_COOKIE);
+        await ws?.onSignOut?.();
         return { error: null };
       },
       async updateUser() {

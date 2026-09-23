@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
 import { PageTransition } from "@/components/shell/page-transition";
 import { DemoBar, type DemoAccount } from "@/components/shell/demo-bar";
+import { PlanBar, type PlanInfo } from "@/components/shell/plan-bar";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { DialerProvider, type DialerInfo } from "@/components/dialer/dialer-context";
 import { Softphone } from "@/components/dialer/softphone";
@@ -26,6 +27,7 @@ export function AppChrome({
   initialSession,
   initialFollowups,
   demoAccounts,
+  planInfo,
   dialer,
   children,
 }: {
@@ -34,6 +36,8 @@ export function AppChrome({
   initialSession: CurrentSession | null;
   initialFollowups: FollowupRow[];
   demoAccounts: DemoAccount[];
+  // Set for customer workspaces; the demo leaves it out.
+  planInfo?: PlanInfo | null;
   dialer: DialerInfo;
   children: React.ReactNode;
 }) {
@@ -63,7 +67,7 @@ export function AppChrome({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <DemoBar accounts={demoAccounts} currentId={profile.id} />
+          {planInfo ? <PlanBar info={planInfo} /> : <DemoBar accounts={demoAccounts} currentId={profile.id} />}
           <Header
             profile={profile}
             initialSession={initialSession}

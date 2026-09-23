@@ -4,7 +4,10 @@ import { PRIVATE_PATH_PREFIXES } from "@/lib/site";
 // DEMO BUILD: sign-in is a cookie naming one of the seeded demo users (set
 // by the login page's persona picker). No Supabase session to refresh.
 const DEMO_COOKIE = "callmilalo_demo_user";
-const PUBLIC_PATHS = ["/login", "/reset-password", "/api/unsubscribe", "/api/leads/inbound"];
+// Customer sign-ins (src/lib/accounts/session.ts). The middleware only checks
+// the cookie is present; pages verify it.
+const SESSION_COOKIE = "callmilalo_session";
+const PUBLIC_PATHS = ["/login", "/signup", "/reset-password", "/api/unsubscribe", "/api/leads/inbound", "/api/billing/webhook"];
 
 // The signed-in app is never meant for search results.
 function isPrivate(pathname: string) {
@@ -18,7 +21,7 @@ function noindex(res: NextResponse) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const signedIn = Boolean(request.cookies.get(DEMO_COOKIE)?.value);
+  const signedIn = Boolean(request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get(DEMO_COOKIE)?.value);
   // "/" is the public landing page (exact match — a prefix match would make
   // every route public).
   const isPublic = pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p));
@@ -34,7 +37,16 @@ export async function middleware(request: NextRequest) {
     return noindex(NextResponse.redirect(url));
   }
 
-  if (signedIn && pathname === "/login") {
+  // The app sends a stale or revoked sign-in here; clear the cookies so the
+  // login page shows instead of bouncing back into the app.
+  if (pathname === "/login" && request.nextUrl.searchParams.has("signed_out")) {
+    const res = noindex(NextResponse.next({ request }));
+    res.cookies.delete(SESSION_COOKIE);
+    res.cookies.delete(DEMO_COOKIE);
+    return res;
+  }
+
+  if (signedIn && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/start";
     url.search = "";

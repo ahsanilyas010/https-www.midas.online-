@@ -10,6 +10,9 @@ export interface DemoAuthContext {
   clientId: string | null;
   /** Service-role (admin) clients bypass RLS entirely, as in Supabase. */
   bypass?: boolean;
+  /** The data this client reads and writes: a customer workspace's store,
+   *  or the shared demo store when absent. */
+  store?: DemoStore;
 }
 
 function clientCampaignIds(store: DemoStore, clientId: string | null) {

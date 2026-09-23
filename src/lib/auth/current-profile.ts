@@ -10,7 +10,9 @@ export async function requireProfile(): Promise<Profile> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  // No valid user behind the cookie (expired, revoked, or a server restart
+  // dropped an in-memory session): signed_out clears it in the middleware.
+  if (!user) redirect("/login?signed_out=1");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -18,7 +20,7 @@ export async function requireProfile(): Promise<Profile> {
     .eq("id", user.id)
     .single();
 
-  if (!profile) redirect("/login");
+  if (!profile) redirect("/login?signed_out=1");
   if (profile.must_change_password) redirect("/change-password");
 
   return profile;

@@ -1,6 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { accounts } from "@/lib/accounts";
+import { getWorkspaceContext } from "@/lib/accounts/session";
+import { activeAgentCount, seatLimitMessage } from "@/lib/accounts/limits";
 
 // Deactivate, never delete. A deleted user row orphans call attempts, QA
 // reviews and attendance history — the audit trail this exists for.
@@ -19,6 +22,19 @@ async function setActive(userId: string, isActive: boolean) {
 
   if (!callerProfile || !["super_admin", "ops_manager"].includes(callerProfile.role)) {
     return { error: "Only admins can change activation state." };
+  }
+
+  // Customer workspaces: the login is switched on/off in the accounts
+  // backend too, and reactivating an agent needs a free seat.
+  const ws = await getWorkspaceContext();
+  if (ws) {
+    const member = ws.members.find((m) => m.uid === userId);
+    if (!member) return { error: "Unknown user." };
+    if (member.uid === ws.workspace.ownerUid && !isActive) return { error: "The workspace owner can't be deactivated." };
+    if (isActive && member.role === "agent" && activeAgentCount(ws.store) >= ws.workspace.agentSeats) {
+      return { error: seatLimitMessage(ws.workspace.agentSeats) };
+    }
+    await accounts().setMemberActive(userId, isActive);
   }
 
   const { error } = await supabase
