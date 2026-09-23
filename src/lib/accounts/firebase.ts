@@ -1,7 +1,5 @@
 import "server-only";
-import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import type { App } from "firebase-admin/app";
 import { FREE_AGENT_SEATS } from "@/lib/pricing";
 import { AccountError, type AccountsBackend, type Member, type Workspace } from "./types";
 
@@ -26,7 +24,12 @@ export function firebaseConfigured(): boolean {
   );
 }
 
-function app(): App {
+// The Admin SDK is loaded on first use, never at import time: every page
+// imports this module (via the session check), and firebase-admin's
+// dependencies can't be loaded by every runtime. Sites without Firebase
+// configured never load it at all.
+async function app(): Promise<App> {
+  const { cert, getApps, initializeApp } = await import("firebase-admin/app");
   const existing = getApps().find((a) => a.name === "callmilalo");
   if (existing) return existing;
   return initializeApp(
@@ -42,10 +45,10 @@ function app(): App {
   );
 }
 
-const auth = () => getAuth(app());
-const db = () => getFirestore(app());
-const workspaces = () => db().collection("workspaces");
-const members = () => db().collection("members");
+const auth = async () => (await import("firebase-admin/auth")).getAuth(await app());
+const db = async () => (await import("firebase-admin/firestore")).getFirestore(await app());
+const workspaces = async () => (await db()).collection("workspaces");
+const members = async () => (await db()).collection("members");
 
 // Removes undefined values, which Firestore rejects.
 function clean<T extends object>(obj: T): T {
@@ -84,11 +87,11 @@ export const firebaseAccounts: AccountsBackend = {
   kind: "firebase",
 
   async createWorkspace(input) {
-    const user = await auth()
+    const user = await (await auth())
       .createUser({ email: input.email, password: input.password, displayName: input.fullName })
       .catch(authError);
     const now = new Date().toISOString();
-    const wsRef = workspaces().doc();
+    const wsRef = (await workspaces()).doc();
     const workspace: Workspace = {
       id: wsRef.id,
       name: input.workspaceName,
@@ -112,20 +115,20 @@ export const firebaseAccounts: AccountsBackend = {
       createdAt: now,
     };
     try {
-      const batch = db().batch();
+      const batch = (await db()).batch();
       batch.set(wsRef, clean(workspace));
-      batch.set(members().doc(user.uid), clean(member));
+      batch.set((await members()).doc(user.uid), clean(member));
       await batch.commit();
     } catch (e) {
       // Don't leave a login with no workspace behind it.
-      await auth().deleteUser(user.uid).catch(() => {});
+      await (await auth()).deleteUser(user.uid).catch(() => {});
       throw e;
     }
     return { workspace, member };
   },
 
   async createMember(input) {
-    const user = await auth()
+    const user = await (await auth())
       .createUser({ email: input.email, password: input.password, displayName: input.fullName })
       .catch(authError);
     const member: Member = {
@@ -139,9 +142,9 @@ export const firebaseAccounts: AccountsBackend = {
       createdAt: new Date().toISOString(),
     };
     try {
-      await members().doc(user.uid).set(clean(member));
+      await (await members()).doc(user.uid).set(clean(member));
     } catch (e) {
-      await auth().deleteUser(user.uid).catch(() => {});
+      await (await auth()).deleteUser(user.uid).catch(() => {});
       throw e;
     }
     return member;
@@ -152,13 +155,13 @@ export const firebaseAccounts: AccountsBackend = {
     const member = await this.getMember(uid);
     if (!member) throw new AccountError("not_found", "No workspace is linked to this login.");
     if (!member.isActive) throw new AccountError("disabled", "This account has been deactivated.");
-    const token = await auth().createSessionCookie(idToken, { expiresIn: SESSION_SECONDS * 1000 });
+    const token = await (await auth()).createSessionCookie(idToken, { expiresIn: SESSION_SECONDS * 1000 });
     return { token, member, maxAgeSeconds: SESSION_SECONDS };
   },
 
   async verifySession(token) {
     try {
-      const decoded = await auth().verifySessionCookie(token, true);
+      const decoded = await (await auth()).verifySessionCookie(token, true);
       const member = await this.getMember(decoded.uid);
       if (!member?.isActive) return null;
       return { uid: member.uid, workspaceId: member.workspaceId };
@@ -173,36 +176,36 @@ export const firebaseAccounts: AccountsBackend = {
   },
 
   async setPassword(uid, password) {
-    await auth().updateUser(uid, { password }).catch(authError);
+    await (await auth()).updateUser(uid, { password }).catch(authError);
   },
 
   async setMemberActive(uid, active) {
-    await auth().updateUser(uid, { disabled: !active });
-    if (!active) await auth().revokeRefreshTokens(uid);
-    await members().doc(uid).update({ isActive: active });
+    await (await auth()).updateUser(uid, { disabled: !active });
+    if (!active) await (await auth()).revokeRefreshTokens(uid);
+    await (await members()).doc(uid).update({ isActive: active });
   },
 
   async updateMember(uid, patch) {
-    await members().doc(uid).update(clean(patch));
-    if (patch.fullName) await auth().updateUser(uid, { displayName: patch.fullName });
+    await (await members()).doc(uid).update(clean(patch));
+    if (patch.fullName) await (await auth()).updateUser(uid, { displayName: patch.fullName });
   },
 
   async getWorkspace(id) {
-    const snap = await workspaces().doc(id).get();
+    const snap = await (await workspaces()).doc(id).get();
     return snap.exists ? ({ ...(snap.data() as Workspace), id: snap.id }) : null;
   },
 
   async updateWorkspace(id, patch) {
-    await workspaces().doc(id).update(clean(patch));
+    await (await workspaces()).doc(id).update(clean(patch));
   },
 
   async listMembers(workspaceId) {
-    const snap = await members().where("workspaceId", "==", workspaceId).get();
+    const snap = await (await members()).where("workspaceId", "==", workspaceId).get();
     return snap.docs.map((d) => ({ ...(d.data() as Member), uid: d.id }));
   },
 
   async getMember(uid) {
-    const snap = await members().doc(uid).get();
+    const snap = await (await members()).doc(uid).get();
     return snap.exists ? ({ ...(snap.data() as Member), uid: snap.id }) : null;
   },
 };
