@@ -35,7 +35,7 @@ export default async function CampaignDetailPage({
 }) {
   const { id } = await params;
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/");
+  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
 
   const supabase = await createClient();
   const [

@@ -7,7 +7,10 @@ const PUBLIC_PATHS = ["/login", "/reset-password", "/api/unsubscribe", "/api/lea
 
 export async function middleware(request: NextRequest) {
   const signedIn = Boolean(request.cookies.get(DEMO_COOKIE)?.value);
-  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  // "/" is the public landing page (exact match — a prefix match would make
+  // every route public).
+  const isPublic =
+    request.nextUrl.pathname === "/" || PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
 
   if (!signedIn && !isPublic) {
     const url = request.nextUrl.clone();
@@ -18,7 +21,7 @@ export async function middleware(request: NextRequest) {
 
   if (signedIn && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/start";
     url.search = "";
     return NextResponse.redirect(url);
   }

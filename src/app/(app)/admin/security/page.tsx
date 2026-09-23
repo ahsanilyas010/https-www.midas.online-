@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function SecurityPage() {
   const profile = await requireProfile();
-  if (profile.role !== "super_admin") redirect("/");
+  if (profile.role !== "super_admin") redirect("/start");
 
   const supabase = await createClient();
   const [{ data: auditRows }, { data: sessions }, { data: credentialEvents }] = await Promise.all([

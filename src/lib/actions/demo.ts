@@ -14,14 +14,14 @@ export async function signInAsPersona(personaId: string, next?: string) {
   if (!persona && !profile) return { error: "Unknown demo user." };
   const jar = await cookies();
   jar.set(DEMO_COOKIE, personaId, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 7 });
-  redirect(next && next.startsWith("/") ? next : "/");
+  redirect(next && next.startsWith("/") && next !== "/" ? next : "/start");
 }
 
 // Switch persona from inside the app without going back to the login page.
 export async function switchPersona(personaId: string) {
   const jar = await cookies();
   jar.set(DEMO_COOKIE, personaId, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 7 });
-  redirect("/");
+  redirect("/start");
 }
 
 // Re-seed every table — undoes whatever the audience clicked during a demo.

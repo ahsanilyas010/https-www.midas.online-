@@ -28,6 +28,15 @@ It is a copy of the CallingCRM codebase with four changes:
    switch roles or reset data, a softphone in the dial workspace and
    celebrations on conversions.
 
+## Landing page
+
+`/` is a public marketing page covering every feature: dial workspace,
+bring-your-own dialer (with an interactive provider switcher), Zoom
+meetings, live floor, attendance, QA, compliance, data sourcing, client
+portal, security, roles and an FAQ. "Try the live demo" goes to the role
+picker at `/login`; signed-in visitors get "Open the app" (`/start`, which
+sends each role to its home screen).
+
 ## Demo logins
 
 Pick a role on the login page, or sign in with any account below. **Every

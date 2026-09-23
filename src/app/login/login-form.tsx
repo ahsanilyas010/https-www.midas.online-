@@ -28,7 +28,7 @@ export function LoginForm({ next }: { next?: string }) {
     <Card>
       <CardContent className="pt-4">
         <form action={formAction} className="flex flex-col gap-4">
-          <input type="hidden" name="next" value={next ?? "/"} />
+          <input type="hidden" name="next" value={next ?? "/start"} />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" autoComplete="username" required autoFocus defaultValue={state?.email ?? ""} key={state?.email ?? "email"} />
