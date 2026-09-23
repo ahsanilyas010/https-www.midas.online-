@@ -15,3 +15,15 @@ export const BRAND = {
   agentCodePlaceholder: "CM-114",
   website: "https://callmilalo.demo",
 };
+
+// The company behind the product, shown in the landing-page footer and on
+// the sign-in page. Leave a field empty ("") and it is simply not shown —
+// fill in the street address, phone and email here when they're ready.
+export const COMPANY = {
+  legalName: "Assorted Business LLC",
+  country: "United States",
+  address: "", // e.g. "123 Main Street, Suite 100, City, ST 12345"
+  phone: "", // e.g. "+1 555 010 0000"
+  email: "", // e.g. "hello@callmilalo.com"
+};
+

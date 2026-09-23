@@ -54,7 +54,7 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/");
 }
 
 export async function changePassword(_prev: ActionResult, formData: FormData): Promise<ActionResult> {

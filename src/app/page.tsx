@@ -34,7 +34,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand/mark";
-import { BRAND } from "@/lib/brand";
+import { BRAND, COMPANY } from "@/lib/brand";
 import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 import { Reveal } from "@/components/landing/reveal";
 import { DialerShowcase } from "@/components/landing/dialer-showcase";
@@ -609,9 +609,30 @@ export default async function LandingPage() {
             </Link>
           </div>
         </div>
-        <p className="mx-auto mt-6 max-w-6xl text-center text-xs text-muted sm:text-left">
-          © {new Date().getFullYear()} {BRAND.productName}. Third-party names belong to their owners and are shown to indicate compatibility.
-        </p>
+        <div className="mx-auto mt-6 flex max-w-6xl flex-col gap-1.5 border-t border-line pt-6 text-center text-xs text-muted sm:text-left">
+          <p className="text-sm text-ink">
+            {BRAND.productName} is a product of <span className="font-semibold">{COMPANY.legalName}</span>
+          </p>
+          <p>{COMPANY.address || COMPANY.country}</p>
+          {(COMPANY.phone || COMPANY.email) && (
+            <p className="flex flex-wrap justify-center gap-x-4 sm:justify-start">
+              {COMPANY.phone && (
+                <a href={`tel:${COMPANY.phone.replace(/\s+/g, "")}`} className="hover:text-brand-blue">
+                  {COMPANY.phone}
+                </a>
+              )}
+              {COMPANY.email && (
+                <a href={`mailto:${COMPANY.email}`} className="hover:text-brand-blue">
+                  {COMPANY.email}
+                </a>
+              )}
+            </p>
+          )}
+          <p className="mt-2">
+            © {new Date().getFullYear()} {COMPANY.legalName}. All rights reserved. Third-party names belong to their owners and are shown to
+            indicate compatibility.
+          </p>
+        </div>
       </footer>
     </div>
   );

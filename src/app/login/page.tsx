@@ -1,8 +1,9 @@
-import { Headset, Video, Activity, ShieldCheck, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Headset, Video, Activity, ShieldCheck, Sparkles, ArrowLeft } from "lucide-react";
 import { LoginForm } from "./login-form";
 import { PersonaPicker } from "./persona-picker";
 import { BrandMark } from "@/components/brand/mark";
-import { BRAND } from "@/lib/brand";
+import { BRAND, COMPANY } from "@/lib/brand";
 import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
 import { getStore } from "@/lib/demo/store";
@@ -43,7 +44,7 @@ export default async function LoginPage({
         <div className="brand-orb brand-orb-2" aria-hidden />
         <div className="brand-orb brand-orb-3" aria-hidden />
 
-        <div className="relative flex items-center gap-3">
+        <Link href="/" className="relative flex items-center gap-3 self-start rounded-xl transition hover:opacity-90">
           <div className="rounded-2xl bg-white/10 p-2.5 ring-1 ring-white/20 backdrop-blur">
             <BrandMark size={34} />
           </div>
@@ -51,7 +52,7 @@ export default async function LoginPage({
             <div className="font-display text-xl font-semibold">{BRAND.productName}</div>
             <div className="text-xs text-white/70">{BRAND.loginTagline}</div>
           </div>
-        </div>
+        </Link>
 
         <div className="relative max-w-lg">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-gold-soft ring-1 ring-white/20">
@@ -80,7 +81,8 @@ export default async function LoginPage({
         </div>
 
         <p className="relative text-xs text-white/50">
-          Demo build. No database is connected; data is generated in memory and resets whenever you like.
+          {BRAND.productName} is a product of {COMPANY.legalName} · {COMPANY.address || COMPANY.country}. This demo uses sample data
+          only and resets whenever you like.
         </p>
       </div>
 
@@ -88,6 +90,12 @@ export default async function LoginPage({
       <div className="relative flex items-center justify-center overflow-hidden bg-canvas px-4 py-10">
         <div className="brand-mesh absolute inset-0" aria-hidden />
         <div className="relative w-full max-w-xl animate-slide-up">
+          <Link
+            href="/"
+            className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-brand-blue"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to {BRAND.productName} home
+          </Link>
           <div className="mb-6 flex flex-col items-center gap-2 text-center lg:hidden">
             <BrandMark size={40} />
             <h1 className="font-display text-xl font-semibold text-ink">{BRAND.productName}</h1>
