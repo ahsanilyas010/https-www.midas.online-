@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Headset, Video, Activity, ShieldCheck, Sparkles, ArrowLeft } from "lucide-react";
 import { LoginForm } from "./login-form";
@@ -7,6 +8,22 @@ import { BRAND, COMPANY } from "@/lib/brand";
 import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
 import { getStore } from "@/lib/demo/store";
+
+export const metadata: Metadata = {
+  title: "Try the live demo",
+  description:
+    "Explore CallMilalo with realistic sample data: pick a role (admin, manager, team lead, agent, QA or client) and start dialling, booking Zoom meetings and watching the live floor.",
+  alternates: { canonical: "/login" },
+  openGraph: {
+    type: "website",
+    siteName: BRAND.productName,
+    title: `Try the ${BRAND.productName} live demo`,
+    description: "Pick a role and explore the dialer, Zoom meetings and live floor with sample data.",
+    url: "/login",
+    // Overriding openGraph drops the inherited card, so name it again.
+    images: ["/opengraph-image"],
+  },
+};
 
 const HIGHLIGHTS = [
   { icon: Headset, title: "Power-dial workspace", text: "Scripts, dispositions and callbacks in one screen." },

@@ -14,6 +14,13 @@ export const BRAND = {
   pdfFilenamePrefix: "callmilalo-client-report",
   agentCodePlaceholder: "CM-114",
   website: "https://callmilalo.demo",
+  // Public address of the deployed site, used for canonical URLs, the
+  // sitemap and social previews. On Vercel the production domain is picked
+  // up automatically (see src/lib/site.ts); this is the fallback.
+  siteUrl: "https://dialbyhand.vercel.app",
+  seoTitle: "CallMilalo — Contact-Centre CRM with Your Own Dialer & Zoom",
+  seoDescription:
+    "CallMilalo is a contact-centre CRM with a dial workspace, bring-your-own dialer (Zoom Phone, Dialpad, Aircall, RingCentral), Zoom meetings, QA and compliance.",
 };
 
 // The company behind the product, shown in the landing-page footer and on

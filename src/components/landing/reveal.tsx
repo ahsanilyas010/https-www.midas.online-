@@ -1,8 +1,10 @@
-"use client";
+import type { CSSProperties } from "react";
+import { cn } from "@/lib/utils";
 
-import { motion } from "framer-motion";
-
-// Fades/slides children in the first time they scroll into view.
+// Fades/slides children in as they scroll into view. Pure CSS (a scroll-driven
+// animation, see .reveal in globals.css): content is in the server HTML and
+// fully visible without JavaScript, so crawlers and slow devices see it and
+// browsers without scroll timelines simply show it straight away.
 export function Reveal({
   children,
   delay = 0,
@@ -14,15 +16,10 @@ export function Reveal({
   className?: string;
   y?: number;
 }) {
+  const style = { "--reveal-y": `${y}px`, "--reveal-lag": `${Math.round(delay * 100)}%` } as CSSProperties;
   return (
-    <motion.div
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={className}
-    >
+    <div className={cn("reveal", className)} style={style}>
       {children}
-    </motion.div>
+    </div>
   );
 }

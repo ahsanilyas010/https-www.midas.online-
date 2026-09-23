@@ -35,14 +35,16 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY } from "@/lib/brand";
+import { absoluteUrl, siteUrl } from "@/lib/site";
 import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 import { Reveal } from "@/components/landing/reveal";
 import { DialerShowcase } from "@/components/landing/dialer-showcase";
 
 export const metadata: Metadata = {
-  title: `${BRAND.productName} — contact-centre CRM that dials with your phone system`,
+  title: { absolute: `${BRAND.productName} — contact-centre CRM that dials with your phone system` },
   description:
     "Dial workspace, bring-your-own dialer (Zoom Phone, Dialpad, Aircall, RingCentral and more), Zoom meetings, live floor, attendance, QA, compliance and client reporting in one CRM.",
+  alternates: { canonical: "/" },
 };
 
 const FEATURES: { icon: LucideIcon; title: string; text: string; tint: string }[] = [
@@ -197,6 +199,68 @@ function HeroMock() {
     </div>
   );
 }
+const FOOTER_LINKS = [
+  { href: "#features", label: "All features" },
+  { href: "#workspace", label: "Dial workspace" },
+  { href: "#dialer", label: "Bring your own dialer" },
+  { href: "#zoom", label: "Zoom meetings" },
+  { href: "#floor", label: "Live floor" },
+  { href: "#compliance", label: "Compliance" },
+  { href: "#roles", label: "Roles" },
+  { href: "#faq", label: "FAQ" },
+];
+
+// schema.org JSON-LD: who makes it, what it is, and the FAQ.
+function structuredData() {
+  const org = {
+    "@type": "Organization",
+    "@id": absoluteUrl("/#organization"),
+    name: COMPANY.legalName,
+    url: siteUrl(),
+    logo: absoluteUrl("/icon"),
+    address: {
+      "@type": "PostalAddress",
+      addressCountry: "US",
+      ...(COMPANY.address ? { streetAddress: COMPANY.address } : {}),
+    },
+    ...(COMPANY.email ? { email: COMPANY.email } : {}),
+    ...(COMPANY.phone ? { telephone: COMPANY.phone } : {}),
+  };
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      org,
+      {
+        "@type": "WebSite",
+        "@id": absoluteUrl("/#website"),
+        url: siteUrl(),
+        name: BRAND.productName,
+        description: BRAND.seoDescription,
+        inLanguage: "en",
+        publisher: { "@id": org["@id"] },
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: BRAND.productName,
+        url: siteUrl(),
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web browser",
+        description: BRAND.seoDescription,
+        image: absoluteUrl("/opengraph-image"),
+        featureList: FEATURES.map((f) => f.title),
+        publisher: { "@id": org["@id"] },
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: FAQ.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      },
+    ],
+  };
+}
 
 export default async function LandingPage() {
   const signedIn = Boolean((await cookies()).get("callmilalo_demo_user")?.value);
@@ -205,6 +269,11 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <script
+        type="application/ld+json"
+        // Static, server-built JSON; "<" is escaped so it can't close the tag.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }}
+      />
       {/* Nav */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-midnight/70 backdrop-blur-xl">
         <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
@@ -236,13 +305,14 @@ export default async function LandingPage() {
         </nav>
       </header>
 
+      <main>
       {/* Hero */}
       <section className="brand-hero relative overflow-hidden px-4 pb-28 pt-32 text-white sm:pt-36">
         <div className="brand-orb brand-orb-1" aria-hidden />
         <div className="brand-orb brand-orb-2" aria-hidden />
         <div className="brand-orb brand-orb-3" aria-hidden />
         <div className="relative mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1.05fr_1fr]">
-          <Reveal>
+          <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-gold-soft ring-1 ring-white/20">
               <Sparkles className="h-3.5 w-3.5" /> Contact-centre CRM · Dialer · Zoom
             </span>
@@ -274,10 +344,8 @@ export default async function LandingPage() {
                 </span>
               ))}
             </div>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <HeroMock />
-          </Reveal>
+          </div>
+          <HeroMock />
         </div>
       </section>
 
@@ -593,6 +661,8 @@ export default async function LandingPage() {
         </Reveal>
       </section>
 
+      </main>
+
       {/* Footer */}
       <footer className="border-t border-line bg-surface px-4 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-muted sm:flex-row">
@@ -601,13 +671,16 @@ export default async function LandingPage() {
             <span className="font-display font-semibold text-ink">{BRAND.productName}</span>
             <span className="hidden sm:inline">· {BRAND.loginTagline}</span>
           </div>
-          <div className="flex items-center gap-5">
-            <a href="#features" className="hover:text-ink">Features</a>
-            <a href="#faq" className="hover:text-ink">FAQ</a>
+          <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            {FOOTER_LINKS.map((l) => (
+              <a key={l.href} href={l.href} className="hover:text-ink">
+                {l.label}
+              </a>
+            ))}
             <Link href={primaryHref} className="font-medium text-brand-blue hover:underline">
               {primaryLabel}
             </Link>
-          </div>
+          </nav>
         </div>
         <div className="mx-auto mt-6 flex max-w-6xl flex-col gap-1.5 border-t border-line pt-6 text-center text-xs text-muted sm:text-left">
           <p className="text-sm text-ink">
