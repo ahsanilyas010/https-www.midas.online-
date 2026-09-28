@@ -90,6 +90,7 @@ export type RealDatabase = {
           brand_product_name: string | null
           onboarding_step: string | null
           signup: RealJson
+          demo_allowed_numbers: string[]
           created_by: string | null
           created_at: string
           updated_at: string
@@ -110,6 +111,7 @@ export type RealDatabase = {
           brand_product_name?: string | null
           onboarding_step?: string | null
           signup?: RealJson
+          demo_allowed_numbers?: string[]
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -130,6 +132,7 @@ export type RealDatabase = {
           brand_product_name?: string | null
           onboarding_step?: string | null
           signup?: RealJson
+          demo_allowed_numbers?: string[]
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -348,6 +351,7 @@ export type RealDatabase = {
           status: string
           screened_at: string | null
           storage_path: string | null
+          evidence_url: string | null
           created_at: string
         }
         Insert: {
@@ -360,6 +364,7 @@ export type RealDatabase = {
           status?: string
           screened_at?: string | null
           storage_path?: string | null
+          evidence_url?: string | null
           created_at?: string
         }
         Update: {
@@ -372,6 +377,7 @@ export type RealDatabase = {
           status?: string
           screened_at?: string | null
           storage_path?: string | null
+          evidence_url?: string | null
           created_at?: string
         }
         Relationships: []
@@ -384,6 +390,13 @@ export type RealDatabase = {
           batch_id: string | null
           phone_e164: string | null
           full_name: string | null
+          screening_status: "pending" | "passed" | "failed" | "expired"
+          screened_at: string | null
+          phone_hash: string | null
+          attempts: number
+          last_attempt_at: string | null
+          claimed_by: string | null
+          claimed_at: string | null
           created_at: string
         }
         Insert: {
@@ -393,6 +406,13 @@ export type RealDatabase = {
           batch_id?: string | null
           phone_e164?: string | null
           full_name?: string | null
+          screening_status?: "pending" | "passed" | "failed" | "expired"
+          screened_at?: string | null
+          phone_hash?: string | null
+          attempts?: number
+          last_attempt_at?: string | null
+          claimed_by?: string | null
+          claimed_at?: string | null
           created_at?: string
         }
         Update: {
@@ -402,6 +422,154 @@ export type RealDatabase = {
           batch_id?: string | null
           phone_e164?: string | null
           full_name?: string | null
+          screening_status?: "pending" | "passed" | "failed" | "expired"
+          screened_at?: string | null
+          phone_hash?: string | null
+          attempts?: number
+          last_attempt_at?: string | null
+          claimed_by?: string | null
+          claimed_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      suppression_list: {
+        Row: {
+          id: string
+          workspace_id: string
+          phone_hash: string
+          reason: string
+          evidence_url: string | null
+          added_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          phone_hash: string
+          reason: string
+          evidence_url?: string | null
+          added_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          phone_hash?: string
+          reason?: string
+          evidence_url?: string | null
+          added_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      dispositions: {
+        Row: {
+          id: string
+          code: string
+          label: string
+          outcome_group: "connect" | "no_connect" | "dnc" | "conversion"
+          is_terminal: boolean
+          sets_dnc: boolean
+          requires_followup: boolean
+          requires_note: boolean
+          sort: number
+        }
+        Insert: {
+          id?: string
+          code: string
+          label: string
+          outcome_group: "connect" | "no_connect" | "dnc" | "conversion"
+          is_terminal?: boolean
+          sets_dnc?: boolean
+          requires_followup?: boolean
+          requires_note?: boolean
+          sort?: number
+        }
+        Update: {
+          id?: string
+          code?: string
+          label?: string
+          outcome_group?: "connect" | "no_connect" | "dnc" | "conversion"
+          is_terminal?: boolean
+          sets_dnc?: boolean
+          requires_followup?: boolean
+          requires_note?: boolean
+          sort?: number
+        }
+        Relationships: []
+      }
+      calls: {
+        Row: {
+          id: string
+          workspace_id: string
+          lead_id: string
+          campaign_id: string | null
+          agent_id: string
+          disposition_id: string | null
+          notes: string | null
+          started_at: string
+          ended_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          lead_id: string
+          campaign_id?: string | null
+          agent_id: string
+          disposition_id?: string | null
+          notes?: string | null
+          started_at?: string
+          ended_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          lead_id?: string
+          campaign_id?: string | null
+          agent_id?: string
+          disposition_id?: string | null
+          notes?: string | null
+          started_at?: string
+          ended_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      callbacks: {
+        Row: {
+          id: string
+          workspace_id: string
+          lead_id: string
+          call_id: string | null
+          agent_id: string | null
+          due_at: string
+          snooze_count: number
+          status: "pending" | "done" | "escalated" | "cancelled"
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          lead_id: string
+          call_id?: string | null
+          agent_id?: string | null
+          due_at: string
+          snooze_count?: number
+          status?: "pending" | "done" | "escalated" | "cancelled"
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          lead_id?: string
+          call_id?: string | null
+          agent_id?: string | null
+          due_at?: string
+          snooze_count?: number
+          status?: "pending" | "done" | "escalated" | "cancelled"
           created_at?: string
         }
         Relationships: []
@@ -539,6 +707,27 @@ export type RealDatabase = {
           p_auth_token: string
         }
         Returns: undefined
+      }
+      compute_phone_hash: {
+        Args: { p_phone: string }
+        Returns: string
+      }
+      next_lead_for_agent: {
+        Args: { p_agent_id: string }
+        Returns: RealDatabase["public"]["Tables"]["leads"]["Row"] | null
+      }
+      record_call_attempt: {
+        Args: {
+          p_lead_id: string
+          p_disposition_code: string
+          p_notes?: string | null
+          p_callback_due_at?: string | null
+        }
+        Returns: RealDatabase["public"]["Tables"]["calls"]["Row"]
+      }
+      screen_lead_batch: {
+        Args: { p_batch_id: string; p_evidence_url: string | null }
+        Returns: number
       }
     }
     Enums: {

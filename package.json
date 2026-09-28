@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "test:rls": "tsx scripts/rls-proof.ts"
+    "test:rls": "tsx scripts/rls-proof.ts",
+    "test:compliance": "tsx scripts/compliance-gate-proof.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

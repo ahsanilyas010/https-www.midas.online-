@@ -29,7 +29,8 @@ export function DataForm() {
         <input id="file" name="file" type="file" accept=".csv,text/csv" required className="text-sm text-ink" />
       </div>
       <p className="text-xs text-muted">
-        We just store the file for now — column mapping, dedupe and TPS/DNC screening arrive in a later setup step.
+        We&apos;ll match phone/name columns automatically and skip anything already on your suppression list.
+        Screening (TPS/CTPS, National DNC) happens after upload, from Data.
       </p>
       {state.error && <p className="text-sm text-danger">{state.error}</p>}
       <div className="flex items-center gap-3">

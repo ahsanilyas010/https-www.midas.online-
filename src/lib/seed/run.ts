@@ -260,12 +260,19 @@ export async function seedDemoWorkspace(admin: Admin, opts: SeedDemoOptions = {}
     .select("id")
     .single();
 
+  // Pre-screened (screening_status='passed') so the compliance gate
+  // (next_lead_for_agent, migration 050) has something dialable to
+  // demonstrate immediately, rather than every demo lead starting
+  // 'pending' and never surfacing until someone runs the screening step.
+  const now = new Date().toISOString();
   const fillerLeads = Array.from({ length: 500 }, (_, i) => ({
     workspace_id: workspace!.id,
     campaign_id: campaignIds[0] ?? null,
     batch_id: batch?.id ?? null,
     phone_e164: fillerPhone(i + 1),
     full_name: `Demo Lead ${i + 1}`,
+    screening_status: "passed" as const,
+    screened_at: now,
   }));
   const allowedLeads = allowedNumbers.map((phone, i) => ({
     workspace_id: workspace!.id,
@@ -273,6 +280,8 @@ export async function seedDemoWorkspace(admin: Admin, opts: SeedDemoOptions = {}
     batch_id: batch?.id ?? null,
     phone_e164: phone,
     full_name: `Callable Test Lead ${i + 1}`,
+    screening_status: "passed" as const,
+    screened_at: now,
   }));
 
   for (const chunk of chunks([...fillerLeads, ...allowedLeads], 200)) {

@@ -7,6 +7,7 @@ import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { createRealClient } from "@/lib/supabase/real";
 import { createServiceClient } from "@/lib/supabase/service";
 import { activeAgentCount, seatLimitMessage } from "@/lib/workspace/limits";
+import { ingestLeadFile } from "@/lib/actions/lead-upload";
 import type { RealEnums } from "@/lib/supabase/real-types";
 
 export interface OnboardingActionState {
@@ -105,37 +106,25 @@ export async function skipTwilioStep(): Promise<OnboardingActionState> {
   return { ok: true };
 }
 
-// Step 4 — first data upload. Deliberately minimal: stores the raw file
-// and a naive newline-count row estimate. No column mapping, dedup or
-// screening — that's Phase 2's compliance-gate work.
+// Step 4 — first data upload. Real column mapping + dedupe against
+// existing leads and the suppression list (src/lib/actions/lead-upload.ts)
+// — screening itself (stamping screened_at) is a separate manager action
+// once the batch is in, not part of onboarding.
 export async function uploadFirstLeadBatch(_prev: OnboardingActionState, formData: FormData): Promise<OnboardingActionState> {
   const profile = await requireManager();
   const workspace = await getCurrentWorkspace();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose a CSV file to upload." };
+    return { error: "Choose a CSV or XLSX file to upload." };
   }
 
   const supabase = await createRealClient();
-  const path = `${workspace.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-  const { error: uploadError } = await supabase.storage.from("lead-uploads").upload(path, file, {
-    contentType: file.type || "text/csv",
-  });
-  if (uploadError) return { error: uploadError.message };
-
-  const text = await file.text();
-  const rowCount = Math.max(text.split(/\r?\n/).filter((line) => line.trim().length > 0).length - 1, 0);
-
-  const { error } = await supabase.from("lead_batches").insert({
-    workspace_id: workspace.id,
-    source: file.name,
-    uploaded_by: profile.id,
-    row_count: rowCount,
-    status: "uploaded",
-    storage_path: path,
-  });
-  if (error) return { error: error.message };
+  try {
+    await ingestLeadFile(supabase, workspace.id, profile.id, file, null);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not process the upload." };
+  }
 
   await advance(supabase, workspace.id, "invite");
   revalidatePath("/onboarding", "layout");
