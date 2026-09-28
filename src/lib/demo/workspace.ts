@@ -40,6 +40,7 @@ function profileFor(m: Member): Row {
   const now = nowIso();
   return {
     id: m.uid,
+    email: m.email,
     full_name: m.fullName,
     role: m.role,
     agent_code: null,

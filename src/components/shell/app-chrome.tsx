@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sidebar } from "@/components/shell/sidebar";
+import { Sidebar, type SidebarBranding } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
 import { PageTransition } from "@/components/shell/page-transition";
 import { DemoBar, type DemoAccount } from "@/components/shell/demo-bar";
@@ -29,6 +29,7 @@ export function AppChrome({
   demoAccounts,
   planInfo,
   dialer,
+  branding,
   children,
 }: {
   items: NavItem[];
@@ -39,6 +40,7 @@ export function AppChrome({
   // Set for customer workspaces; the demo leaves it out.
   planInfo?: PlanInfo | null;
   dialer: DialerInfo;
+  branding?: SidebarBranding;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -63,7 +65,7 @@ export function AppChrome({
             mobileNavOpen ? "flex" : "hidden md:flex"
           }`}
         >
-          <Sidebar items={items} onNavigate={() => setMobileNavOpen(false)} />
+          <Sidebar items={items} onNavigate={() => setMobileNavOpen(false)} branding={branding} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

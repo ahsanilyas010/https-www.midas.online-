@@ -5,7 +5,7 @@ import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { MetaPixel } from "@/components/marketing/meta-pixel";
 import { AttributionCapture } from "@/components/marketing/attribution";
-import { SESSION_COOKIE } from "@/lib/accounts/session";
+import { hasRealSessionCookie } from "@/lib/accounts/session";
 
 // Header and footer shared by the public pages (landing, contact, legal).
 
@@ -13,7 +13,7 @@ import { SESSION_COOKIE } from "@/lib/accounts/session";
 // signed in (to a workspace or the demo).
 export async function demoCta() {
   const jar = await cookies();
-  const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value || jar.get("leadcallient_demo_user")?.value);
+  const signedIn = hasRealSessionCookie(jar) || Boolean(jar.get("leadcallient_demo_user")?.value);
   return {
     signedIn,
     href: signedIn ? "/start" : "/signup",

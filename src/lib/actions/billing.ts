@@ -1,8 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { accounts } from "@/lib/accounts";
 import { getWorkspaceContext } from "@/lib/accounts/session";
 import { activeAgentCount } from "@/lib/accounts/limits";
 import { createCheckoutSession, createPortalSession, stripeConfigured } from "@/lib/billing/stripe";
@@ -52,15 +50,11 @@ export async function openBillingPortal(): Promise<{ url?: string; error?: strin
   }
 }
 
-// Preview deployments only (in-memory accounts, no Stripe): lets you try the
-// upgraded experience without a payment gateway. Never available once
-// Firebase or Stripe is connected.
-export async function simulateUpgrade(seats: number): Promise<{ error?: string }> {
-  if (stripeConfigured() || accounts().kind !== "local") return { error: "Not available." };
-  const ctx = await ownerContext();
-  if ("error" in ctx) return { error: ctx.error };
-  const n = Math.min(Math.max(Math.floor(seats), FREE_AGENT_SEATS + 1), SELF_SERVE_MAX_AGENTS);
-  await accounts().updateWorkspace(ctx.ws.workspace.id, { plan: "paid", agentSeats: n, billingStatus: "active" });
-  revalidatePath("/", "layout");
-  return {};
+// Was a Stripe-less "preview upgrade" for the old in-memory-only fallback
+// (no Firebase configured). Real accounts always live in Supabase now, so
+// there's no more unconfigured state for this to apply to — kept as a
+// stub so admin/billing/page.tsx's "offline" mode still has something to
+// call, but it always declines.
+export async function simulateUpgrade(_seats: number): Promise<{ error?: string }> {
+  return { error: "Not available. Contact us to upgrade." };
 }

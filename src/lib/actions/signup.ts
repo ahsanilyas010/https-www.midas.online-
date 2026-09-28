@@ -2,9 +2,9 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
-import { accounts, AccountError, type SignupSource } from "@/lib/accounts";
-import { setSessionCookie } from "@/lib/accounts/session";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { createServiceClient } from "@/lib/supabase/service";
+import { createRealClient } from "@/lib/supabase/real";
+import { checkRealRateLimit } from "@/lib/rate-limit";
 
 export interface SignupState {
   ok?: boolean;
@@ -27,9 +27,19 @@ const schema = z.object({
 
 const SOURCE_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "referrer", "landing_path"] as const;
 
+function slugify(name: string): string {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `${base || "workspace"}-${suffix}`;
+}
+
 // Creates the customer's workspace (free plan, 3 agent seats), makes them
 // its super admin and signs them in. The client then fires the ad pixel's
-// CompleteRegistration event and opens the app.
+// CompleteRegistration event and opens the onboarding wizard.
 export async function signUp(_prev: SignupState, formData: FormData): Promise<SignupState> {
   const raw = Object.fromEntries(formData.entries()) as Record<string, string>;
   const values = { full_name: raw.full_name, company: raw.company, email: raw.email, phone: raw.phone, team_size: raw.team_size };
@@ -54,37 +64,57 @@ export async function signUp(_prev: SignupState, formData: FormData): Promise<Si
 
   const hdrs = await headers();
   const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!(await checkRateLimit("signup", ip, 5, 60 * 60))) {
+  if (!(await checkRealRateLimit("signup", ip, 5, 60 * 60))) {
     return { error: "Too many sign-ups from this network. Try again in an hour.", values };
   }
 
-  const signup: SignupSource = {};
+  const signup: Record<string, string> = {};
   for (const k of SOURCE_KEYS) {
     const v = raw[k]?.trim();
     if (v) signup[k] = v.slice(0, 300);
   }
 
-  try {
-    const backend = accounts();
-    await backend.createWorkspace({
-      email: input.email,
-      password: input.password,
-      fullName: input.full_name,
-      workspaceName: input.company,
-      teamSize: input.team_size ?? null,
-      phone: input.phone ?? null,
-      signup,
-    });
-    const session = await backend.signIn(input.email, input.password);
-    await setSessionCookie(session.token, session.maxAgeSeconds);
-  } catch (e) {
-    if (e instanceof AccountError) {
-      if (e.code === "email_exists") return { fieldErrors: { email: "There's already an account with this email. Sign in instead." }, values };
-      if (e.code === "weak_password") return { fieldErrors: { password: e.message }, values };
-      return { error: e.message, values };
+  const admin = createServiceClient();
+
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    email_confirm: true,
+    user_metadata: { full_name: input.full_name },
+  });
+
+  if (createError || !created.user) {
+    if (createError?.code === "email_exists") {
+      return { fieldErrors: { email: "There's already an account with this email. Sign in instead." }, values };
     }
-    console.error("signup failed", e);
+    console.error("signup: createUser failed", createError);
     return { error: "We couldn't create your account just now. Please try again.", values };
   }
+
+  const { error: rpcError } = await admin.rpc("create_workspace_with_owner", {
+    p_user_id: created.user.id,
+    p_email: input.email,
+    p_full_name: input.full_name,
+    p_workspace_name: input.company,
+    p_slug: slugify(input.company),
+    p_phone: input.phone ?? null,
+    p_team_size: input.team_size ?? null,
+    p_signup: signup,
+  });
+
+  if (rpcError) {
+    // Compensate: never leave an auth user with no workspace behind.
+    await admin.auth.admin.deleteUser(created.user.id).catch(() => {});
+    console.error("signup: create_workspace_with_owner failed", rpcError);
+    return { error: "We couldn't create your workspace just now. Please try again.", values };
+  }
+
+  const supabase = await createRealClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email: input.email, password: input.password });
+  if (signInError) {
+    console.error("signup: sign-in after creation failed", signInError);
+    return { error: "Your workspace was created — please sign in.", values };
+  }
+
   return { ok: true };
 }

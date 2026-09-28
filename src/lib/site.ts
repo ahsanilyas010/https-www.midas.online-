@@ -25,6 +25,8 @@ export const PRIVATE_PATH_PREFIXES = [
   "/qa",
   "/meetings",
   "/start",
+  "/onboarding",
+  "/platform",
   "/change-password",
   "/api",
 ];

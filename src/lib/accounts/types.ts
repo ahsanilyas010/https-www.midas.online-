@@ -1,12 +1,16 @@
-// Accounts = real customer sign-ups (as opposed to the seeded demo personas).
+// Accounts = real customer sign-ups (as opposed to the seeded demo
+// personas). A sign-up creates a Workspace (the customer's company) and a
+// Member (the person, as its super admin). Members the owner adds later
+// get their own logins in the same workspace.
 //
-// A sign-up creates a Workspace (the customer's company) and a Member (the
-// person, as its super admin). Members the owner adds later get their own
-// logins in the same workspace. Firebase Auth + Firestore store these once
-// Firebase is configured (see ./firebase.ts); until then ./local.ts keeps
-// them in memory so the flow can be tried on a preview deployment.
+// Identity now lives in real Postgres (workspaces/profiles, see
+// supabase/migrations/00000000000039_workspaces.sql and
+// 00000000000040_identity_and_org.sql) via Supabase Auth, not Firebase.
+// These types are kept stable on purpose — src/lib/accounts/adapters.ts
+// maps real rows onto this exact shape, so the ~40 existing CRM action
+// files and pages built against it never needed to change.
 
-export type Role = "super_admin" | "ops_manager" | "team_lead" | "agent" | "qa" | "client_viewer";
+export type Role = "super_admin" | "ops_manager" | "team_lead" | "agent" | "qa_analyst" | "client";
 
 export type Plan = "free" | "paid";
 
@@ -19,6 +23,7 @@ export interface SignupSource {
   fbclid?: string;
   referrer?: string;
   landing_path?: string;
+  team_size?: string;
 }
 
 export interface Workspace {
@@ -35,6 +40,9 @@ export interface Workspace {
   teamSize?: string | null;
   phone?: string | null;
   signup?: SignupSource;
+  brandLogoUrl?: string | null;
+  brandPrimaryColor?: string | null;
+  brandProductName?: string | null;
   createdAt: string;
 }
 
@@ -47,51 +55,4 @@ export interface Member {
   isActive: boolean;
   mustChangePassword: boolean;
   createdAt: string;
-}
-
-export interface AccountSession {
-  uid: string;
-  workspaceId: string;
-}
-
-export class AccountError extends Error {
-  constructor(
-    public code: "email_exists" | "invalid_credentials" | "weak_password" | "not_found" | "disabled" | "unavailable",
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-export interface AccountsBackend {
-  readonly kind: "firebase" | "local";
-  // Creates the auth user, the workspace and the owner member.
-  createWorkspace(input: {
-    email: string;
-    password: string;
-    fullName: string;
-    workspaceName: string;
-    teamSize?: string | null;
-    phone?: string | null;
-    signup?: SignupSource;
-  }): Promise<{ workspace: Workspace; member: Member }>;
-  // Adds a login to an existing workspace (admin "Add person").
-  createMember(input: {
-    workspaceId: string;
-    email: string;
-    password: string;
-    fullName: string;
-    role: Role;
-  }): Promise<Member>;
-  // Checks the password and returns a session token for the cookie.
-  signIn(email: string, password: string): Promise<{ token: string; member: Member; maxAgeSeconds: number }>;
-  verifySession(token: string): Promise<AccountSession | null>;
-  revokeSession(token: string): Promise<void>;
-  setPassword(uid: string, password: string): Promise<void>;
-  setMemberActive(uid: string, active: boolean): Promise<void>;
-  updateMember(uid: string, patch: Partial<Pick<Member, "fullName" | "role" | "mustChangePassword">>): Promise<void>;
-  getWorkspace(id: string): Promise<Workspace | null>;
-  updateWorkspace(id: string, patch: Partial<Omit<Workspace, "id" | "createdAt">>): Promise<void>;
-  listMembers(workspaceId: string): Promise<Member[]>;
-  getMember(uid: string): Promise<Member | null>;
 }

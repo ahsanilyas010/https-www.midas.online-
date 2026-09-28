@@ -1,12 +1,13 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { accounts } from "./index";
+import { createServerClient } from "@supabase/ssr";
+import type { RealDatabase } from "@/lib/supabase/real-types";
+import { createServiceClient } from "@/lib/supabase/service";
 import { workspaceStore } from "@/lib/demo/workspace";
-import type { Member, Workspace } from "./types";
 import type { DemoStore } from "@/lib/demo/store";
-
-export const SESSION_COOKIE = "leadcallient_session";
+import type { Member, Workspace } from "./types";
+import { workspaceFromRow, memberFromProfile } from "./adapters";
 
 export interface WorkspaceContext {
   workspace: Workspace;
@@ -15,33 +16,61 @@ export interface WorkspaceContext {
   store: DemoStore;
 }
 
-// The signed-in customer's workspace for this request, or null for demo
-// visitors and signed-out users. Cached per request.
+// Cheap, network-free check for whether a real Supabase Auth session
+// cookie is present, independent of the sales-demo's leadcallient_demo_user
+// cookie. Used to skip the real-identity lookup entirely for demo-only
+// visitors, even on a deployment where Supabase env vars are configured —
+// and to detect "signed in" in src/middleware.ts and the marketing header
+// without needing a network round trip there either.
+export function hasRealSessionCookie(cookieStore: { getAll(): { name: string }[] }): boolean {
+  return cookieStore.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
+}
+
+// The signed-in real customer's workspace for this request, or null for
+// sales-demo visitors and signed-out users. Cached per request.
+//
+// Was Firebase + Firestore; now reads the real Supabase Auth session and
+// the real workspaces/profiles tables, then hands back the exact same
+// {workspace, member, members, store} shape every existing caller
+// (src/lib/supabase/server.ts, the People/Billing pages, users.ts,
+// deactivate.ts, ...) already expects — the in-memory `store` still backs
+// every CRM feature that hasn't moved to real Postgres in its own phase
+// yet, same as it did when identity lived in Firestore.
 export const getWorkspaceContext = cache(async (): Promise<WorkspaceContext | null> => {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const backend = accounts();
-  const session = await backend.verifySession(token);
-  if (!session) return null;
-  const [workspace, members] = await Promise.all([backend.getWorkspace(session.workspaceId), backend.listMembers(session.workspaceId)]);
-  const member = members.find((m) => m.uid === session.uid);
-  if (!workspace || !member) return null;
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
+
+  const cookieStore = await cookies();
+  if (!hasRealSessionCookie(cookieStore)) return null;
+
+  const supabase = createServerClient<RealDatabase>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (!profile) return null;
+
+  // Full workspace row + full roster via the service role: mirrors how
+  // this worked under Firestore (no RLS at all there), and several callers
+  // (seat counting, the owner check, the People page) need every member
+  // regardless of the signed-in member's own role.
+  const admin = createServiceClient();
+  const [{ data: workspaceRow }, { data: profileRows }] = await Promise.all([
+    admin.from("workspaces").select("*").eq("id", profile.workspace_id).maybeSingle(),
+    admin.from("profiles").select("*").eq("workspace_id", profile.workspace_id),
+  ]);
+  if (!workspaceRow) return null;
+
+  const workspace = workspaceFromRow(workspaceRow);
+  const members = (profileRows ?? []).map(memberFromProfile);
+  const member = members.find((m) => m.uid === user.id);
+  if (!member) return null;
+
   return { workspace, member, members, store: workspaceStore(workspace, members) };
 });
-
-export async function setSessionCookie(token: string, maxAgeSeconds: number) {
-  (await cookies()).set(SESSION_COOKIE, token, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: maxAgeSeconds,
-  });
-}
-
-export async function clearSessionCookie() {
-  const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) await accounts().revokeSession(token).catch(() => {});
-  jar.delete(SESSION_COOKIE);
-}

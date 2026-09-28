@@ -71,46 +71,55 @@ npm run dev
 
 Open http://localhost:3000.
 
-## Sign-ups, Firebase and Stripe
+## Sign-ups, Supabase and Stripe
 
 Visitors can create their own workspace at **/signup** (the target for ad
 campaigns). A new workspace gets **3 agents free**; admins, ops managers,
-team leads, QA and client logins are always free. Adding a 4th agent sends
-the admin to **Plan & billing** (`/admin/billing`), where they choose seats
-and pay by card on Stripe's hosted checkout.
+team leads, QA and client logins are always free. Signing up drops them
+into a short onboarding wizard (**/onboarding**: brand, first campaign,
+connect Twilio, upload data, invite your team) before they reach the app.
+Adding a 4th agent sends the admin to **Plan & billing** (`/admin/billing`),
+where they choose seats and pay by card on Stripe's hosted checkout.
 
 | Piece | Where | Switched on by |
 |---|---|---|
-| Logins, workspaces, plans, people | Firebase Auth + Firestore (`src/lib/accounts`) | `FIREBASE_*` env vars |
+| Logins, workspaces, onboarding, branding, platform admin | Supabase Auth + Postgres (`supabase/migrations`, `src/lib/accounts`, `src/app/onboarding`, `src/app/(platform)`) | `NEXT_PUBLIC_SUPABASE_*` / `SUPABASE_SERVICE_ROLE_KEY` |
 | Card payments, subscriptions, invoices | Stripe Checkout + customer portal (`src/lib/billing`) | `STRIPE_*` env vars |
 | Ad tracking | Meta Pixel (`MARKETING.metaPixelId` in `src/lib/brand.ts`) | the pixel ID |
 | Free agent limit | `src/lib/plan.ts` | edit the file (prices live only in Stripe) |
 
-Without the Firebase variables, sign-ups are kept in server memory (fine
-for trying the flow on a preview, not for real customers). Without Stripe,
-**Plan & billing** offers a no-payment "preview upgrade" while accounts are
-in memory, and a "contact us" note once Firebase is connected.
+**Current limit (Phase 1):** logins, workspaces, profiles, campaigns
+(skeleton), branding and Twilio credential storage are real, RLS-isolated
+Postgres tables. The rest of the CRM a workspace uses day to day — leads,
+calls, attendance, QA, the dialer — still lives in the same in-memory,
+per-workspace store the sales demo uses (`src/lib/demo`), keyed off the
+real Supabase identity instead of Firebase. Each of those features moves to
+real Postgres in its own later phase (see the project's phased build plan);
+nothing about today's demo or a real signup's day-to-day functionality
+changed in Phase 1 — only what sits underneath the login itself.
 
-**Current limit:** logins, workspaces, plans and people are stored in
-Firebase, but the CRM records a workspace creates (campaigns, leads, calls,
-attendance…) are still held in server memory, like the demo. Moving them
-to Firestore is the next phase and should land before real customers
-start working in the app.
-
-### Firebase setup
-1. Create a project at console.firebase.google.com.
-2. **Authentication → Sign-in method:** enable **Email/Password**.
-3. **Firestore Database:** create it in production mode. The app only
-   accesses Firestore from the server with a service account, so the
-   default "deny all" client rules are correct.
-4. **Project settings → Service accounts → Generate new private key.** From
-   the JSON: `project_id` → `FIREBASE_PROJECT_ID`, `client_email` →
-   `FIREBASE_CLIENT_EMAIL`, `private_key` → `FIREBASE_PRIVATE_KEY`.
-5. **Project settings → General → Web API key** → `FIREBASE_WEB_API_KEY`.
-
-Firestore collections: `workspaces/{id}` (name, plan, agentSeats,
-billing, sign-up source incl. utm/fbclid) and `members/{uid}` (workspace,
-role, name, active).
+### Supabase setup
+1. Create a project at supabase.com (or run `supabase start` locally with
+   the Supabase CLI).
+2. **Project Settings → API**: copy the URL and anon key into
+   `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the
+   `service_role` key into `SUPABASE_SERVICE_ROLE_KEY`.
+3. **Database → Extensions**: enable **Supabase Vault** (`supabase_vault`)
+   before running the migrations — `supabase/migrations/00000000000042_lead_shells_and_twilio.sql`
+   depends on it to store Twilio credentials encrypted.
+4. `supabase link --project-ref <ref>` then `supabase db push` to apply
+   `supabase/migrations` (the pre-Phase-1 single-tenant migrations live in
+   `supabase/migrations_legacy_reference/` and are never applied).
+5. Set `PLATFORM_ADMIN_EMAILS`, `ASSORTED_ADMIN_EMAIL`/`_PASSWORD`, and
+   optionally `TWILIO_ACCOUNT_SID`/`_AUTH_TOKEN` and `DEMO_ALLOWED_NUMBERS`
+   in `.env`, then run `npm run seed` to create the `assorted` and `demo`
+   workspaces. Platform admins must already exist as Supabase Auth users
+   (invite them from the Dashboard first) — the seed script attaches the
+   `platform_admins` row, it doesn't create their login.
+6. Run `npm run test:rls` against that project (staging/disposable only —
+   see the script's header comment) to prove every RLS policy.
+7. **Authentication → Email Templates / SMTP**: configure a sender so the
+   onboarding wizard's "invite your team" step can actually deliver email.
 
 ### Stripe setup
 1. **Product catalogue → Add product** "LeadCallient agent seat", recurring
@@ -129,8 +138,9 @@ role, name, active).
 ## Deploy to Vercel
 
 1. Import this repository in Vercel (framework: Next.js; defaults are fine).
-2. The demo needs no environment variables. For real sign-ups and payments,
-   add the Firebase and Stripe variables from `.env.example` (see above).
+2. The sales demo needs no environment variables. For real sign-ups and
+   payments, add the Supabase and Stripe variables from `.env.example`
+   (see above).
 3. Add your domain under **Project → Settings → Domains**.
 
 ### How demo data behaves when hosted
@@ -165,7 +175,9 @@ yet: the demo simulates the provider side.
 
 ## Notes
 
-- `supabase/migrations` holds the database schema of the original app, for
-  reference only. The demo doesn't use it.
-- `supabase/migrations/00000000000036_zoom_integration.sql` sketches the
-  tables the Zoom feature would need in a real deployment.
+- `supabase/migrations` is the real, applied multi-tenant schema (Phase 1:
+  workspaces, platform_admins, profiles, teams, clients, campaigns,
+  audit_log, Twilio credential storage, lead/lead_batch shells) — see
+  "Supabase setup" above. `supabase/migrations_legacy_reference/` holds the
+  single-tenant schema of the original app, kept only as a naming/pattern
+  reference; it's never applied.

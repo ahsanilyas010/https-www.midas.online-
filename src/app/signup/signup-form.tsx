@@ -73,7 +73,7 @@ export function SignupForm() {
     if (state.ok && !done.current) {
       done.current = true;
       trackPixel("CompleteRegistration", { content_name: "Free workspace", status: true });
-      router.push("/start");
+      router.push("/onboarding");
     }
   }, [state.ok, router]);
 

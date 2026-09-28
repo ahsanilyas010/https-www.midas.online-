@@ -62,6 +62,12 @@ export const PRIMARY_NAV: NavItem[] = [
   ...ADMIN_NAV.slice(1),
 ];
 
+// NOTE: these role strings (here and in ADMIN_NAV above) are the
+// legacy/demo schema's app_role values (src/lib/supabase/types.ts), used
+// by every pre-existing CRM page and the sales demo. Phase 1's new real
+// Postgres schema (src/lib/supabase/real-types.ts) uses the spec's exact
+// names (qa_analyst, client) instead — that's a separate identity/
+// onboarding surface, not this nav.
 export function navFor(role: AppRole): NavItem[] {
   return PRIMARY_NAV.filter((item) => item.roles.includes(role));
 }

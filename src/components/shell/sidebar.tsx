@@ -65,7 +65,23 @@ const ICON_GRADIENT: Record<NavIconName, string> = {
   CreditCard: "from-[var(--gold)] to-[#f59e0b]",
 };
 
-export function Sidebar({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
+export interface SidebarBranding {
+  logoUrl: string | null;
+  productName: string | null;
+}
+
+export function Sidebar({
+  items,
+  onNavigate,
+  branding,
+}: {
+  items: NavItem[];
+  onNavigate?: () => void;
+  // Set for a real workspace that's configured its own branding
+  // (src/app/onboarding/brand); falls back to the app's default BRAND
+  // wordmark otherwise (the sales demo, or a workspace that skipped it).
+  branding?: SidebarBranding;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -86,13 +102,18 @@ export function Sidebar({ items, onNavigate }: { items: NavItem[]; onNavigate?: 
 
         <Link
           href="/"
-          title={`${BRAND.productName} home`}
+          title={`${branding?.productName || BRAND.productName} home`}
           className="relative flex h-14 items-center gap-2.5 border-b border-white/10 px-4 transition-colors hover:bg-white/[0.04]"
         >
-          <BrandMark size={28} />
+          {branding?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={branding.logoUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg object-contain" />
+          ) : (
+            <BrandMark size={28} />
+          )}
           {!collapsed && (
             <div className="min-w-0 leading-tight">
-              <div className="truncate font-display text-sm font-semibold">{BRAND.productName}</div>
+              <div className="truncate font-display text-sm font-semibold">{branding?.productName || BRAND.productName}</div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-gold-soft/80">Contact centre</div>
             </div>
           )}

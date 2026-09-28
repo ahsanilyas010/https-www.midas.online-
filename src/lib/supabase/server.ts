@@ -2,25 +2,29 @@ import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { createDemoClient } from "@/lib/demo/client";
-import { clearSessionCookie, getWorkspaceContext } from "@/lib/accounts/session";
+import { getWorkspaceContext } from "@/lib/accounts/session";
 
 // Server Component / Server Action / Route Handler client.
 //
-// DEMO BUILD: there is no database connection. This returns an in-memory
-// client (src/lib/demo) that implements the same query-builder API over a
-// seeded dataset, so every page and action keeps its original Supabase
-// code. The signed-in demo user comes from the `leadcallient_demo_user` cookie.
+// Two audiences share this one function:
+//  - A real, signed-up workspace (identity now lives in real Postgres —
+//    see src/lib/accounts/session.ts) gets the in-memory demo client
+//    scoped to their own workspace's store, so every existing CRM page and
+//    action (campaigns, leads, calls, attendance, QA, dialer, ...) keeps
+//    working exactly as it does today. Those features move to real
+//    Postgres one at a time, in their own later phases — not in Phase 1.
+//  - Everyone else (a sales-demo persona cookie, or no session at all)
+//    gets the shared global demo dataset.
 //
-// A signed-in customer (a real sign-up, see src/lib/accounts) gets the same
-// client over their own workspace's data instead of the demo data.
+// Phase 1's own new surfaces (auth/identity, onboarding, branding,
+// platform admin) do NOT use this function — they use the real,
+// RLS-governed client in src/lib/supabase/real.ts instead.
 export async function createClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = await cookies();
   const wsCtx = await getWorkspaceContext();
 
   const client = createDemoClient({
-    workspace: wsCtx
-      ? { store: wsCtx.store, userId: wsCtx.member.uid, email: wsCtx.member.email, onSignOut: clearSessionCookie }
-      : undefined,
+    workspace: wsCtx ? { store: wsCtx.store, userId: wsCtx.member.uid, email: wsCtx.member.email } : undefined,
     jar: {
       get: (name) => cookieStore.get(name)?.value,
       set: (name, value) => {

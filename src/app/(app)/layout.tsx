@@ -59,6 +59,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .tables.profiles.filter((p) => p.is_active)
         .map((p) => ({ id: p.id as string, name: p.full_name as string, role: p.role as string }));
 
+  const branding = ws
+    ? { logoUrl: ws.workspace.brandLogoUrl ?? null, productName: ws.workspace.brandProductName ?? null }
+    : undefined;
+
   return (
     <AppChrome
       profile={profile}
@@ -68,6 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       demoAccounts={demoAccounts}
       planInfo={planInfo}
       dialer={dialer}
+      branding={branding}
     >
       {children}
     </AppChrome>

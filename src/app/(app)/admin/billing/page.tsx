@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, CheckCircle2, Sparkles, Users } from "lucide-react";
 import { requireProfile } from "@/lib/auth/current-profile";
-import { accounts } from "@/lib/accounts";
 import { getWorkspaceContext } from "@/lib/accounts/session";
 import { activeAgentCount } from "@/lib/accounts/limits";
 import { stripeConfigured } from "@/lib/billing/stripe";
@@ -45,7 +44,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const used = activeAgentCount(ws.store);
   const pct = Math.min(100, Math.round((used / workspace.agentSeats) * 100));
   const paid = workspace.plan === "paid";
-  const mode = stripeConfigured() ? "stripe" : accounts().kind === "local" ? "simulate" : "offline";
+  // "simulate" (a Stripe-less preview upgrade) no longer applies — real
+  // accounts always live in Supabase now, so an unconfigured deployment is
+  // just "offline" rather than a special in-memory-only mode.
+  const mode = stripeConfigured() ? "stripe" : "offline";
 
   return (
     <div className="space-y-4 p-4">

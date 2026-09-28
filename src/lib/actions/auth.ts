@@ -1,11 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { accounts, AccountError } from "@/lib/accounts";
-import { getWorkspaceContext, setSessionCookie } from "@/lib/accounts/session";
+import { createRealClient } from "@/lib/supabase/real";
+import { checkRealRateLimit } from "@/lib/rate-limit";
+import { DEMO_COOKIE } from "@/lib/demo/client";
 
 function safeNext(next: string) {
   return next.startsWith("/") && !next.startsWith("//") ? next : "/start";
@@ -27,39 +26,18 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
 
   const hdrsForLimit = await headers();
   const ipForLimit = hdrsForLimit.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const allowed = await checkRateLimit("login", `${ipForLimit}:${email.toLowerCase()}`, 10, 300);
+  const allowed = await checkRealRateLimit("login", `${ipForLimit}:${email.toLowerCase()}`, 10, 300);
   if (!allowed) {
     return { error: "Too many attempts. Wait a few minutes and try again." };
   }
 
-  // Customer accounts first (sign-ups and the people they add), then the
-  // demo logins.
-  try {
-    const session = await accounts().signIn(email, password);
-    await setSessionCookie(session.token, session.maxAgeSeconds);
-    redirect(session.member.mustChangePassword ? "/change-password" : safeNext(next));
-  } catch (e) {
-    if (e instanceof AccountError && (e.code === "disabled" || e.code === "unavailable")) {
-      return { error: e.message, email };
-    }
-    if (!(e instanceof AccountError)) throw e; // includes redirect()
-  }
-
-  const supabase = await createClient();
+  const supabase = await createRealClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     // Deliberately generic — don't reveal whether the account exists.
     return { error: "Incorrect email or password.", email };
   }
-
-  const hdrs = await headers();
-  const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-
-  await supabase
-    .from("profiles")
-    .update({ last_login_at: new Date().toISOString(), last_login_ip: ip, failed_login_count: 0 })
-    .eq("id", data.user.id);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -70,9 +48,14 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   redirect(profile?.must_change_password ? "/change-password" : safeNext(next));
 }
 
+// Shared by every signed-in header (Header calls this regardless of
+// whether the session is a real customer or a sales-demo persona), so it
+// clears both: a real Supabase Auth session, and the demo cookie.
 export async function signOut() {
-  const supabase = await createClient();
+  const supabase = await createRealClient();
   await supabase.auth.signOut();
+  const jar = await cookies();
+  jar.delete(DEMO_COOKIE);
   redirect("/");
 }
 
@@ -87,44 +70,28 @@ export async function changePassword(_prev: ActionResult, formData: FormData): P
     return { error: "Passwords don't match." };
   }
 
-  const supabase = await createClient();
+  const supabase = await createRealClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?signed_out=1");
 
-  const ws = await getWorkspaceContext();
-  if (ws) {
-    try {
-      await accounts().setPassword(user!.id, password);
-      await accounts().updateMember(user!.id, { mustChangePassword: false });
-    } catch (e) {
-      return { error: e instanceof AccountError ? e.message : "Could not change the password." };
-    }
-  } else {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      return { error: error.message };
-    }
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: error.message };
   }
 
   const { error: profileError } = await supabase
     .from("profiles")
     .update({ must_change_password: false, password_set_at: new Date().toISOString() })
-    .eq("id", user!.id);
+    .eq("id", user.id);
 
-  // The auth password already changed above — don't leave the user
-  // stuck on this screen with no explanation if the profile-side update
-  // is rejected (e.g. by guard_profile_self_update()'s RLS trigger).
+  // The auth password already changed above — don't leave the user stuck
+  // on this screen with no explanation if the profile-side update is
+  // rejected (e.g. by guard_profile_self_update()'s RLS trigger).
   if (profileError) {
     return { error: `Password changed, but couldn't finish sign-in setup: ${profileError.message}` };
   }
-
-  await supabase.from("credential_events").insert({
-    user_id: user!.id,
-    actor_id: user!.id,
-    event: "changed_by_user",
-  });
 
   redirect("/start");
 }
