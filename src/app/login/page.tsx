@@ -7,13 +7,13 @@ import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
-import { FREE_AGENT_SEATS } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { getStore } from "@/lib/demo/store";
 
 export const metadata: Metadata = {
   title: "Sign in or try the live demo",
   description:
-    "Explore CallMilalo with realistic sample data: pick a role (admin, manager, team lead, agent, QA or client) and start dialling, booking Zoom meetings and watching the live floor.",
+    "Explore LeadCallient with realistic sample data: pick a role (admin, manager, team lead, agent, QA or client) and start dialling, booking Zoom meetings and watching the live floor.",
   alternates: { canonical: "/login" },
   openGraph: {
     type: "website",

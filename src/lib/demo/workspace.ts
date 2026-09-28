@@ -13,7 +13,7 @@ import type { Member, Workspace } from "@/lib/accounts/types";
 // Firestore in the next phase. Until then they reset when the server
 // restarts.
 
-const KEY = "__callmilaloWorkspaceStores";
+const KEY = "__leadcallientWorkspaceStores";
 
 function registry(): Map<string, DemoStore> {
   const g = globalThis as unknown as Record<string, Map<string, DemoStore> | undefined>;

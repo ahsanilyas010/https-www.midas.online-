@@ -39,7 +39,7 @@ import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 import { Reveal } from "@/components/landing/reveal";
 import { DialerShowcase } from "@/components/landing/dialer-showcase";
 import { SiteHeader, SiteFooter, demoCta } from "@/components/landing/site-chrome";
-import { PRICING } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { jsonLdHtml, organizationJsonLd } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
@@ -79,7 +79,7 @@ const ROLES: { icon: LucideIcon; title: string; text: string }[] = [
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Do we have to switch phone systems?",
-    a: "No. CallMilalo connects to the dialer you already subscribe to: Zoom Phone, Dialpad, Google Voice, Aircall, RingCentral, Twilio or Vonage. Agents use one softphone and one Call button whichever you pick, and you can switch provider from the Integrations page.",
+    a: "No. LeadCallient connects to the dialer you already subscribe to: Zoom Phone, Dialpad, Google Voice, Aircall, RingCentral, Twilio or Vonage. Agents use one softphone and one Call button whichever you pick, and you can switch provider from the Integrations page.",
   },
   {
     q: "How does the Zoom integration work?",
@@ -94,8 +94,8 @@ const FAQ: { q: string; a: string }[] = [
     a: "Yes. Each client gets its own read-only login showing their funnel, call outcomes and agent activity, with downloadable PDF reports. Agents can be shown by name or anonymised.",
   },
   {
-    q: "How much does it cost?",
-    a: `The first ${PRICING.freeUsers} agents are free on every workspace, and admins, managers, team leads and QA are always free. After that it's $${PRICING.tiers[0].perUser} per agent per month, dropping to $${PRICING.tiers[1].perUser} from agent ${PRICING.tiers[0].upTo + 1}. Call minutes are billed by your own dialer provider, not by CallMilalo.`,
+    q: "How much does it cost to start?",
+    a: `Every workspace starts free with ${FREE_AGENT_SEATS} agents, and admins, managers, team leads and QA are always free. When you need more agents, your admin adds seats from Plan & billing. Call minutes are billed by your own dialer provider, not by LeadCallient.`,
   },
   {
     q: "Is the demo using real data?",
@@ -123,7 +123,7 @@ function HeroMock() {
           <span className="h-2.5 w-2.5 rounded-full bg-[#fb7185]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--gold)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
-          <span className="ml-3 truncate rounded-md bg-white px-2 py-0.5 text-[10px] text-muted ring-1 ring-line">app.callmilalo.com/admin</span>
+          <span className="ml-3 truncate rounded-md bg-white px-2 py-0.5 text-[10px] text-muted ring-1 ring-line">app.leadcallient.com/admin</span>
         </div>
         <div className="grid grid-cols-[3.25rem_1fr]">
           <div className="flex flex-col items-center gap-2 bg-midnight-gradient py-3">
@@ -230,14 +230,6 @@ function structuredData() {
         description: BRAND.seoDescription,
         image: absoluteUrl("/opengraph-image"),
         featureList: FEATURES.map((f) => f.title),
-        offers: {
-          "@type": "AggregateOffer",
-          priceCurrency: PRICING.currency,
-          lowPrice: 0,
-          highPrice: PRICING.tiers[0].perUser,
-          offerCount: PRICING.tiers.length + 1,
-          url: absoluteUrl("/pricing"),
-        },
         publisher: { "@id": org["@id"] },
       },
       {
@@ -296,7 +288,7 @@ export default async function LandingPage() {
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/65">
-              {[`${PRICING.freeUsers} agents free forever`, "No card needed", "Set up in 2 minutes"].map((t) => (
+              {[`${FREE_AGENT_SEATS} agents free forever`, "No card needed", "Set up in 2 minutes"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5">
                   <Check className="h-4 w-4 text-emerald-300" /> {t}
                 </span>
@@ -604,7 +596,7 @@ export default async function LandingPage() {
         <Reveal>
           <div className="brand-banner mx-auto max-w-5xl px-6 py-14 text-center sm:px-12">
             <div className="relative z-10">
-              <h2 className="font-display text-3xl font-semibold sm:text-4xl">Start with {PRICING.freeUsers} agents, free</h2>
+              <h2 className="font-display text-3xl font-semibold sm:text-4xl">Start with {FREE_AGENT_SEATS} agents, free</h2>
               <p className="mx-auto mt-3 max-w-xl text-white/80">
                 Create your workspace in two minutes. Every feature included, no card needed. Add seats only when your floor grows.
               </p>

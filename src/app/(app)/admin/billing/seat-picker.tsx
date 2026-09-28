@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight, CreditCard, Loader2, Lock, Minus, Plus } from "lucide-react";
-import { formatUsd, monthlyPrice, PRICING } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { openBillingPortal, simulateUpgrade, startCheckout } from "@/lib/actions/billing";
 
 // Choose agent seats, see the monthly price, continue to card payment.
@@ -23,7 +23,6 @@ export function SeatPicker({
   const [pending, start] = useTransition();
   const router = useRouter();
   const clamp = (n: number) => Math.min(Math.max(n, min), max);
-  const price = monthlyPrice(seats);
 
   const go = () =>
     start(async () => {
@@ -45,7 +44,7 @@ export function SeatPicker({
     <div className="rounded-3xl bg-white p-6 ring-1 ring-line sm:p-8">
       <h2 className="font-display text-xl font-semibold text-ink">Add agent seats</h2>
       <p className="mt-1 text-sm text-muted">
-        Your first {PRICING.freeUsers} agents stay free. Admins, managers, team leads, QA and client logins never cost anything.
+        Your first {FREE_AGENT_SEATS} agents stay free. Admins, managers, team leads, QA and client logins never cost anything.
       </p>
 
       <div className="mt-6 flex items-center gap-4">
@@ -81,11 +80,11 @@ export function SeatPicker({
         </div>
         <div>
           <div className="font-display text-3xl font-semibold tabular text-ink">
-            {formatUsd(price)}
-            <span className="text-sm font-normal text-muted"> / month</span>
+            {seats}
+            <span className="text-sm font-normal text-muted"> agent seats</span>
           </div>
           <div className="text-xs text-muted">
-            {seats} agents · {PRICING.freeUsers} free + {seats - PRICING.freeUsers} paid
+            {seats} agents · {FREE_AGENT_SEATS} free + {seats - FREE_AGENT_SEATS} paid
           </div>
         </div>
       </div>

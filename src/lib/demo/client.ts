@@ -5,7 +5,7 @@ import { DEMO_PASSWORD } from "./seed";
 import { runRpc } from "./rpc";
 import type { DemoAuthContext } from "./rls";
 
-export const DEMO_COOKIE = "callmilalo_demo_user";
+export const DEMO_COOKIE = "leadcallient_demo_user";
 
 export interface CookieJar {
   get(name: string): string | undefined;
@@ -35,7 +35,7 @@ export interface WorkspaceBinding {
 }
 
 function emailFor(userId: string) {
-  return (getStore().tables.demo_auth.find((a) => a.id === userId)?.email as string) ?? `${userId}@callmilalo.demo`;
+  return (getStore().tables.demo_auth.find((a) => a.id === userId)?.email as string) ?? `${userId}@leadcallient.demo`;
 }
 
 const noopChannel = {

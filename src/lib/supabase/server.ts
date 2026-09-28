@@ -9,7 +9,7 @@ import { clearSessionCookie, getWorkspaceContext } from "@/lib/accounts/session"
 // DEMO BUILD: there is no database connection. This returns an in-memory
 // client (src/lib/demo) that implements the same query-builder API over a
 // seeded dataset, so every page and action keeps its original Supabase
-// code. The signed-in demo user comes from the `callmilalo_demo_user` cookie.
+// code. The signed-in demo user comes from the `leadcallient_demo_user` cookie.
 //
 // A signed-in customer (a real sign-up, see src/lib/accounts) gets the same
 // client over their own workspace's data instead of the demo data.

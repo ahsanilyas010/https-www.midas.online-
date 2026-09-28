@@ -1,6 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
-import { FREE_AGENT_SEATS } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import type { Workspace } from "@/lib/accounts/types";
 
 // Stripe handles card entry (hosted Checkout), subscriptions and invoices;
@@ -8,14 +8,13 @@ import type { Workspace } from "@/lib/accounts/types";
 //
 // Set on the deployment:
 //   STRIPE_SECRET_KEY      sk_live_… (or sk_test_… while testing)
-//   STRIPE_PRICE_ID        a recurring, per-seat price with *graduated*
-//                          tiers matching src/lib/pricing.ts:
-//                            1–3 → $0, 4–50 → $10, 51–200 → $8 (per month)
+//   STRIPE_PRICE_ID        a recurring, per-seat monthly price. Use graduated
+//                          tiers with the first 3 seats at $0 so the free
+//                          agents (src/lib/plan.ts) aren't charged.
 //   STRIPE_WEBHOOK_SECRET  whsec_… for /api/billing/webhook
 //
 // The subscription quantity is the workspace's total agent seats (free ones
-// included), so Stripe's tiers produce exactly the price the pricing page
-// shows.
+// included). Prices live only in Stripe and are shown at checkout.
 
 export function stripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);

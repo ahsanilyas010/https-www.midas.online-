@@ -7,13 +7,13 @@ import { MetaPixel } from "@/components/marketing/meta-pixel";
 import { AttributionCapture } from "@/components/marketing/attribution";
 import { SESSION_COOKIE } from "@/lib/accounts/session";
 
-// Header and footer shared by the public pages (landing, pricing, contact).
+// Header and footer shared by the public pages (landing, contact, legal).
 
 // The header's main button: "Start free" for visitors, "Open the app" once
 // signed in (to a workspace or the demo).
 export async function demoCta() {
   const jar = await cookies();
-  const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value || jar.get("callmilalo_demo_user")?.value);
+  const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value || jar.get("leadcallient_demo_user")?.value);
   return {
     signedIn,
     href: signedIn ? "/start" : "/signup",
@@ -27,7 +27,6 @@ const NAV = [
   { href: "/#dialer", label: "Dialer" },
   { href: "/#zoom", label: "Zoom" },
   { href: "/#compliance", label: "Compliance" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -90,7 +89,6 @@ const FOOTER_COLUMNS = [
   {
     title: "Company",
     links: [
-      { href: "/pricing", label: "Pricing" },
       { href: "/contact", label: "Contact us" },
       { href: "/#roles", label: "Roles" },
       { href: "/#faq", label: "FAQ" },

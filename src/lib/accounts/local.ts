@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
-import { FREE_AGENT_SEATS } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { AccountError, type AccountsBackend, type Member, type Workspace } from "./types";
 
 // In-memory accounts, used until Firebase is configured. Lives on
@@ -16,7 +16,7 @@ interface LocalState {
   sessions: Map<string, { uid: string; workspaceId: string; expires: number }>;
 }
 
-const KEY = "__callmilaloLocalAccounts";
+const KEY = "__leadcallientLocalAccounts";
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
 
 function state(): LocalState {
