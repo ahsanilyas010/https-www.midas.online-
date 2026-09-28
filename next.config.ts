@@ -28,7 +28,9 @@ const nextConfig: NextConfig = {
       { source: "/signin", destination: "/login", permanent: true },
       { source: "/sign-in", destination: "/login", permanent: true },
       { source: "/features", destination: "/#features", permanent: true },
-      { source: "/plans", destination: "/pricing", permanent: true },
+      // The pricing page was removed; send old links to the contact page.
+      { source: "/pricing", destination: "/contact", permanent: false },
+      { source: "/plans", destination: "/contact", permanent: false },
       { source: "/contact-us", destination: "/contact", permanent: true },
     ];
   },

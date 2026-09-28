@@ -6,7 +6,7 @@ import { accounts } from "@/lib/accounts";
 import { getWorkspaceContext } from "@/lib/accounts/session";
 import { activeAgentCount } from "@/lib/accounts/limits";
 import { createCheckoutSession, createPortalSession, stripeConfigured } from "@/lib/billing/stripe";
-import { FREE_AGENT_SEATS, SELF_SERVE_MAX_USERS } from "@/lib/pricing";
+import { FREE_AGENT_SEATS, SELF_SERVE_MAX_AGENTS } from "@/lib/plan";
 
 async function ownerContext() {
   const ws = await getWorkspaceContext();
@@ -28,7 +28,7 @@ export async function startCheckout(seats: number): Promise<{ url?: string; erro
   const n = Math.floor(seats);
   const min = Math.max(FREE_AGENT_SEATS + 1, activeAgentCount(ws.store));
   if (!Number.isFinite(n) || n < min) return { error: `Choose at least ${min} agent seats.` };
-  if (n > SELF_SERVE_MAX_USERS) return { error: `For more than ${SELF_SERVE_MAX_USERS} agents, contact us for volume pricing.` };
+  if (n > SELF_SERVE_MAX_AGENTS) return { error: `For more than ${SELF_SERVE_MAX_AGENTS} agents, contact us for volume pricing.` };
   if (!stripeConfigured()) return { error: "Online payments aren't switched on yet. Contact us to upgrade." };
   try {
     return { url: await createCheckoutSession({ workspace: ws.workspace, email: ws.member.email, seats: n, origin: await origin() }) };
@@ -59,7 +59,7 @@ export async function simulateUpgrade(seats: number): Promise<{ error?: string }
   if (stripeConfigured() || accounts().kind !== "local") return { error: "Not available." };
   const ctx = await ownerContext();
   if ("error" in ctx) return { error: ctx.error };
-  const n = Math.min(Math.max(Math.floor(seats), FREE_AGENT_SEATS + 1), SELF_SERVE_MAX_USERS);
+  const n = Math.min(Math.max(Math.floor(seats), FREE_AGENT_SEATS + 1), SELF_SERVE_MAX_AGENTS);
   await accounts().updateWorkspace(ctx.ws.workspace.id, { plan: "paid", agentSeats: n, billingStatus: "active" });
   revalidatePath("/", "layout");
   return {};

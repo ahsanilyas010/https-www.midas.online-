@@ -6,7 +6,7 @@ import { accounts } from "@/lib/accounts";
 import { getWorkspaceContext } from "@/lib/accounts/session";
 import { activeAgentCount } from "@/lib/accounts/limits";
 import { stripeConfigured } from "@/lib/billing/stripe";
-import { FREE_AGENT_SEATS, SELF_SERVE_MAX_USERS, formatUsd, monthlyPrice } from "@/lib/pricing";
+import { FREE_AGENT_SEATS, SELF_SERVE_MAX_AGENTS } from "@/lib/plan";
 import { ManageBillingButton, SeatPicker } from "./seat-picker";
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -31,8 +31,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-xl bg-gold-gradient px-5 py-2.5 text-sm font-semibold text-ink">
                 Start free <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/pricing" className="inline-flex items-center rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold ring-1 ring-white/25">
-                See pricing
+              <Link href="/contact" className="inline-flex items-center rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold ring-1 ring-white/25">
+                Contact us
               </Link>
             </div>
           </div>
@@ -64,7 +64,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <h1 className="mt-2 font-display text-3xl font-semibold text-ink">{paid ? "Paid" : "Free"}</h1>
           <p className="mt-1 text-sm text-muted">
             {paid
-              ? `${workspace.agentSeats} agent seats · ${formatUsd(monthlyPrice(workspace.agentSeats))} / month`
+              ? `${workspace.agentSeats} agent seats, billed monthly`
               : `${FREE_AGENT_SEATS} agents included, free forever`}
           </p>
           {workspace.billingStatus === "past_due" && (
@@ -108,7 +108,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         ) : (
           <SeatPicker
             min={Math.max(FREE_AGENT_SEATS + 1, used, paid ? workspace.agentSeats : 0)}
-            max={SELF_SERVE_MAX_USERS}
+            max={SELF_SERVE_MAX_AGENTS}
             initial={Math.max(10, used + 1)}
             mode={mode}
           />

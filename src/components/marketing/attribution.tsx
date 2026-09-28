@@ -7,7 +7,7 @@ import { useEffect } from "react";
 // page) so the sign-up form can save them with the new workspace even if
 // the visitor browses around first.
 
-const KEY = "callmilalo_attribution";
+const KEY = "leadcallient_attribution";
 const PARAMS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"] as const;
 
 export type Attribution = Partial<Record<(typeof PARAMS)[number] | "referrer" | "landing_path", string>>;

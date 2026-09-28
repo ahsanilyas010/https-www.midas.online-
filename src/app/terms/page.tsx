@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/legal/legal-page";
 import { BRAND, COMPANY } from "@/lib/brand";
-import { PRICING } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -29,8 +29,8 @@ export default function TermsPage() {
       <h2>Plans and payment</h2>
       <ul>
         <li>
-          Every workspace includes {PRICING.freeUsers} agent seats free. Additional agent seats are billed monthly in advance at the prices on
-          our <Link href="/pricing" className="text-brand-blue underline">pricing page</Link>, through our payment provider, Stripe.
+          Every workspace includes {FREE_AGENT_SEATS} agent seats free. Additional agent seats are billed monthly in advance at the price shown
+          when you upgrade, through our payment provider, Stripe.
         </li>
         <li>You can change or cancel seats at any time; changes are prorated on the next invoice. Fees already paid are non-refundable except where the law requires.</li>
         <li>Call minutes, phone numbers and your dialer subscription are billed by your telephony provider, not by us.</li>

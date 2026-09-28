@@ -5,17 +5,17 @@ import { BrandMark } from "@/components/brand/mark";
 import { MetaPixel } from "@/components/marketing/meta-pixel";
 import { AttributionCapture } from "@/components/marketing/attribution";
 import { BRAND, COMPANY } from "@/lib/brand";
-import { PRICING } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = {
   title: "Start free: 3 agents on us",
-  description: `Create your ${BRAND.productName} workspace in two minutes. ${PRICING.freeUsers} agents free forever, every feature included, no card needed. Bring your own dialer and Zoom.`,
+  description: `Create your ${BRAND.productName} workspace in two minutes. ${FREE_AGENT_SEATS} agents free forever, every feature included, no card needed. Bring your own dialer and Zoom.`,
   alternates: { canonical: "/signup" },
   openGraph: {
     type: "website",
     siteName: BRAND.productName,
-    title: `Start ${BRAND.productName} free: ${PRICING.freeUsers} agents on us`,
+    title: `Start ${BRAND.productName} free: ${FREE_AGENT_SEATS} agents on us`,
     description: "Every feature, no card needed. Set up your call centre in two minutes.",
     url: "/signup",
     images: ["/opengraph-image"],
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 const POINTS = [
-  { icon: Headset, text: `${PRICING.freeUsers} agents free forever, plus unlimited admins, managers and QA` },
+  { icon: Headset, text: `${FREE_AGENT_SEATS} agents free forever, plus unlimited admins, managers and QA` },
   { icon: PhoneCall, text: "Dial with the phone system you already use: Zoom Phone, Dialpad, Aircall and more" },
   { icon: Video, text: "Book Zoom meetings from any call" },
   { icon: ShieldCheck, text: "Compliance, QA and live floor built in" },
@@ -70,7 +70,7 @@ export default function SignupPage() {
           </Link>
           <h1 className="font-display text-3xl font-semibold text-ink sm:text-4xl">Start free</h1>
           <p className="mt-2 text-muted">
-            {PRICING.freeUsers} agents free forever. Every feature, no card needed.
+            {FREE_AGENT_SEATS} agents free forever. Every feature, no card needed.
           </p>
           <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted">
             {["Set up in 2 minutes", "Upgrade only when you grow", "Cancel any time"].map((t) => (

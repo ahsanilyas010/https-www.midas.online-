@@ -1,4 +1,4 @@
-# CallMilalo — interactive demo
+# LeadCallient — interactive demo
 
 A contact-centre CRM and workforce platform, packaged as a **self-contained
 demo** for showing prospects the product with **dummy data only**. No real
@@ -30,7 +30,7 @@ It is a copy of the CallingCRM codebase with four changes:
 
 ## Company
 
-CallMilalo is a product of **Assorted Business LLC** (United States). The
+LeadCallient is a product of **Assorted Business LLC** (United States). The
 company name, address, phone and email live in `COMPANY` in
 `src/lib/brand.ts`; empty fields are hidden, so fill them in there when
 they're ready and they'll appear in the landing-page footer and on the
@@ -48,19 +48,19 @@ sends each role to its home screen).
 ## Demo logins
 
 Pick a role on the login page, or sign in with any account below. **Every
-account uses the same password: `CallMilalo@123`.**
+account uses the same password: `LeadCallient@123`.**
 
 | Role | Email |
 | --- | --- |
-| Super admin | admin@callmilalo.demo |
-| Ops manager | ops@callmilalo.demo |
-| Team lead | teamlead@callmilalo.demo, ayesha@callmilalo.demo |
-| QA | qa@callmilalo.demo |
-| Agent | agent@callmilalo.demo, zara@, hamza@, mariam@, ali@, noor@, saad@, iqra@callmilalo.demo |
-| Client viewer | client@callmilalo.demo |
+| Super admin | admin@leadcallient.demo |
+| Ops manager | ops@leadcallient.demo |
+| Team lead | teamlead@leadcallient.demo, ayesha@leadcallient.demo |
+| QA | qa@leadcallient.demo |
+| Agent | agent@leadcallient.demo, zara@, hamza@, mariam@, ali@, noor@, saad@, iqra@leadcallient.demo |
+| Client viewer | client@leadcallient.demo |
 
 The People page (`/admin/people`) lists every login. Users created there
-also get `CallMilalo@123`.
+also get `LeadCallient@123`.
 
 ## Run locally
 
@@ -84,7 +84,7 @@ and pay by card on Stripe's hosted checkout.
 | Logins, workspaces, plans, people | Firebase Auth + Firestore (`src/lib/accounts`) | `FIREBASE_*` env vars |
 | Card payments, subscriptions, invoices | Stripe Checkout + customer portal (`src/lib/billing`) | `STRIPE_*` env vars |
 | Ad tracking | Meta Pixel (`MARKETING.metaPixelId` in `src/lib/brand.ts`) | the pixel ID |
-| Prices | `src/lib/pricing.ts` | edit the file |
+| Free agent limit | `src/lib/plan.ts` | edit the file (prices live only in Stripe) |
 
 Without the Firebase variables, sign-ups are kept in server memory (fine
 for trying the flow on a preview, not for real customers). Without Stripe,
@@ -113,9 +113,10 @@ billing, sign-up source incl. utm/fbclid) and `members/{uid}` (workspace,
 role, name, active).
 
 ### Stripe setup
-1. **Product catalogue → Add product** "CallMilalo agent seat", recurring
-   monthly, pricing model **Graduated**, per unit: 1–3 → $0, 4–50 → $10,
-   51–200 → $8. Copy the price ID → `STRIPE_PRICE_ID`.
+1. **Product catalogue → Add product** "LeadCallient agent seat", recurring
+   monthly, pricing model **Graduated**, per unit, with seats 1–3 at $0
+   (the free agents) and your chosen price for the rest. Copy the price ID
+   → `STRIPE_PRICE_ID`.
 2. **Developers → API keys** → secret key → `STRIPE_SECRET_KEY`.
 3. **Developers → Webhooks → Add endpoint**
    `https://<your-domain>/api/billing/webhook` with events

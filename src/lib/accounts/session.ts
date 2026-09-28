@@ -6,7 +6,7 @@ import { workspaceStore } from "@/lib/demo/workspace";
 import type { Member, Workspace } from "./types";
 import type { DemoStore } from "@/lib/demo/store";
 
-export const SESSION_COOKIE = "callmilalo_session";
+export const SESSION_COOKIE = "leadcallient_session";
 
 export interface WorkspaceContext {
   workspace: Workspace;

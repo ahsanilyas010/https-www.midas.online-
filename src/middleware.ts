@@ -3,10 +3,10 @@ import { PRIVATE_PATH_PREFIXES } from "@/lib/site";
 
 // DEMO BUILD: sign-in is a cookie naming one of the seeded demo users (set
 // by the login page's persona picker). No Supabase session to refresh.
-const DEMO_COOKIE = "callmilalo_demo_user";
+const DEMO_COOKIE = "leadcallient_demo_user";
 // Customer sign-ins (src/lib/accounts/session.ts). The middleware only checks
 // the cookie is present; pages verify it.
-const SESSION_COOKIE = "callmilalo_session";
+const SESSION_COOKIE = "leadcallient_session";
 const PUBLIC_PATHS = ["/login", "/signup", "/reset-password", "/api/unsubscribe", "/api/leads/inbound", "/api/billing/webhook"];
 
 // The signed-in app is never meant for search results.

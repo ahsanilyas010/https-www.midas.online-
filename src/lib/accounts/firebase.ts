@@ -1,6 +1,6 @@
 import "server-only";
 import type { App } from "firebase-admin/app";
-import { FREE_AGENT_SEATS } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { AccountError, type AccountsBackend, type Member, type Workspace } from "./types";
 
 // Firebase Auth (logins) + Firestore (workspaces and members).
@@ -30,7 +30,7 @@ export function firebaseConfigured(): boolean {
 // configured never load it at all.
 async function app(): Promise<App> {
   const { cert, getApps, initializeApp } = await import("firebase-admin/app");
-  const existing = getApps().find((a) => a.name === "callmilalo");
+  const existing = getApps().find((a) => a.name === "leadcallient");
   if (existing) return existing;
   return initializeApp(
     {
@@ -41,7 +41,7 @@ async function app(): Promise<App> {
         privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
       }),
     },
-    "callmilalo",
+    "leadcallient",
   );
 }
 

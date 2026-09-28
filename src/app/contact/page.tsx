@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Building2, Mail, MapPin, MessageCircle, Phone, PlayCircle, Sparkles, Tag } from "lucide-react";
+import { ArrowRight, Building2, Mail, MapPin, MessageCircle, Phone, PlayCircle, Sparkles } from "lucide-react";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { absoluteUrl, siteUrl } from "@/lib/site";
-import { PRICING } from "@/lib/pricing";
+import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { jsonLdHtml, organizationJsonLd } from "@/lib/structured-data";
 import { SiteFooter, SiteHeader } from "@/components/landing/site-chrome";
 
 export const metadata: Metadata = {
   title: "Contact us",
-  description: `Talk to the ${BRAND.productName} team at ${COMPANY.legalName}, ${companyAddressLine()}. Message us on WhatsApp about pricing, onboarding or connecting your dialer.`,
+  description: `Talk to the ${BRAND.productName} team at ${COMPANY.legalName}, ${companyAddressLine()}. Message us on WhatsApp about plans, onboarding or connecting your dialer.`,
   alternates: { canonical: "/contact" },
   openGraph: {
     type: "website",
@@ -83,7 +83,7 @@ export default function ContactPage() {
               Let&apos;s <span className="text-gold-gradient">talk.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/75">
-              Questions about pricing, onboarding your team or connecting your dialer? Message us on WhatsApp and a real person will reply.
+              Questions about plans, onboarding your team or connecting your dialer? Message us on WhatsApp and a real person will reply.
             </p>
             <div className="mt-8 flex justify-center">
               <WhatsAppButton />
@@ -139,9 +139,8 @@ export default function ContactPage() {
             {/* Next steps */}
             <div className="flex flex-col gap-4">
               {[
-                { href: "/signup", icon: PlayCircle, title: "Start free", text: `${PRICING.freeUsers} agents free, set up in two minutes.` },
+                { href: "/signup", icon: PlayCircle, title: "Start free", text: `${FREE_AGENT_SEATS} agents free, set up in two minutes.` },
                 { href: "/login#demo", icon: Sparkles, title: "Try the live demo", text: "Six roles, sample data, no sign-up." },
-                { href: "/pricing", icon: Tag, title: "See pricing", text: `First ${PRICING.freeUsers} agents free, then $${PRICING.tiers[0].perUser}/agent/month.` },
               ].map(({ href, icon: Icon, title, text }) => (
                 <Link
                   key={href}
