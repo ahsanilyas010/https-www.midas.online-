@@ -511,6 +511,13 @@ export type RealDatabase = {
           started_at: string
           ended_at: string | null
           created_at: string
+          provider_call_sid: string | null
+          direction: "outbound" | "inbound"
+          status: "initiated" | "ringing" | "in-progress" | "completed" | "busy" | "no-answer" | "failed" | "canceled"
+          from_number: string | null
+          to_number: string | null
+          recording_sid: string | null
+          recording_path: string | null
         }
         Insert: {
           id?: string
@@ -523,6 +530,13 @@ export type RealDatabase = {
           started_at?: string
           ended_at?: string | null
           created_at?: string
+          provider_call_sid?: string | null
+          direction?: "outbound" | "inbound"
+          status?: "initiated" | "ringing" | "in-progress" | "completed" | "busy" | "no-answer" | "failed" | "canceled"
+          from_number?: string | null
+          to_number?: string | null
+          recording_sid?: string | null
+          recording_path?: string | null
         }
         Update: {
           id?: string
@@ -535,6 +549,13 @@ export type RealDatabase = {
           started_at?: string
           ended_at?: string | null
           created_at?: string
+          provider_call_sid?: string | null
+          direction?: "outbound" | "inbound"
+          status?: "initiated" | "ringing" | "in-progress" | "completed" | "busy" | "no-answer" | "failed" | "canceled"
+          from_number?: string | null
+          to_number?: string | null
+          recording_sid?: string | null
+          recording_path?: string | null
         }
         Relationships: []
       }
@@ -581,6 +602,12 @@ export type RealDatabase = {
           account_sid: string | null
           auth_token_secret_id: string | null
           status: string
+          twiml_app_sid: string | null
+          caller_id_default: string | null
+          verified_at: string | null
+          last_error: string | null
+          api_key_sid: string | null
+          api_key_secret_id: string | null
           created_at: string
           updated_at: string
         }
@@ -590,6 +617,12 @@ export type RealDatabase = {
           account_sid?: string | null
           auth_token_secret_id?: string | null
           status?: string
+          twiml_app_sid?: string | null
+          caller_id_default?: string | null
+          verified_at?: string | null
+          last_error?: string | null
+          api_key_sid?: string | null
+          api_key_secret_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -599,8 +632,41 @@ export type RealDatabase = {
           account_sid?: string | null
           auth_token_secret_id?: string | null
           status?: string
+          twiml_app_sid?: string | null
+          caller_id_default?: string | null
+          verified_at?: string | null
+          last_error?: string | null
+          api_key_sid?: string | null
+          api_key_secret_id?: string | null
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      twilio_numbers: {
+        Row: {
+          id: string
+          workspace_id: string
+          phone_number: string
+          friendly_name: string | null
+          capabilities: RealJson
+          synced_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          phone_number: string
+          friendly_name?: string | null
+          capabilities?: RealJson
+          synced_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          phone_number?: string
+          friendly_name?: string | null
+          capabilities?: RealJson
+          synced_at?: string
         }
         Relationships: []
       }
@@ -728,6 +794,18 @@ export type RealDatabase = {
       screen_lead_batch: {
         Args: { p_batch_id: string; p_evidence_url: string | null }
         Returns: number
+      }
+      get_twilio_auth_token: {
+        Args: { p_workspace_id: string }
+        Returns: string
+      }
+      set_twilio_api_key: {
+        Args: { p_workspace_id: string; p_api_key_sid: string; p_api_key_secret: string }
+        Returns: undefined
+      }
+      get_twilio_api_key_secret: {
+        Args: { p_workspace_id: string }
+        Returns: string
       }
     }
     Enums: {

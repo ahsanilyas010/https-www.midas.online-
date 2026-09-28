@@ -8,6 +8,7 @@ import { createRealClient } from "@/lib/supabase/real";
 import { createServiceClient } from "@/lib/supabase/service";
 import { activeAgentCount, seatLimitMessage } from "@/lib/workspace/limits";
 import { ingestLeadFile } from "@/lib/actions/lead-upload";
+import { verifyTwilioCredentials } from "@/lib/twilio/verify";
 import type { RealEnums } from "@/lib/supabase/real-types";
 
 export interface OnboardingActionState {
@@ -65,9 +66,8 @@ export async function createFirstCampaign(_prev: OnboardingActionState, formData
   return { ok: true };
 }
 
-// Step 3 — Twilio connect. Storage only in Phase 1: live verification and
-// the "Call button disabled until connected" UX are Phase 3 (see
-// supabase/migrations/00000000000042_lead_shells_and_twilio.sql).
+// Step 3 — Twilio connect. Real verification (a test API call + listing
+// owned numbers) via src/lib/twilio/verify.ts.
 const twilioSchema = z.object({
   account_sid: z.string().trim().min(10, "Enter a valid Account SID.").max(64),
   auth_token: z.string().trim().min(10, "Enter a valid Auth Token.").max(128),
@@ -90,6 +90,9 @@ export async function saveTwilioCredentials(_prev: OnboardingActionState, formDa
     p_auth_token: parsed.data.auth_token,
   });
   if (error) return { error: error.message };
+
+  const verified = await verifyTwilioCredentials(workspace.id, parsed.data.account_sid, parsed.data.auth_token);
+  if (!verified.ok) return { error: verified.error };
 
   const supabase = await createRealClient();
   await advance(supabase, workspace.id, "data");

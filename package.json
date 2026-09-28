@@ -31,6 +31,7 @@
     "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.110.8",
+    "@twilio/voice-sdk": "^2.18.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -47,6 +48,7 @@
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "stripe": "^22.6.2",
+    "twilio": "^6.1.2",
     "tailwind-merge": "^3.6.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
