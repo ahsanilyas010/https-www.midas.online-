@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { requirePlatformAdmin } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
+import { SuspendButton } from "./platform-actions";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-// Read-only. RLS (supabase/migrations/00000000000044_rls.sql) is what
-// actually enforces "never leads, recordings or Twilio credentials" here —
-// this page uses the RLS-governed client, not the service role, precisely
-// so that guarantee holds structurally rather than by this page's own
-// care.
+// Read-only except for suspend/reactivate. RLS (supabase/migrations/00000000000044_rls.sql)
+// is what actually enforces "never leads, recordings or Twilio
+// credentials" here — this page uses the RLS-governed client, not the
+// service role, so that guarantee holds structurally.
 export default async function PlatformDashboardPage() {
   const admin = await requirePlatformAdmin();
   const supabase = await createRealClient();
 
-  const { data: workspaces } = await supabase.from("workspaces").select("*").order("created_at", { ascending: false });
-  const { data: profiles } = await supabase.from("profiles").select("workspace_id, role, is_active");
+  const [{ data: workspaces }, { data: profiles }, { data: stats }] = await Promise.all([
+    supabase.from("workspaces").select("*").order("created_at", { ascending: false }),
+    supabase.from("profiles").select("workspace_id, role, is_active"),
+    supabase.rpc("platform_workspace_stats"),
+  ]);
 
   const seatsByWorkspace = new Map<string, number>();
   for (const p of profiles ?? []) {
@@ -22,9 +26,10 @@ export default async function PlatformDashboardPage() {
       seatsByWorkspace.set(p.workspace_id, (seatsByWorkspace.get(p.workspace_id) ?? 0) + 1);
     }
   }
+  const statsByWorkspace = new Map((stats ?? []).map((s) => [s.workspace_id, s]));
 
   return (
-    <div className="mx-auto max-w-5xl p-8">
+    <div className="mx-auto max-w-6xl p-8">
       <h1 className="font-display text-2xl font-semibold text-ink">Workspaces</h1>
       <p className="mt-1 text-sm text-muted">
         Signed in as {admin.email}. This view never shows lead phone numbers, recordings or Twilio credentials.
@@ -36,30 +41,47 @@ export default async function PlatformDashboardPage() {
               <th className="px-4 py-3">Workspace</th>
               <th className="px-4 py-3">Plan</th>
               <th className="px-4 py-3">Seats used</th>
+              <th className="px-4 py-3">Active today</th>
+              <th className="px-4 py-3">Calls today</th>
+              <th className="px-4 py-3">Twilio</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Created</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {(workspaces ?? []).map((w) => (
-              <tr key={w.id}>
-                <td className="px-4 py-3 font-medium text-ink">
-                  {w.name}
-                  {w.is_demo && (
-                    <span className="ml-2 rounded bg-gold-tint px-1.5 py-0.5 text-[10px] font-semibold text-gold-text">DEMO</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 capitalize">{w.plan}</td>
-                <td className="px-4 py-3">
-                  {seatsByWorkspace.get(w.id) ?? 0} / {w.seat_limit}
-                </td>
-                <td className="px-4 py-3 capitalize">{w.status}</td>
-                <td className="px-4 py-3 text-muted">{new Date(w.created_at).toLocaleDateString()}</td>
-              </tr>
-            ))}
+            {(workspaces ?? []).map((w) => {
+              const s = statsByWorkspace.get(w.id);
+              return (
+                <tr key={w.id}>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    {w.name}
+                    {w.is_demo && (
+                      <span className="ml-2 rounded bg-gold-tint px-1.5 py-0.5 text-[10px] font-semibold text-gold-text">DEMO</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 capitalize">{w.plan}</td>
+                  <td className="px-4 py-3">
+                    {seatsByWorkspace.get(w.id) ?? 0} / {w.seat_limit}
+                  </td>
+                  <td className="px-4 py-3">{s?.agents_active_today ?? 0}</td>
+                  <td className="px-4 py-3">{s?.calls_today ?? 0}</td>
+                  <td className="px-4 py-3">
+                    {s?.twilio_connected ? (
+                      <CheckCircle2 className="h-4 w-4 text-brand-green-text" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-muted" />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 capitalize">{w.status}</td>
+                  <td className="px-4 py-3">
+                    <SuspendButton workspaceId={w.id} status={w.status} />
+                  </td>
+                </tr>
+              );
+            })}
             {(workspaces ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted">
                   No workspaces yet.
                 </td>
               </tr>

@@ -641,6 +641,33 @@ export type RealDatabase = {
         }
         Relationships: []
       }
+      credential_events: {
+        Row: {
+          id: number
+          workspace_id: string
+          user_id: string
+          actor_id: string | null
+          event: "created" | "temp_issued" | "reset_by_admin" | "changed_by_user" | "locked" | "unlocked"
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          workspace_id: string
+          user_id: string
+          actor_id?: string | null
+          event: "created" | "temp_issued" | "reset_by_admin" | "changed_by_user" | "locked" | "unlocked"
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          workspace_id?: string
+          user_id?: string
+          actor_id?: string | null
+          event?: "created" | "temp_issued" | "reset_by_admin" | "changed_by_user" | "locked" | "unlocked"
+          created_at?: string
+        }
+        Relationships: []
+      }
       qa_criterion_results: {
         Row: { id: string; qa_score_id: string; criterion_id: string; met: boolean }
         Insert: { id?: string; qa_score_id: string; criterion_id: string; met: boolean }
@@ -1153,6 +1180,14 @@ export type RealDatabase = {
       client_agent_activity: {
         Args: { p_anonymize?: boolean }
         Returns: { agent_label: string; calls: number; connects: number; conversions: number }[]
+      }
+      platform_workspace_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: { workspace_id: string; agents_active_today: number; calls_today: number; twilio_connected: boolean }[]
+      }
+      platform_set_workspace_status: {
+        Args: { p_workspace_id: string; p_status: RealDatabase["public"]["Enums"]["workspace_status"] }
+        Returns: undefined
       }
     }
     Enums: {

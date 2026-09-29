@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServiceClient } from "@/lib/supabase/service";
 import { DEMO_PASSWORD } from "@/lib/demo/seed";
 import { generateTempPassword } from "@/lib/auth/generate-password";
 import { accounts, AccountError, type Role } from "@/lib/accounts";
@@ -82,6 +83,15 @@ export async function createUser(
       { user_id: uid, actor_id: caller.id, event: "created" },
       { user_id: uid, actor_id: caller.id, event: "temp_issued" },
     ]);
+    // Real Postgres credential_events (migration 00000000000066) — the
+    // in-memory insert above is the CRM store's own mirror, kept for the
+    // legacy pages that already read it; this is the durable record.
+    await createServiceClient()
+      .from("credential_events")
+      .insert([
+        { workspace_id: ws.workspace.id, user_id: uid, actor_id: caller.id, event: "created" },
+        { workspace_id: ws.workspace.id, user_id: uid, actor_id: caller.id, event: "temp_issued" },
+      ]);
     return { tempPassword, fullName };
   }
 
@@ -170,6 +180,9 @@ export async function resetPassword(
     const wsAdmin = createAdminClient(ws.store);
     await wsAdmin.from("profiles").update({ must_change_password: true }).eq("id", userId);
     await wsAdmin.from("credential_events").insert({ user_id: userId, actor_id: caller.id, event: "reset_by_admin" });
+    await createServiceClient()
+      .from("credential_events")
+      .insert({ workspace_id: ws.workspace.id, user_id: userId, actor_id: caller.id, event: "reset_by_admin" });
     return { tempPassword };
   }
 

@@ -28,6 +28,14 @@ export async function placeCall(leadId: string): Promise<PlaceCallResult> {
   }
 
   const workspace = await getCurrentWorkspace();
+  // Spec: "A workspace with status suspended can log in but cannot dial."
+  // Every other real surface (browsing leads, QA, performance) stays
+  // reachable — only the actual outbound call is blocked, here, at the
+  // one function that's the sole path to placing one.
+  if (workspace.status === "suspended") {
+    return { error: "This workspace is suspended. Contact support to resume calling." };
+  }
+
   const supabase = await createRealClient();
 
   const { data: lead } = await supabase.from("leads").select("*").eq("id", leadId).eq("workspace_id", workspace.id).maybeSingle();
