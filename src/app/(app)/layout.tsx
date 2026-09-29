@@ -16,7 +16,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
-  const items = navFor(profile.role);
+  const rawItems = navFor(profile.role);
   // Attendance and follow-ups are staff concepts — a client login has no
   // shift to clock into and no leads to follow up on, so skip the queries
   // and let Header hide that chrome entirely for this role.
@@ -62,6 +62,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const branding = ws
     ? { logoUrl: ws.workspace.brandLogoUrl ?? null, productName: ws.workspace.brandProductName ?? null }
     : undefined;
+
+  // A real customer's "Dial workspace" link goes to the real, Postgres-
+  // backed screen (Phase 4) instead of the legacy demo-store one at
+  // /workspace, which only the sales demo uses from here on.
+  const items = ws ? rawItems.map((item) => (item.href === "/workspace" ? { ...item, href: "/dial" } : item)) : rawItems;
 
   return (
     <AppChrome

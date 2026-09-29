@@ -21,6 +21,7 @@ export function absoluteUrl(path = "/"): string {
 export const PRIVATE_PATH_PREFIXES = [
   "/admin",
   "/workspace",
+  "/dial",
   "/client",
   "/qa",
   "/meetings",
