@@ -33,22 +33,25 @@ function normalizePhone(raw: string): string | null {
 }
 
 // A small column mapper: looks for a header containing "phone"/"mobile"/
-// "number" and one containing "name"; falls back to the first two
-// columns. Letting the admin pick which header maps to what is a later
-// refinement — this gets a first batch usably in, which is what Phase 2
-// needs.
-function mapRows(rows: Record<string, unknown>[]): { phone: string; name: string | null }[] {
+// "number", one containing "name", and one containing "email"; falls back
+// to the first two columns for phone/name. Letting the admin pick which
+// header maps to what is a later refinement — this gets a first batch
+// usably in, which is what Phase 2 (and Phase 7's email send, which needs
+// the email column) needs.
+function mapRows(rows: Record<string, unknown>[]): { phone: string; name: string | null; email: string | null }[] {
   if (rows.length === 0) return [];
   const headers = Object.keys(rows[0]);
   const phoneKey = headers.find((h) => /phone|mobile|number/i.test(h)) ?? headers[0];
   const nameKey = headers.find((h) => /name/i.test(h)) ?? headers[1];
+  const emailKey = headers.find((h) => /email/i.test(h));
   return rows
     .map((row) => {
       const phone = normalizePhone(String(row[phoneKey] ?? ""));
       const name = nameKey ? String(row[nameKey] ?? "").trim() || null : null;
-      return phone ? { phone, name } : null;
+      const email = emailKey ? String(row[emailKey] ?? "").trim() || null : null;
+      return phone ? { phone, name, email } : null;
     })
-    .filter((r): r is { phone: string; name: string | null } => r !== null);
+    .filter((r): r is { phone: string; name: string | null; email: string | null } => r !== null);
 }
 
 interface IngestResult {
@@ -126,6 +129,7 @@ export async function ingestLeadFile(
       batch_id: batch.id,
       phone_e164: r.phone,
       full_name: r.name,
+      email: r.email,
     }));
     const { error } = await supabase.from("leads").insert(chunk);
     if (error) throw new Error(error.message);

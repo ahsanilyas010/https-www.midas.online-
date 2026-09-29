@@ -63,14 +63,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ? { logoUrl: ws.workspace.brandLogoUrl ?? null, productName: ws.workspace.brandProductName ?? null }
     : undefined;
 
-  // A real customer's "Dial workspace" and "Live floor" links go to the
-  // real, Postgres-backed screens (Phases 4-5) instead of the legacy
-  // demo-store ones, which only the sales demo uses from here on.
+  // A real customer's nav links go to the real, Postgres-backed screens
+  // instead of the legacy demo-store ones, which only the sales demo uses
+  // from here on. "/client" is swapped only for the client_viewer role —
+  // ADMIN_NAV also links a manager's own "Client reports" preview to that
+  // same href, and that one deliberately keeps pointing at the legacy
+  // page (no real equivalent exists for a manager's preview yet).
   const REAL_HREF: Record<string, string> = {
     "/workspace": "/dial",
     "/admin": "/live",
     "/qa": "/quality",
     "/admin/performance": "/performance",
+    ...(profile.role === "client_viewer" ? { "/client": "/portal" } : {}),
   };
   const items = ws ? rawItems.map((item) => (REAL_HREF[item.href] ? { ...item, href: REAL_HREF[item.href] } : item)) : rawItems;
 

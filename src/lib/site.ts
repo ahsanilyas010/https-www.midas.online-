@@ -25,6 +25,7 @@ export const PRIVATE_PATH_PREFIXES = [
   "/live",
   "/quality",
   "/performance",
+  "/portal",
   "/client",
   "/qa",
   "/meetings",

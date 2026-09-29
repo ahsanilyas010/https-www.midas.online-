@@ -390,6 +390,7 @@ export type RealDatabase = {
           batch_id: string | null
           phone_e164: string | null
           full_name: string | null
+          email: string | null
           screening_status: "pending" | "passed" | "failed" | "expired"
           screened_at: string | null
           phone_hash: string | null
@@ -406,6 +407,7 @@ export type RealDatabase = {
           batch_id?: string | null
           phone_e164?: string | null
           full_name?: string | null
+          email?: string | null
           screening_status?: "pending" | "passed" | "failed" | "expired"
           screened_at?: string | null
           phone_hash?: string | null
@@ -422,6 +424,7 @@ export type RealDatabase = {
           batch_id?: string | null
           phone_e164?: string | null
           full_name?: string | null
+          email?: string | null
           screening_status?: "pending" | "passed" | "failed" | "expired"
           screened_at?: string | null
           phone_hash?: string | null
@@ -908,6 +911,87 @@ export type RealDatabase = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          id: string
+          workspace_id: string
+          name: string
+          subject: string
+          body_md: string
+          approved: boolean
+          approved_by: string | null
+          approved_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          name: string
+          subject: string
+          body_md: string
+          approved?: boolean
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          name?: string
+          subject?: string
+          body_md?: string
+          approved?: boolean
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      email_suppression: {
+        Row: { id: string; workspace_id: string; email: string; created_at: string }
+        Insert: { id?: string; workspace_id: string; email: string; created_at?: string }
+        Update: { id?: string; workspace_id?: string; email?: string; created_at?: string }
+        Relationships: []
+      }
+      email_log: {
+        Row: {
+          id: string
+          workspace_id: string
+          lead_id: string | null
+          template_id: string | null
+          to_email: string
+          status: "queued" | "sent" | "failed" | "suppressed"
+          provider_message_id: string | null
+          error: string | null
+          sent_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          lead_id?: string | null
+          template_id?: string | null
+          to_email: string
+          status?: "queued" | "sent" | "failed" | "suppressed"
+          provider_message_id?: string | null
+          error?: string | null
+          sent_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          lead_id?: string | null
+          template_id?: string | null
+          to_email?: string
+          status?: "queued" | "sent" | "failed" | "suppressed"
+          provider_message_id?: string | null
+          error?: string | null
+          sent_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_campaign_funnel: {
@@ -1049,6 +1133,26 @@ export type RealDatabase = {
       workspace_today_stats: {
         Args: Record<PropertyKey, never>
         Returns: { calls_today: number; connects_today: number; conversions_today: number }[]
+      }
+      client_campaign_funnel: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          loaded: number
+          screened: number
+          dialled: number
+          connected: number
+          converted: number
+        }[]
+      }
+      client_disposition_breakdown: {
+        Args: Record<PropertyKey, never>
+        Returns: { disposition_label: string; outcome_group: string; count: number }[]
+      }
+      client_agent_activity: {
+        Args: { p_anonymize?: boolean }
+        Returns: { agent_label: string; calls: number; connects: number; conversions: number }[]
       }
     }
     Enums: {

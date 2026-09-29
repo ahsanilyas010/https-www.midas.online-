@@ -100,7 +100,16 @@ export async function middleware(request: NextRequest) {
   return isPrivate(pathname) ? noindex(response) : response;
 }
 
-const PUBLIC_PATHS = ["/login", "/signup", "/reset-password", "/api/unsubscribe", "/api/leads/inbound", "/api/billing/webhook"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/reset-password",
+  "/api/unsubscribe",
+  "/api/leads/inbound",
+  "/api/billing/webhook",
+  "/api/email/unsubscribe",
+  "/api/twilio",
+];
 
 export const config = {
   // Static assets and the crawler/metadata files (robots.txt, sitemap.xml,
