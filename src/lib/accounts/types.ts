@@ -43,6 +43,7 @@ export interface Workspace {
   brandLogoUrl?: string | null;
   brandPrimaryColor?: string | null;
   brandProductName?: string | null;
+  isDemo?: boolean;
   createdAt: string;
 }
 

@@ -9,6 +9,8 @@ import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
 import { AccountList } from "./account-list";
 import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { getStore } from "@/lib/demo/store";
+import { RealDemoPicker } from "./real-demo-picker";
+import { getRealDemoPersonas } from "@/lib/actions/real-demo";
 
 export const metadata: Metadata = {
   title: "Sign in or try the live demo",
@@ -53,6 +55,7 @@ export default async function LoginPage({
     ...p,
     name: (profiles.find((x) => x.id === p.id)?.full_name as string) ?? p.title,
   }));
+  const realDemoPersonas = await getRealDemoPersonas();
 
   return (
     <div className="relative grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
@@ -153,6 +156,8 @@ export default async function LoginPage({
             </div>
             <AccountList accounts={accounts} next={next} />
           </div>
+
+          <RealDemoPicker personas={realDemoPersonas} />
         </div>
       </div>
     </div>

@@ -51,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         agentsUsed: activeAgentCount(ws.store),
         agentSeats: ws.workspace.agentSeats,
         canManageBilling: profile.role === "super_admin",
+        isRealDemo: ws.workspace.isDemo,
       }
     : null;
   const demoAccounts = ws

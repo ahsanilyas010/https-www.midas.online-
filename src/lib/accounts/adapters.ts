@@ -24,6 +24,7 @@ export function workspaceFromRow(row: RealTables<"workspaces">): Workspace {
     brandLogoUrl: row.brand_logo_url,
     brandPrimaryColor: row.brand_primary_color,
     brandProductName: row.brand_product_name,
+    isDemo: row.is_demo,
     createdAt: row.created_at,
   };
 }
