@@ -63,10 +63,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ? { logoUrl: ws.workspace.brandLogoUrl ?? null, productName: ws.workspace.brandProductName ?? null }
     : undefined;
 
-  // A real customer's "Dial workspace" link goes to the real, Postgres-
-  // backed screen (Phase 4) instead of the legacy demo-store one at
-  // /workspace, which only the sales demo uses from here on.
-  const items = ws ? rawItems.map((item) => (item.href === "/workspace" ? { ...item, href: "/dial" } : item)) : rawItems;
+  // A real customer's "Dial workspace" and "Live floor" links go to the
+  // real, Postgres-backed screens (Phases 4-5) instead of the legacy
+  // demo-store ones, which only the sales demo uses from here on.
+  const REAL_HREF: Record<string, string> = { "/workspace": "/dial", "/admin": "/live" };
+  const items = ws ? rawItems.map((item) => (REAL_HREF[item.href] ? { ...item, href: REAL_HREF[item.href] } : item)) : rawItems;
 
   return (
     <AppChrome

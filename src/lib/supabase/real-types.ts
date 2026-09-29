@@ -706,6 +706,123 @@ export type RealDatabase = {
         }
         Relationships: []
       }
+      shifts: {
+        Row: {
+          id: string
+          workspace_id: string
+          name: string
+          start_time: string
+          end_time: string
+          days_of_week: number[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          name: string
+          start_time: string
+          end_time: string
+          days_of_week?: number[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          name?: string
+          start_time?: string
+          end_time?: string
+          days_of_week?: number[]
+          created_at?: string
+        }
+        Relationships: []
+      }
+      shift_assignments: {
+        Row: {
+          id: string
+          workspace_id: string
+          shift_id: string
+          user_id: string
+          effective_from: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          shift_id: string
+          user_id: string
+          effective_from?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          shift_id?: string
+          user_id?: string
+          effective_from?: string
+        }
+        Relationships: []
+      }
+      attendance_events: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          event_type: "clock_in" | "clock_out" | "break_start" | "break_end"
+          occurred_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          event_type: "clock_in" | "clock_out" | "break_start" | "break_end"
+          occurred_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          event_type?: "clock_in" | "clock_out" | "break_start" | "break_end"
+          occurred_at?: string
+        }
+        Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          from_date: string
+          to_date: string
+          reason: string | null
+          status: "pending" | "approved" | "rejected"
+          approved_by: string | null
+          approved_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          from_date: string
+          to_date: string
+          reason?: string | null
+          status?: "pending" | "approved" | "rejected"
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          from_date?: string
+          to_date?: string
+          reason?: string | null
+          status?: "pending" | "approved" | "rejected"
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -806,6 +923,20 @@ export type RealDatabase = {
       get_twilio_api_key_secret: {
         Args: { p_workspace_id: string }
         Returns: string
+      }
+      workspace_live_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          full_name: string
+          role: RealDatabase["public"]["Enums"]["app_role"]
+          status: "on_call" | "wrap_up" | "break" | "available" | "offline"
+          call_started_at: string | null
+        }[]
+      }
+      workspace_today_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: { calls_today: number; connects_today: number; conversions_today: number }[]
       }
     }
     Enums: {
