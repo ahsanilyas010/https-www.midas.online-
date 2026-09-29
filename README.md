@@ -1,11 +1,19 @@
-# LeadCallient — interactive demo
+# LeadCallient
 
-A contact-centre CRM and workforce platform, packaged as a **self-contained
-demo** for showing prospects the product with **dummy data only**. No real
-client data is included, no database is connected, and no environment
-variables or API keys are needed.
+A contact-centre CRM and workforce platform with two things layered in one
+codebase:
 
-It is a copy of the CallingCRM codebase with four changes:
+1. **A self-contained sales demo** — the default experience with zero
+   environment variables set. In-memory dummy data, no database
+   connection, safe to click anything.
+2. **A real, multi-tenant production SaaS** — Supabase Postgres + Auth +
+   RLS + Storage, real Twilio calling, real Stripe billing. Configure the
+   env vars below and it's live. See "All 9 build phases are complete"
+   further down for what that covers and "Real workspace routes" for
+   where a real workspace's screens differ from the demo's.
+
+The demo build started as a copy of the CallingCRM codebase with four
+changes:
 
 1. **In-memory demo data.** The Supabase client is replaced by an in-memory
    implementation of the same query API (`src/lib/demo`), seeded with
@@ -88,15 +96,51 @@ where they choose seats and pay by card on Stripe's hosted checkout.
 | Ad tracking | Meta Pixel (`MARKETING.metaPixelId` in `src/lib/brand.ts`) | the pixel ID |
 | Free agent limit | `src/lib/plan.ts` | edit the file (prices live only in Stripe) |
 
-**Current limit (Phase 1):** logins, workspaces, profiles, campaigns
-(skeleton), branding and Twilio credential storage are real, RLS-isolated
-Postgres tables. The rest of the CRM a workspace uses day to day — leads,
-calls, attendance, QA, the dialer — still lives in the same in-memory,
-per-workspace store the sales demo uses (`src/lib/demo`), keyed off the
-real Supabase identity instead of Firebase. Each of those features moves to
-real Postgres in its own later phase (see the project's phased build plan);
-nothing about today's demo or a real signup's day-to-day functionality
-changed in Phase 1 — only what sits underneath the login itself.
+**All 9 build phases are complete.** A real signed-up workspace now runs
+on real, RLS-isolated Postgres end to end: identity, onboarding, branding,
+the compliance gate, real Twilio calling, the dial workspace, attendance
+and the live floor, performance views and QA, email and the client portal,
+seats/billing/platform admin, and demo mode. The **pre-existing sales
+demo** (this repo's original purpose — the in-memory store, `/login`'s
+persona picker, `/workspace`, `/admin`, `/qa`, `/client`) was deliberately
+left untouched throughout, and still works with zero environment
+variables configured. See "Real workspace routes" below for where the two
+diverge.
+
+### Real workspace routes
+
+A real, signed-up workspace's nav links point at these instead of the
+legacy demo pages of the same name in spirit:
+
+| Feature | Real route | Legacy demo route |
+|---|---|---|
+| Onboarding | `/onboarding` | — |
+| Dial workspace | `/dial` | `/workspace` |
+| Live floor | `/live` | `/admin` |
+| QA | `/quality` | `/qa` |
+| Performance | `/performance` | `/admin/performance` |
+| Client portal | `/portal` | `/client` |
+| Branding, Twilio, email, leads settings | `/admin/settings/*` | — |
+| Platform owner dashboard | `/platform` | — |
+
+### What's stubbed or needs manual configuration
+
+- **Column mapping** on lead upload is automatic (a header containing
+  "phone"/"name"/"email" is detected) — there's no UI yet to map columns
+  by hand for an unusual file.
+- **Screening** (`src/lib/compliance/screening.ts`) is the spec's stub: it
+  stamps every pending lead in a batch as passed. A real TPS/CTPS/National
+  DNC provider plugs in behind the same `ScreeningProvider` interface.
+- **QA scorecards** auto-provision one default template per workspace on
+  first use; there's no template/criteria editor UI yet (edit
+  `qa_criteria` directly, or build one — the schema already supports
+  several weighted, fatal-aware templates).
+- **Active session tracking** (spec: "active sessions") isn't built —
+  Supabase Auth's own admin session list covers this if needed later;
+  `credential_events` (created/temp_issued/reset_by_admin) is real.
+- **Campaign editing UI** for caller ID, calling windows, recording
+  toggle etc. doesn't exist yet for real workspaces — set these columns
+  directly on `campaigns` until one is built.
 
 ### Supabase setup
 1. Create a project at supabase.com (or run `supabase start` locally with
@@ -116,10 +160,44 @@ changed in Phase 1 — only what sits underneath the login itself.
    workspaces. Platform admins must already exist as Supabase Auth users
    (invite them from the Dashboard first) — the seed script attaches the
    `platform_admins` row, it doesn't create their login.
-6. Run `npm run test:rls` against that project (staging/disposable only —
-   see the script's header comment) to prove every RLS policy.
+6. Run `npm run test:rls` then `npm run test:compliance` against that
+   project (staging/disposable only — see each script's header comment)
+   to prove every RLS policy and the compliance gate (screening,
+   suppression, attempts, cooling-off, calling window, demo-number
+   allow-listing, and the concurrent-pull guarantee).
 7. **Authentication → Email Templates / SMTP**: configure a sender so the
    onboarding wizard's "invite your team" step can actually deliver email.
+
+### Twilio setup (per workspace)
+
+Each workspace connects its own Twilio account from **Integrations** in
+onboarding, or later from `/admin/settings/twilio`. A client follows these
+steps in their own Twilio console first:
+
+1. **Phone Numbers → Buy a number** with Voice capability (and Recording
+   if the campaign will record calls).
+2. **Account → API keys & tokens**: copy the **Account SID** and **Auth
+   Token** — that's all the connect form needs. LeadCallient auto-creates
+   a separate API Key/Secret pair via the Twilio REST API on first
+   verification (for the browser softphone's AccessToken) and lists the
+   account's owned numbers automatically; nothing else needs creating by
+   hand.
+3. Webhooks are set per call at request time (`/api/twilio/[workspaceId]/voice`,
+   `/status`, `/recording`), not configured once on the number — no
+   console step needed for them. Every webhook validates the Twilio
+   signature with that workspace's own Auth Token.
+4. Call minutes bill to the client's own Twilio account, never to us.
+
+### Resend setup
+
+1. Verify a sending domain (or use Resend's shared `onboarding@resend.dev`
+   for testing) and copy an API key → `RESEND_API_KEY`.
+2. Set `RESEND_FROM_EMAIL` to a verified address on that domain.
+3. Email only ever sends through an **approved** template
+   (`/admin/settings/email` → Approve) — merge fields
+   (`{{lead_name}}`, `{{agent_name}}`) and an unsubscribe link are added
+   automatically, and every send (or suppression/failure) is logged in
+   `email_log`.
 
 ### Stripe setup
 1. **Product catalogue → Add product** "LeadCallient agent seat", recurring
@@ -134,6 +212,17 @@ changed in Phase 1 — only what sits underneath the login itself.
    `STRIPE_WEBHOOK_SECRET`.
 4. **Settings → Billing → Customer portal:** turn it on and allow updating
    quantities and payment methods.
+
+### Demo mode (the real demo workspace)
+
+Separate from the pre-existing sales demo: set `NEXT_PUBLIC_DEMO_MODE=true`
+to add a second role switcher to `/login` for the real, Postgres-backed
+`demo` workspace `npm run seed` creates. It signs in through real Supabase
+Auth, calls only ever reach `DEMO_ALLOWED_NUMBERS` (enforced in
+`next_lead_for_agent()`, not just the UI), and a **Reset data** button
+appears in the plan bar once signed in, re-seeding that one workspace.
+Leave the flag unset and nothing changes — the original sales demo stays
+the default.
 
 ## Deploy to Vercel
 
