@@ -66,7 +66,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // A real customer's "Dial workspace" and "Live floor" links go to the
   // real, Postgres-backed screens (Phases 4-5) instead of the legacy
   // demo-store ones, which only the sales demo uses from here on.
-  const REAL_HREF: Record<string, string> = { "/workspace": "/dial", "/admin": "/live" };
+  const REAL_HREF: Record<string, string> = {
+    "/workspace": "/dial",
+    "/admin": "/live",
+    "/qa": "/quality",
+    "/admin/performance": "/performance",
+  };
   const items = ws ? rawItems.map((item) => (REAL_HREF[item.href] ? { ...item, href: REAL_HREF[item.href] } : item)) : rawItems;
 
   return (

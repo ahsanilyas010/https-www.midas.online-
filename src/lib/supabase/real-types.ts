@@ -518,6 +518,8 @@ export type RealDatabase = {
           to_number: string | null
           recording_sid: string | null
           recording_path: string | null
+          answered_at: string | null
+          disposed_at: string | null
         }
         Insert: {
           id?: string
@@ -537,6 +539,8 @@ export type RealDatabase = {
           to_number?: string | null
           recording_sid?: string | null
           recording_path?: string | null
+          answered_at?: string | null
+          disposed_at?: string | null
         }
         Update: {
           id?: string
@@ -556,7 +560,88 @@ export type RealDatabase = {
           to_number?: string | null
           recording_sid?: string | null
           recording_path?: string | null
+          answered_at?: string | null
+          disposed_at?: string | null
         }
+        Relationships: []
+      }
+      qa_templates: {
+        Row: { id: string; workspace_id: string; name: string; is_active: boolean; created_at: string }
+        Insert: { id?: string; workspace_id: string; name: string; is_active?: boolean; created_at?: string }
+        Update: { id?: string; workspace_id?: string; name?: string; is_active?: boolean; created_at?: string }
+        Relationships: []
+      }
+      qa_criteria: {
+        Row: { id: string; workspace_id: string; template_id: string; label: string; weight: number; is_fatal: boolean; sort: number }
+        Insert: {
+          id?: string
+          workspace_id: string
+          template_id: string
+          label: string
+          weight?: number
+          is_fatal?: boolean
+          sort?: number
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          template_id?: string
+          label?: string
+          weight?: number
+          is_fatal?: boolean
+          sort?: number
+        }
+        Relationships: []
+      }
+      qa_scores: {
+        Row: {
+          id: string
+          workspace_id: string
+          call_id: string
+          template_id: string
+          qa_analyst_id: string
+          agent_id: string
+          total_score: number
+          passed: boolean
+          fatal_breach: boolean
+          coaching_notes: string | null
+          acknowledged_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          call_id: string
+          template_id: string
+          qa_analyst_id: string
+          agent_id: string
+          total_score?: number
+          passed?: boolean
+          fatal_breach?: boolean
+          coaching_notes?: string | null
+          acknowledged_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          call_id?: string
+          template_id?: string
+          qa_analyst_id?: string
+          agent_id?: string
+          total_score?: number
+          passed?: boolean
+          fatal_breach?: boolean
+          coaching_notes?: string | null
+          acknowledged_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      qa_criterion_results: {
+        Row: { id: string; qa_score_id: string; criterion_id: string; met: boolean }
+        Insert: { id?: string; qa_score_id: string; criterion_id: string; met: boolean }
+        Update: { id?: string; qa_score_id?: string; criterion_id?: string; met?: boolean }
         Relationships: []
       }
       callbacks: {
@@ -824,7 +909,34 @@ export type RealDatabase = {
         Relationships: []
       }
     }
-    Views: Record<string, never>
+    Views: {
+      v_campaign_funnel: {
+        Row: {
+          workspace_id: string
+          campaign_id: string
+          campaign_name: string
+          loaded: number
+          screened: number
+          dialled: number
+          connected: number
+          converted: number
+        }
+        Relationships: []
+      }
+      v_agent_scorecard: {
+        Row: {
+          workspace_id: string
+          agent_id: string
+          agent_name: string
+          calls: number
+          connects: number
+          conversions: number
+          talk_seconds: number
+          avg_wrap_seconds: number
+        }
+        Relationships: []
+      }
+    }
     Functions: {
       is_platform_admin: {
         Args: Record<PropertyKey, never>

@@ -40,9 +40,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
   const status: CallStatus = STATUS_MAP[rawStatus] ?? "failed";
   const admin = createServiceClient();
 
-  const update: { status: CallStatus; ended_at?: string } = { status };
+  const update: { status: CallStatus; ended_at?: string; answered_at?: string } = { status };
   if (status === "completed" || status === "busy" || status === "no-answer" || status === "failed" || status === "canceled") {
     update.ended_at = new Date().toISOString();
+  }
+  if (status === "in-progress") {
+    // First "answered" transition only — talk-time math (v_agent_scorecard,
+    // migration 059) depends on this being set once, not overwritten on
+    // every subsequent in-progress callback Twilio might send.
+    const { data: existing } = await admin
+      .from("calls")
+      .select("answered_at")
+      .eq("workspace_id", workspaceId)
+      .eq("provider_call_sid", callSid)
+      .maybeSingle();
+    if (!existing?.answered_at) update.answered_at = new Date().toISOString();
   }
 
   await admin.from("calls").update(update).eq("workspace_id", workspaceId).eq("provider_call_sid", callSid);

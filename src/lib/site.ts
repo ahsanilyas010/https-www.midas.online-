@@ -23,6 +23,8 @@ export const PRIVATE_PATH_PREFIXES = [
   "/workspace",
   "/dial",
   "/live",
+  "/quality",
+  "/performance",
   "/client",
   "/qa",
   "/meetings",
