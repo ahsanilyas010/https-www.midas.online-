@@ -23,28 +23,40 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
     return { error: "Enter your email and password." };
   }
 
-  const hdrsForLimit = await headers();
-  const ipForLimit = hdrsForLimit.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const allowed = await checkRealRateLimit("login", `${ipForLimit}:${email.toLowerCase()}`, 10, 300);
-  if (!allowed) {
-    return { error: "Too many attempts. Wait a few minutes and try again." };
+  // Anything unexpected (database unreachable, misconfigured deployment, ...)
+  // is caught and shown on the form. Left to throw, it would replace the whole
+  // page with the error boundary. redirect() is called after the try block
+  // because it works by throwing.
+  let destination: string;
+  try {
+    const hdrsForLimit = await headers();
+    const ipForLimit = hdrsForLimit.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const allowed = await checkRealRateLimit("login", `${ipForLimit}:${email.toLowerCase()}`, 10, 300);
+    if (!allowed) {
+      return { error: "Too many attempts. Wait a few minutes and try again.", email };
+    }
+
+    const supabase = await createRealClient();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      // Deliberately generic — don't reveal whether the account exists.
+      return { error: "Incorrect email or password.", email };
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("must_change_password")
+      .eq("id", data.user.id)
+      .single();
+
+    destination = profile?.must_change_password ? "/change-password" : safeNext(next);
+  } catch (e) {
+    console.error("signIn failed", e instanceof Error ? e.message : e);
+    return { error: "We couldn't sign you in right now. Please try again in a moment.", email };
   }
 
-  const supabase = await createRealClient();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    // Deliberately generic — don't reveal whether the account exists.
-    return { error: "Incorrect email or password.", email };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("must_change_password")
-    .eq("id", data.user.id)
-    .single();
-
-  redirect(profile?.must_change_password ? "/change-password" : safeNext(next));
+  redirect(destination);
 }
 
 export async function signOut() {
