@@ -11,7 +11,9 @@
 // Run this only against a disposable/staging Supabase project seeded via
 // `npm run seed`, never production.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config();
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { RealDatabase } from "@/lib/supabase/real-types";
 import { DEMO_PASSWORD, DEMO_PERSONAS } from "@/lib/seed/personas";
@@ -39,7 +41,7 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { data: workspace } = await admin.from("workspaces").select("id").eq("slug", "demo").single();
+  const { data: workspace } = await admin.from("workspaces").select("id, demo_allowed_numbers").eq("slug", "demo").single();
   if (!workspace) {
     console.error("compliance-gate-proof: run `npm run seed` first - demo workspace not found.");
     process.exit(1);
@@ -52,6 +54,13 @@ async function main() {
     process.exit(1);
   }
   const agentId = agentProfile.id;
+
+  // The demo workspace only ever dials DEMO_ALLOWED_NUMBERS (enforced inside
+  // next_lead_for_agent), so the throwaway numbers below are allow-listed for
+  // the duration of the run and the original list is restored afterwards.
+  const originalAllowed = workspace.demo_allowed_numbers ?? [];
+  const testNumbers = Array.from({ length: 8 }, (_, i) => `+1555999000${i + 1}`);
+  await admin.from("workspaces").update({ demo_allowed_numbers: [...originalAllowed, ...testNumbers] }).eq("id", workspace.id);
 
   console.log("Setting up an isolated test campaign...");
   const { data: campaign, error: campaignError } = await admin
@@ -75,6 +84,9 @@ async function main() {
       .select("*")
       .single();
     if (error || !data) throw error ?? new Error("could not insert test lead");
+    // Suppression rows are keyed by a deterministic phone hash and outlive the
+    // leads, so clear any left by a previous run of this script.
+    await admin.from("suppression_list").delete().eq("workspace_id", workspace!.id).eq("phone_hash", data.phone_hash!);
     return data;
   }
 
@@ -104,7 +116,8 @@ async function main() {
 
   console.log("\n2. Claim prevents re-pulling the same lead");
   const { data: secondPull } = await agentClient.rpc("next_lead_for_agent", { p_agent_id: agentId });
-  check("pulling again returns nothing else eligible", secondPull === null, secondPull?.id);
+  // A composite-returning RPC yields an all-null row (not null) when empty.
+  check("pulling again returns nothing else eligible", !secondPull?.id, secondPull?.id);
 
   console.log("\n3. record_call_attempt() releases the claim and increments attempts");
   const { error: recordError } = await agentClient.rpc("record_call_attempt", {
@@ -141,9 +154,14 @@ async function main() {
   check("the two concurrent pulls returned different leads", Boolean(idA) && Boolean(idB) && idA !== idB, { idA, idB });
 
   console.log("\nCleaning up the throwaway campaign and its leads...");
+  // Same reason as in insertLead: don't leave this run's suppressions behind.
+  const { data: testLeads } = await admin.from("leads").select("phone_hash").eq("campaign_id", campaign.id);
+  const testHashes = (testLeads ?? []).map((l) => l.phone_hash).filter((h): h is string => Boolean(h));
+  if (testHashes.length) await admin.from("suppression_list").delete().eq("workspace_id", workspace.id).in("phone_hash", testHashes);
   await admin.from("leads").delete().eq("campaign_id", campaign.id);
   await admin.from("campaign_assignments").delete().eq("campaign_id", campaign.id);
   await admin.from("campaigns").delete().eq("id", campaign.id);
+  await admin.from("workspaces").update({ demo_allowed_numbers: originalAllowed }).eq("id", workspace.id);
 
   console.log(`\n${failures} failed.`);
   process.exit(failures ? 1 : 0);

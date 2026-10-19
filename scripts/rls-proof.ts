@@ -17,7 +17,9 @@
 // This becomes the standing pre-merge gate for any future migration that
 // touches RLS, not just a one-time Phase 1 artifact.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config();
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { RealDatabase } from "@/lib/supabase/real-types";
 import { DEMO_PASSWORD, DEMO_PERSONAS, type AppRole } from "@/lib/seed/personas";

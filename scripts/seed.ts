@@ -2,7 +2,9 @@
 // src/lib/seed/run.ts so the same seeding logic is callable both from here
 // and from the in-app "reset demo data" server action
 // (src/lib/actions/demo.ts).
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config();
 import { createClient } from "@supabase/supabase-js";
 import type { RealDatabase } from "@/lib/supabase/real-types";
 import { seedPlatformAdmins, seedAssortedWorkspace, seedDemoWorkspace } from "@/lib/seed/run";
