@@ -3,20 +3,14 @@
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Ban } from "lucide-react";
-import { addSuppressionEntry, type ActionResult } from "@/lib/actions/suppression";
+import { addSuppressionEntry, type ActionResult } from "@/lib/actions/compliance";
+import { SUPPRESSION_REASONS } from "@/lib/compliance/reasons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -27,21 +21,6 @@ import {
 } from "@/components/ui/dialog";
 
 const initialState: ActionResult = {};
-
-const REASONS = [
-  { value: "internal_optout", label: "Internal opt-out" },
-  { value: "verbal_dnc", label: "Verbal DNC on a call" },
-  { value: "complaint", label: "Complaint" },
-  { value: "tps", label: "TPS" },
-  { value: "ctps", label: "CTPS" },
-  { value: "us_national_dnc", label: "US National DNC" },
-  { value: "state_dnc", label: "State DNC" },
-  { value: "client_supplied_dnc", label: "Client-supplied DNC" },
-  { value: "wrong_number", label: "Wrong number" },
-  { value: "invalid_number", label: "Invalid number" },
-  { value: "deceased", label: "Deceased" },
-  { value: "vulnerable_person", label: "Vulnerable person" },
-];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -74,8 +53,7 @@ export function AddSuppressionDialog() {
         <DialogHeader>
           <DialogTitle>Suppress a number</DialogTitle>
           <DialogDescription>
-            Global and permanent. This blocks the number across every campaign the moment it
-            saves — there is no confirmation step, by design.
+            Workspace-wide. The number is excluded from the dial queue the moment this saves.
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-3">
@@ -86,7 +64,7 @@ export function AddSuppressionDialog() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="country">Default region</Label>
-              <Input id="country" name="country" defaultValue="GB" placeholder="GB / US" />
+              <Input id="country" name="country" defaultValue="GB" maxLength={2} placeholder="GB / US" />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -96,7 +74,7 @@ export function AddSuppressionDialog() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {REASONS.map((r) => (
+                {SUPPRESSION_REASONS.map((r) => (
                   <SelectItem key={r.value} value={r.value}>
                     {r.label}
                   </SelectItem>
@@ -106,22 +84,11 @@ export function AddSuppressionDialog() {
             <input type="hidden" name="reason" value={reason} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="evidence_note">Note (optional)</Label>
-            <Textarea id="evidence_note" name="evidence_note" rows={2} />
+            <Label htmlFor="note">Note (optional)</Label>
+            <Textarea id="note" name="note" rows={2} />
           </div>
 
-          <AnimatePresence>
-            {state.error && (
-              <motion.p
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger"
-              >
-                {state.error}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {state.error && <p className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger">{state.error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

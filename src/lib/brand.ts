@@ -5,8 +5,8 @@
 // repo-wide grep-and-replace.
 export const BRAND = {
   productName: "LeadCallient",
-  metaDescription: "LeadCallient — call centre CRM, workforce platform and Zoom meetings in one place",
-  loginTagline: "Contact-centre CRM · Live floor · Zoom meetings",
+  metaDescription: "LeadCallient — call centre CRM and workforce platform in one place",
+  loginTagline: "Contact-centre CRM · Live floor · Zoom Phone calling",
   processorBadgeLabel: "LeadCallient",
   processorLabel: "LeadCallient",
   emailFromName: "LeadCallient",
@@ -18,9 +18,9 @@ export const BRAND = {
   // sitemap and social previews. On Vercel the production domain is picked
   // up automatically (see src/lib/site.ts); this is the fallback.
   siteUrl: "https://dialbyhand.vercel.app",
-  seoTitle: "LeadCallient — Contact-Centre CRM with Your Own Dialer & Zoom",
+  seoTitle: "LeadCallient — Contact-Centre CRM with Zoom Phone Calling",
   seoDescription:
-    "LeadCallient is a contact-centre CRM with a dial workspace, bring-your-own dialer (Zoom Phone, Dialpad, Aircall, RingCentral), Zoom meetings, QA and compliance.",
+    "LeadCallient is a contact-centre CRM with a dial workspace that calls through Zoom Phone, live floor, attendance, QA and compliance.",
 };
 
 // The company behind the product, shown on the contact page, in the site

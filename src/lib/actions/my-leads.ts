@@ -1,89 +1,95 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { parsePhoneNumberWithError } from "libphonenumber-js";
-import { createClient } from "@/lib/supabase/server";
-import type { Json, TablesUpdate } from "@/lib/supabase/types";
+import { requireProfile } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
+import { countryToRegion } from "@/lib/campaign-options";
+import { AGENT_LEAD_STATUSES } from "@/lib/lead-status";
 
 export interface ActionResult {
   error?: string;
   ok?: boolean;
 }
 
-// Agent-facing edit — deliberately narrower than the admin lead form.
-// `leads_update_agent` RLS (assigned_to = auth.uid()) is what actually
-// enforces "only your own leads"; the SELECT just below relies on the
-// matching `leads_select` RLS clause to return null for anything not
-// assigned to the caller, so a lead-not-found error also covers "not
-// yours" without a separate ownership check.
-export async function updateAssignedLead(
-  _prev: ActionResult,
-  formData: FormData,
-): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
+const emailSchema = z.string().email();
+
+// Agent-facing edit of a lead assigned to the caller. The write goes
+// through update_my_lead() (SECURITY DEFINER): agents have no UPDATE
+// policy on leads, and the function only touches contact fields + notes,
+// only on a lead assigned to auth.uid(). Changing the phone number sends
+// the lead back to screening_status = 'pending'.
+export async function updateAssignedLead(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const profile = await requireProfile();
+  if (profile.role !== "agent" && profile.role !== "team_lead") {
+    return { error: "Only agents can edit their assigned leads." };
+  }
 
   const leadId = String(formData.get("lead_id") ?? "");
-  if (!leadId) return { error: "Missing lead." };
+  if (!z.string().uuid().safeParse(leadId).success) return { error: "Missing lead." };
 
+  const text = (k: string, max: number) => String(formData.get(k) ?? "").trim().slice(0, max);
+  const email = text("email", 200);
+  if (email && !emailSchema.safeParse(email).success) return { error: "Enter a valid email." };
+
+  const supabase = await createRealClient();
   const { data: existing } = await supabase
     .from("leads")
-    .select("id, country_code, custom")
+    .select("id, phone_e164, country_code, campaigns(country)")
     .eq("id", leadId)
+    .eq("assigned_to", profile.id)
     .maybeSingle();
   if (!existing) return { error: "Lead not found, or it isn't assigned to you." };
 
-  const firstName = String(formData.get("first_name") ?? "").trim() || null;
-  const lastName = String(formData.get("last_name") ?? "").trim() || null;
-  const companyName = String(formData.get("company_name") ?? "").trim() || null;
-  const email = String(formData.get("email") ?? "").trim() || null;
-  const addressLine1 = String(formData.get("address_line1") ?? "").trim() || null;
-  const city = String(formData.get("city") ?? "").trim() || null;
-  const region = String(formData.get("region") ?? "").trim() || null;
-  const postcode = String(formData.get("postcode") ?? "").trim() || null;
-  const agentNotes = String(formData.get("agent_notes") ?? "").trim();
-  const phoneRaw = String(formData.get("phone") ?? "").trim();
-
-  const update: TablesUpdate<"leads"> = {
-    first_name: firstName,
-    last_name: lastName,
-    company_name: companyName,
-    email,
-    address_line1: addressLine1,
-    city,
-    region,
-    postcode,
-  };
-
+  let phoneE164: string | null = null;
+  const phoneRaw = text("phone", 40);
   if (phoneRaw) {
+    const region = countryToRegion(
+      existing.country_code ?? (existing.campaigns as { country: string | null } | null)?.country,
+    );
     try {
-      const parsed = parsePhoneNumberWithError(phoneRaw, existing.country_code as never);
+      const parsed = parsePhoneNumberWithError(phoneRaw, region as never);
       if (!parsed.isPossible()) throw new Error("invalid");
-      update.phone_e164 = parsed.number;
-      update.phone_raw = phoneRaw;
+      phoneE164 = parsed.number;
     } catch {
       return { error: `"${phoneRaw}" doesn't parse as a valid phone number.` };
     }
   }
 
-  const currentCustom = (existing.custom as Record<string, unknown> | null) ?? {};
-  const nextCustom = { ...currentCustom };
-  if (agentNotes) nextCustom.agent_notes = agentNotes;
-  else delete nextCustom.agent_notes;
-  update.custom = nextCustom as Json;
+  const finalPhone = phoneE164 ?? existing.phone_e164;
+  if (!finalPhone) return { error: "Enter a phone number." };
 
-  const { error } = await supabase.from("leads").update(update).eq("id", leadId);
+  const { error } = await supabase.rpc("update_my_lead", {
+    p_lead_id: leadId,
+    p_first_name: text("first_name", 80),
+    p_last_name: text("last_name", 80),
+    p_company_name: text("company_name", 120),
+    p_email: email,
+    p_phone_e164: finalPhone,
+    p_address_line1: text("address_line1", 200),
+    p_city: text("city", 80),
+    p_region: text("region", 80),
+    p_postcode: text("postcode", 20),
+    p_agent_notes: text("agent_notes", 4000),
+  });
+  if (error) return { error: error.message };
 
-  if (error) {
-    if (error.code === "23505") {
-      return { error: "That phone number is already used by another lead in this campaign." };
-    }
-    return { error: error.message };
+  revalidatePath("/workspace/leads");
+  return { ok: true };
+}
+
+export async function setMyLeadStatus(leadId: string, status: string): Promise<ActionResult> {
+  const profile = await requireProfile();
+  if (profile.role !== "agent" && profile.role !== "team_lead") {
+    return { error: "Only agents can update their leads." };
   }
+  if (!z.string().uuid().safeParse(leadId).success) return { error: "Missing lead." };
+  if (!AGENT_LEAD_STATUSES.includes(status as never)) return { error: "Invalid status." };
 
+  const supabase = await createRealClient();
+  const { error } = await supabase.rpc("set_my_lead_status", { p_lead_id: leadId, p_status: status });
+  if (error) return { error: error.message };
   revalidatePath("/workspace/leads");
   return { ok: true };
 }

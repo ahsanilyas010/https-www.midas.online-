@@ -1,17 +1,15 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createRealClient } from "@/lib/supabase/real";
-import type { Tables } from "@/lib/supabase/types";
 import type { RealTables } from "@/lib/supabase/real-types";
 
-export type Profile = Tables<"profiles">;
-export type RealProfile = RealTables<"profiles">;
+export type Profile = RealTables<"profiles">;
+export type RealProfile = Profile;
 
-// Used by every existing signed-in page (sales-demo personas and real
-// customers alike) — see src/lib/supabase/server.ts's createClient() for
-// why this still resolves against the in-memory demo/workspace store.
+// The signed-in user's profile from the real, RLS-governed Postgres
+// (Supabase Auth session cookie -> profiles row). Every signed-in page and
+// action goes through this; there is no other identity source.
 export async function requireProfile(): Promise<Profile> {
-  const supabase = await createClient();
+  const supabase = await createRealClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -20,36 +18,34 @@ export async function requireProfile(): Promise<Profile> {
   // signed_out clears it in the middleware.
   if (!user) redirect("/login?signed_out=1");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
   if (!profile) redirect("/login?signed_out=1");
+  if (!profile.is_active) redirect("/login?signed_out=1");
   if (profile.must_change_password) redirect("/change-password");
 
   return profile;
 }
 
-// Used only by Phase 1's new real-Postgres surfaces (the onboarding
-// wizard, branding settings) — a genuine Supabase Auth session, read
-// straight from the real profiles table, never the demo/workspace store.
-// A sales-demo persona has no real session and is never routed here.
-export async function requireRealProfile(): Promise<RealProfile> {
+// Same as requireProfile() but without the forced-password-change redirect
+// (the change-password page itself and the onboarding wizard use it).
+export async function requireRealProfile(): Promise<Profile> {
   const supabase = await createRealClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?signed_out=1");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
   if (!profile) redirect("/login?signed_out=1");
+  return profile;
+}
+
+// Role gate: redirects to the user's own home when the role isn't allowed.
+export async function requireRole(roles: Profile["role"][]): Promise<Profile> {
+  const profile = await requireProfile();
+  if (!roles.includes(profile.role)) redirect("/start");
   return profile;
 }
 

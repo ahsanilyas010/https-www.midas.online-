@@ -1,125 +1,163 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth/current-profile";
+import { requireRole } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { countryLabel } from "@/lib/campaign-options";
+import { SCREENING_BADGE } from "@/lib/lead-status";
 import { AddLeadDialog } from "./add-lead-dialog";
 import { LeadRowActions } from "./lead-row-actions";
 import { AutoAssignButton } from "./auto-assign-button";
 import { SendEmailButton } from "./send-email-button";
-import { CreateTemplateDialog } from "./create-template-dialog";
 import { ManageAgentsDialog } from "./manage-agents-dialog";
 import { ActivateToggle } from "./activate-toggle";
 import { LeadDetailsDialog } from "./lead-details-dialog";
+import { EditCampaignDialog } from "./edit-campaign-dialog";
 
-const SCREENING_BADGE: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
-  passed: "confirm",
-  unscreened: "danger",
-  blocked: "danger",
-  expired: "warning",
-  pending: "warning",
-};
+const LEAD_LIMIT = 200;
 
-function customStr(custom: unknown, key: string): string | null {
-  const v = (custom as Record<string, unknown> | null)?.[key];
-  return typeof v === "string" && v.trim() ? v : null;
-}
-
-export default async function CampaignDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const profile = await requireProfile();
-  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
+  const profile = await requireRole(["super_admin", "ops_manager"]);
+  const ws = profile.workspace_id;
 
-  const supabase = await createClient();
-  const [
-    { data: campaign },
-    { data: leads },
-    { data: dataSources },
-    { data: agents },
-    { data: templates },
-    { data: agentRoster },
-  ] = await Promise.all([
-    supabase.from("campaigns").select("*, clients(name)").eq("id", id).single(),
-    supabase
-      .from("leads")
-      .select("*, profiles(full_name)")
-      .eq("campaign_id", id)
-      .order("created_at", { ascending: false })
-      .limit(200),
-    supabase.from("data_sources").select("*").eq("is_active", true).order("name"),
-    supabase
-      .from("campaign_assignments")
-      .select("user_id, daily_target, profiles(full_name)")
-      .eq("campaign_id", id),
-    supabase
-      .from("email_templates")
-      .select("*")
-      .or(`campaign_id.is.null,campaign_id.eq.${id}`)
-      .order("created_at", { ascending: false }),
-    supabase.from("profiles").select("id, full_name").eq("role", "agent").eq("is_active", true).order("full_name"),
-  ]);
-
+  const supabase = await createRealClient();
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("id", id)
+    .eq("workspace_id", ws)
+    .maybeSingle();
   if (!campaign) notFound();
 
-  const templateOptions = (templates ?? []).map((t) => ({ id: t.id, name: t.name }));
-  const assignedAgents = (agents ?? []).map((a) => ({
+  const [
+    { data: leads },
+    { count: leadTotal },
+    { data: roster },
+    { data: people },
+    { data: templates },
+    { data: contacts },
+    { data: clients },
+  ] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("*")
+      .eq("campaign_id", id)
+      .eq("workspace_id", ws)
+      .order("created_at", { ascending: false })
+      .limit(LEAD_LIMIT),
+    supabase.from("leads").select("id", { count: "exact", head: true }).eq("campaign_id", id),
+    supabase.from("campaign_assignments").select("user_id, daily_target").eq("campaign_id", id),
+    supabase
+      .from("profiles")
+      .select("id, full_name, role, is_active")
+      .eq("workspace_id", ws)
+      .in("role", ["agent", "team_lead"])
+      .order("full_name"),
+    supabase.from("email_templates").select("*").eq("workspace_id", ws).order("created_at", { ascending: false }),
+    supabase
+      .from("unphoned_contacts")
+      .select("id, full_name, email, company_name, assigned_to, created_at")
+      .eq("campaign_id", id)
+      .is("promoted_lead_id", null)
+      .order("created_at", { ascending: false }),
+    supabase.from("clients").select("id, name").eq("workspace_id", ws).order("name"),
+  ]);
+
+  const nameById = new Map((people ?? []).map((p) => [p.id, p.full_name]));
+  const assignedAgents = (roster ?? []).map((a) => ({
     id: a.user_id,
-    name: (a as { profiles?: { full_name: string } | null }).profiles?.full_name ?? "—",
+    name: nameById.get(a.user_id) ?? "-",
     dailyTarget: a.daily_target,
   }));
+  const rosterOptions = (people ?? []).filter((p) => p.is_active).map((p) => ({ id: p.id, full_name: p.full_name }));
+  const approvedTemplates = (templates ?? []).filter((t) => t.approved).map((t) => ({ id: t.id, name: t.name }));
+  const clientName = (clients ?? []).find((c) => c.id === campaign.client_id)?.name;
+  const isActive = campaign.status === "active";
 
   return (
     <div className="p-4">
-      <Link
-        href="/admin/campaigns"
-        className="mb-3 inline-flex items-center gap-1 text-xs text-muted hover:text-ink"
-      >
+      <Link href="/admin/campaigns" className="mb-3 inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
         <ArrowLeft className="h-3.5 w-3.5" /> All campaigns
       </Link>
 
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
+          <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink">
             {campaign.name}
-            <Badge variant="blue">{campaign.market}</Badge>
-            {campaign.is_active ? (
+            <Badge variant="blue">{countryLabel(campaign.country)}</Badge>
+            {isActive ? (
               <Badge variant="confirm">Live</Badge>
             ) : (
-              <Badge variant="neutral">Not activated</Badge>
+              <Badge variant={campaign.status === "archived" ? "warning" : "neutral"}>
+                {campaign.status === "archived" ? "Archived" : "Paused"}
+              </Badge>
             )}
           </h2>
           <p className="tabular text-xs text-muted">
-            {campaign.code} · {(campaign as { clients?: { name: string } | null }).clients?.name} ·{" "}
-            {(agents ?? []).length} agents assigned
+            {campaign.code ?? "No code"} · {clientName ?? "No client"} · {assignedAgents.length} agents assigned ·{" "}
+            {leadTotal ?? 0} leads
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Window{" "}
+            {campaign.calling_window_start && campaign.calling_window_end
+              ? `${campaign.calling_window_start.slice(0, 5)}-${campaign.calling_window_end.slice(0, 5)}`
+              : "unrestricted"}{" "}
+            ({campaign.timezone}) · max {campaign.max_attempts} attempts · {campaign.cooling_off_hours}h cooling-off ·
+            caller ID {campaign.caller_id ?? "not set"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ManageAgentsDialog campaignId={campaign.id} assigned={assignedAgents} roster={agentRoster ?? []} />
-          <ActivateToggle campaignId={campaign.id} isActive={campaign.is_active} />
+          <EditCampaignDialog
+            campaignId={campaign.id}
+            clients={clients ?? []}
+            values={{
+              name: campaign.name,
+              code: campaign.code,
+              client_id: campaign.client_id,
+              country: campaign.country,
+              audience: campaign.audience,
+              vertical: campaign.vertical,
+              timezone: campaign.timezone,
+              caller_id: campaign.caller_id,
+              calling_window_start: campaign.calling_window_start,
+              calling_window_end: campaign.calling_window_end,
+              max_attempts: campaign.max_attempts,
+              cooling_off_hours: campaign.cooling_off_hours,
+              recording_enabled: campaign.recording_enabled,
+              disclosure_script: campaign.disclosure_script,
+              objection_notes: campaign.objection_notes,
+              status: campaign.status,
+            }}
+          />
+          <ManageAgentsDialog campaignId={campaign.id} assigned={assignedAgents} roster={rosterOptions} />
+          {campaign.status !== "archived" && <ActivateToggle campaignId={campaign.id} isActive={isActive} />}
         </div>
       </div>
 
       <Tabs defaultValue="leads">
         <TabsList className="mb-3">
           <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="contacts">Needs a phone ({contacts?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="templates">Email templates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="leads">
-          <div className="mb-3 flex justify-end gap-2">
-            <AutoAssignButton campaignId={campaign.id} />
-            <AddLeadDialog
-              campaignId={campaign.id}
-              campaignMarket={campaign.market}
-              dataSources={dataSources ?? []}
-            />
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted">
+              Showing {(leads ?? []).length} of {leadTotal ?? 0}. Bulk imports are on{" "}
+              <Link href="/admin/data" className="text-brand-blue hover:underline">
+                Data
+              </Link>
+              .
+            </p>
+            <div className="flex gap-2">
+              <AutoAssignButton campaignId={campaign.id} />
+              <AddLeadDialog campaignId={campaign.id} campaignCountry={campaign.country} agents={assignedAgents} />
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-line bg-white">
@@ -128,18 +166,9 @@ export default async function CampaignDetailPage({
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
                   <th className="px-3 py-2 font-medium">Name</th>
                   <th className="px-3 py-2 font-medium">Phone</th>
-                  <th className="px-3 py-2 font-medium">Address</th>
-                  <th className="px-3 py-2 font-medium">Authority</th>
-                  <th className="px-3 py-2 font-medium">Category</th>
-                  <th className="px-3 py-2 font-medium">Application type</th>
-                  <th className="px-3 py-2 font-medium">Application date</th>
-                  <th className="px-3 py-2 font-medium">Proposal</th>
-                  <th className="px-3 py-2 font-medium">Architect Name</th>
-                  <th className="px-3 py-2 font-medium">Web</th>
-                  <th className="px-3 py-2 font-medium">Contact</th>
-                  <th className="px-3 py-2 font-medium">Decision date</th>
-                  <th className="px-3 py-2 font-medium">Comments</th>
-                  <th className="px-3 py-2 font-medium">Disposition</th>
+                  <th className="px-3 py-2 font-medium">Company</th>
+                  <th className="px-3 py-2 font-medium">Email</th>
+                  <th className="px-3 py-2 font-medium">City</th>
                   <th className="px-3 py-2 font-medium">Assigned to</th>
                   <th className="px-3 py-2 font-medium">Status</th>
                   <th className="px-3 py-2 font-medium">Screening</th>
@@ -149,79 +178,33 @@ export default async function CampaignDetailPage({
               </thead>
               <tbody>
                 {(leads ?? []).map((l) => {
-                  const custom = l.custom as Record<string, unknown> | null;
-                  const address = [l.address_line1, l.city, l.region, l.postcode].filter(Boolean).join(", ");
-                  const proposal = customStr(custom, "proposal");
-                  const comments = customStr(custom, "comments");
-                  const web = customStr(custom, "web");
-                  const disposition = customStr(custom, "prior_disposition");
+                  const name = [l.first_name, l.last_name].filter(Boolean).join(" ") || l.full_name;
+                  const custom = { ...((l.custom as Record<string, unknown> | null) ?? {}) };
+                  if (l.agent_notes) custom.agent_notes = l.agent_notes;
+                  if (l.source) custom.source_sheet = l.source;
                   return (
                     <tr key={l.id} className="h-[38px] border-b border-line last:border-0">
-                      <td className="px-3 py-1.5 font-medium text-ink">
-                        {[l.first_name, l.last_name].filter(Boolean).join(" ") || "—"}
-                      </td>
+                      <td className="px-3 py-1.5 font-medium text-ink">{name || "-"}</td>
                       <td className="px-3 py-1.5 tabular">{l.phone_e164}</td>
-                      <td className="max-w-[200px] truncate px-3 py-1.5 text-muted" title={address || undefined}>
-                        {address || "—"}
-                      </td>
-                      <td className="px-3 py-1.5 text-muted">{customStr(custom, "authority") ?? "—"}</td>
-                      <td className="px-3 py-1.5 text-muted">{customStr(custom, "category") ?? "—"}</td>
-                      <td className="px-3 py-1.5 text-muted">{customStr(custom, "application_type") ?? "—"}</td>
-                      <td className="px-3 py-1.5 tabular text-muted">
-                        {customStr(custom, "application_date") ?? "—"}
-                      </td>
-                      <td className="max-w-[200px] truncate px-3 py-1.5 text-muted" title={proposal ?? undefined}>
-                        {proposal ?? "—"}
-                      </td>
-                      <td className="px-3 py-1.5 text-muted">{customStr(custom, "architect_name") ?? "—"}</td>
+                      <td className="max-w-[160px] truncate px-3 py-1.5 text-muted">{l.company_name ?? "-"}</td>
+                      <td className="max-w-[180px] truncate px-3 py-1.5 text-muted">{l.email ?? "-"}</td>
+                      <td className="px-3 py-1.5 text-muted">{l.city ?? "-"}</td>
                       <td className="px-3 py-1.5 text-muted">
-                        {web ? (
-                          <a
-                            href={web.startsWith("http") ? web : `https://${web}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-brand-blue hover:underline"
-                          >
-                            Link
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-3 py-1.5 text-muted">{customStr(custom, "contact") ?? "—"}</td>
-                      <td className="px-3 py-1.5 tabular text-muted">
-                        {customStr(custom, "decision_date") ?? "—"}
-                      </td>
-                      <td className="max-w-[200px] truncate px-3 py-1.5 text-muted" title={comments ?? undefined}>
-                        {comments ?? "—"}
+                        {l.assigned_to ? (nameById.get(l.assigned_to) ?? "-") : <span className="text-warning">Unassigned</span>}
                       </td>
                       <td className="px-3 py-1.5">
-                        {disposition ? <Badge variant="warning">{disposition}</Badge> : "—"}
-                      </td>
-                      <td className="px-3 py-1.5 text-muted">
-                        {(l as { profiles?: { full_name: string } | null }).profiles?.full_name ?? (
-                          <span className="text-warning">Unassigned</span>
-                        )}
+                        <Badge variant="neutral">{l.status.replace(/_/g, " ")}</Badge>
                       </td>
                       <td className="px-3 py-1.5">
-                        {l.do_not_call ? (
-                          <Badge variant="danger">Suppressed</Badge>
-                        ) : (
-                          <Badge variant="neutral">{l.status.replace(/_/g, " ")}</Badge>
-                        )}
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <Badge variant={SCREENING_BADGE[l.screening_status] ?? "neutral"}>
-                          {l.screening_status}
-                        </Badge>
+                        <Badge variant={SCREENING_BADGE[l.screening_status] ?? "neutral"}>{l.screening_status}</Badge>
                       </td>
                       <td className="px-3 py-1.5 tabular text-muted">
-                        {l.attempt_count} / {campaign.max_attempts}
+                        {l.attempts} / {campaign.max_attempts}
                       </td>
                       <td className="px-3 py-1.5">
                         <div className="flex items-center justify-end gap-1">
                           <LeadDetailsDialog
-                            leadName={[l.first_name, l.last_name].filter(Boolean).join(" ") || l.phone_e164}
+                            leadName={name || l.phone_e164 || "Lead"}
                             custom={custom}
                             contact={{
                               email: l.email,
@@ -233,17 +216,12 @@ export default async function CampaignDetailPage({
                               postcode: l.postcode,
                             }}
                           />
-                          <SendEmailButton leadId={l.id} hasEmail={Boolean(l.email)} templates={templateOptions} />
+                          <SendEmailButton leadId={l.id} hasEmail={Boolean(l.email)} templates={approvedTemplates} />
                           <LeadRowActions
                             leadId={l.id}
                             screeningStatus={l.screening_status}
-                            doNotCall={l.do_not_call}
                             assignedTo={l.assigned_to}
-                            agents={(agents ?? []).map((a) => ({
-                              id: a.user_id,
-                              name:
-                                (a as { profiles?: { full_name: string } | null }).profiles?.full_name ?? "—",
-                            }))}
+                            agents={assignedAgents.map((a) => ({ id: a.id, name: a.name }))}
                           />
                         </div>
                       </td>
@@ -252,8 +230,8 @@ export default async function CampaignDetailPage({
                 })}
                 {(leads ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={19} className="px-3 py-8 text-center text-sm text-muted">
-                      No leads yet. Add one, or wait for the bulk import wizard (Phase 7).
+                    <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted">
+                      No leads yet. Add one, import a file under Data, or post to the inbound webhook.
                     </td>
                   </tr>
                 )}
@@ -262,42 +240,74 @@ export default async function CampaignDetailPage({
           </div>
 
           <p className="mt-3 text-[11px] text-muted">
-            Every lead here passed the internal suppression check at entry. Screening still needs
-            to be marked passed, then assigned to an agent (individually or via Auto-assign),
-            before it becomes dialable in that agent&rsquo;s workspace.
+            A lead becomes dialable once it has passed screening and the campaign is live. Assigned leads are served only
+            to their agent; unassigned leads stay in the shared pool for the campaign roster.
+          </p>
+        </TabsContent>
+
+        <TabsContent value="contacts">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Company</th>
+                  <th className="px-3 py-2 font-medium">Email</th>
+                  <th className="px-3 py-2 font-medium">Assigned to</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(contacts ?? []).map((c) => (
+                  <tr key={c.id} className="h-[38px] border-b border-line last:border-0">
+                    <td className="px-3 py-1.5 font-medium text-ink">{c.full_name ?? "-"}</td>
+                    <td className="px-3 py-1.5 text-muted">{c.company_name ?? "-"}</td>
+                    <td className="px-3 py-1.5 text-muted">{c.email ?? "-"}</td>
+                    <td className="px-3 py-1.5 text-muted">
+                      {c.assigned_to ? (nameById.get(c.assigned_to) ?? "-") : <span className="text-warning">Unassigned</span>}
+                    </td>
+                  </tr>
+                ))}
+                {(contacts ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-sm text-muted">
+                      No contacts waiting for a phone number.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[11px] text-muted">
+            The assigned agent adds a number from My leads; it is then checked against suppression and enters the lead
+            list as unscreened.
           </p>
         </TabsContent>
 
         <TabsContent value="templates">
           <div className="mb-3 flex justify-end">
-            <CreateTemplateDialog campaignId={campaign.id} />
+            <Link href="/admin/settings/email" className="text-xs text-brand-blue hover:underline">
+              Manage templates in Settings
+            </Link>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {(templates ?? []).map((t) => (
               <Card key={t.id} className="animate-slide-up">
                 <CardHeader className="flex-row items-center justify-between space-y-0">
                   <CardTitle>{t.name}</CardTitle>
-                  {t.approved_at ? (
-                    <Badge variant="confirm">Approved</Badge>
-                  ) : (
-                    <Badge variant="warning">Pending approval</Badge>
-                  )}
+                  {t.approved ? <Badge variant="confirm">Approved</Badge> : <Badge variant="warning">Pending approval</Badge>}
                 </CardHeader>
                 <CardContent className="text-xs text-muted">
                   <div className="mb-1 font-medium text-ink">{t.subject}</div>
-                  <div className="line-clamp-3">{t.body_html.replace(/<[^>]+>/g, " ")}</div>
+                  <div className="line-clamp-3">{t.body_md}</div>
                 </CardContent>
               </Card>
             ))}
             {(templates ?? []).length === 0 && (
               <div className="col-span-full rounded-lg border border-dashed border-line bg-white p-10 text-center text-sm text-muted">
-                No templates yet. Agents can only send approved templates — never free-form mail.
+                No templates yet. Agents can only send approved templates, never free-form mail.
               </div>
             )}
           </div>
-          <p className="mt-3 rounded-md bg-warning-tint px-3 py-2 text-xs text-warning">
-            Demo mode — sends are logged and shown as delivered, but no real email leaves the server.
-          </p>
         </TabsContent>
       </Tabs>
     </div>

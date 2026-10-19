@@ -23,7 +23,8 @@ export const manualScreeningProvider: ScreeningProvider = {
   async screenBatch(supabase, { batchId, evidenceUrl }) {
     const { data, error } = await supabase.rpc("screen_lead_batch", {
       p_batch_id: batchId,
-      p_evidence_url: evidenceUrl,
+      // The SQL parameter accepts null; generated types mark it non-nullable.
+      p_evidence_url: evidenceUrl as string,
     });
     if (error) throw error;
     return { screenedCount: data ?? 0 };

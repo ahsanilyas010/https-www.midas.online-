@@ -32,6 +32,13 @@ const nextConfig: NextConfig = {
       { source: "/pricing", destination: "/contact", permanent: false },
       { source: "/plans", destination: "/contact", permanent: false },
       { source: "/contact-us", destination: "/contact", permanent: true },
+      // Screens that moved to their real, database-backed routes.
+      { source: "/admin", destination: "/live", permanent: false },
+      { source: "/admin/performance", destination: "/performance", permanent: false },
+      { source: "/qa", destination: "/quality", permanent: false },
+      { source: "/client", destination: "/portal", permanent: false },
+      { source: "/workspace", destination: "/dial", permanent: false },
+      { source: "/meetings", destination: "/live", permanent: false },
     ];
   },
 };

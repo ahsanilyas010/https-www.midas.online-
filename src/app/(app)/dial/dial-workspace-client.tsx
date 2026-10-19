@@ -1,31 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { PhoneCall, PhoneOff, Mic, MicOff, ChevronDown, Clock, AlertTriangle } from "lucide-react";
+import { PhoneCall, ChevronDown, Clock, AlertTriangle, Info } from "lucide-react";
 import {
   pullNextLead,
   submitDisposition,
   snoozeCallback,
   type DialWorkspaceLead,
 } from "@/lib/actions/dial-workspace";
-import { placeCall } from "@/lib/actions/dialer-v2";
-import { useTwilioDevice } from "@/components/dialer-v2/use-twilio-device";
+import { startCall } from "@/lib/actions/zoom-calls";
+import { usePhone } from "@/components/zoom-phone/zoom-phone-provider";
+import { BookMeetingDialog } from "@/components/zoom/book-meeting-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import type { RealTables } from "@/lib/supabase/real-types";
 
 type Disposition = RealTables<"dispositions">;
 type Callback = RealTables<"callbacks">;
 
 export function DialWorkspaceClient({
-  workspaceId,
   dispositions,
   initialDueCallbacks,
+  isDemo,
 }: {
-  workspaceId: string;
   dispositions: Disposition[];
   initialDueCallbacks: Callback[];
+  isDemo: boolean;
 }) {
   const [current, setCurrent] = useState<DialWorkspaceLead | null | undefined>(undefined);
   const [pulling, startPull] = useTransition();
@@ -40,7 +42,7 @@ export function DialWorkspaceClient({
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const dispositionRef = useRef<HTMLDivElement>(null);
 
-  const device = useTwilioDevice(workspaceId, Boolean(current));
+  const { status, setupHint, activeCall, makeCall, clearCall } = usePhone();
 
   const pull = useCallback(() => {
     setError(null);
@@ -56,7 +58,9 @@ export function DialWorkspaceClient({
       setSelectedCode(null);
       setCallbackDueAt("");
       setCalling(false);
+      clearCall();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -116,11 +120,13 @@ export function DialWorkspaceClient({
     if (!current) return;
     setCalling(true);
     setError(null);
-    const res = await placeCall(current.lead.id);
-    if (res.error) {
-      setError(res.error);
-      setCalling(false);
+    const res = await startCall(current.lead.id);
+    setCalling(false);
+    if (res.error || !res.callId || !res.number) {
+      setError(res.error ?? "Could not start the call.");
+      return;
     }
+    makeCall(res.number, res.callId, res.callerId ?? null);
   }
 
   async function handleSnooze(callbackId: string) {
@@ -135,9 +141,9 @@ export function DialWorkspaceClient({
         <h1 className="font-display text-2xl font-semibold text-ink">Dial workspace</h1>
         <div className="flex items-center gap-2 text-xs text-muted">
           <span
-            className={`h-2 w-2 rounded-full ${device.status === "ready" || device.status === "on-call" ? "bg-brand-green" : device.status === "error" ? "bg-danger" : "bg-line"}`}
+            className={`h-2 w-2 rounded-full ${status === "ready" || status === "on-call" ? "bg-brand-green" : status === "unavailable" ? "bg-danger" : "bg-line"}`}
           />
-          Softphone: {device.status}
+          Zoom Phone: {status === "idle" ? "starting" : status}
         </div>
       </div>
 
@@ -157,6 +163,23 @@ export function DialWorkspaceClient({
         </div>
       )}
 
+      {setupHint && (
+        <div className="flex flex-col gap-1.5 rounded-xl border border-gold/40 bg-gold-tint p-3 text-xs text-ink" role="status">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-gold-text">
+            <Info className="h-4 w-4" /> The Zoom Phone panel hasn&apos;t reported ready yet
+          </div>
+          <p>First-time setup needs three things from your Zoom admin. Agents then sign in to Zoom inside the panel at the bottom right.</p>
+          <ul className="list-disc pl-5">
+            <li>Install the Zoom Phone Smart Embed app from the Zoom Marketplace.</li>
+            <li>Enable &quot;Automatically Call From Third Party Apps&quot; and approve this site&apos;s domain.</li>
+            <li>Give each agent a Zoom Phone licence (Zoom client 5.9.0 or later).</li>
+          </ul>
+          <Link href="/admin/settings/zoom" className="font-medium text-brand-blue hover:underline">
+            Open the Zoom setup checklist
+          </Link>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-2 rounded-xl bg-danger-tint px-4 py-2.5 text-sm text-danger" role="alert">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
@@ -170,7 +193,19 @@ export function DialWorkspaceClient({
       ) : current === null ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted">
-            No dialable leads right now — check back once new leads are uploaded or screened.
+            {isDemo ? (
+              <div className="mx-auto flex max-w-lg flex-col gap-2">
+                <p className="font-medium text-ink">No dialable leads in the demo workspace.</p>
+                <p>
+                  The demo workspace only serves leads whose phone numbers are on its allow-list (the DEMO_ALLOWED_NUMBERS
+                  setting), so nobody real can be called by accident. To try calling, add your own test number(s) to
+                  DEMO_ALLOWED_NUMBERS as comma-separated E.164 values, then run the seed again (npm run seed), or use the
+                  Reset data button in the top bar.
+                </p>
+              </div>
+            ) : (
+              "No dialable leads right now — check back once new leads are uploaded or screened."
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -194,20 +229,28 @@ export function DialWorkspaceClient({
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <span className="font-mono text-lg text-ink">{current.lead.phone_e164}</span>
-              {device.status === "on-call" ? (
-                <div className="flex items-center gap-2">
-                  <Button variant="secondary" size="icon" onClick={device.toggleMute} aria-label={device.muted ? "Unmute" : "Mute"}>
-                    {device.muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  </Button>
-                  <Button variant="danger" onClick={device.hangUp}>
-                    <PhoneOff className="h-4 w-4" /> Hang up
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={handleCall} disabled={calling}>
-                  <PhoneCall className="h-4 w-4" /> {calling ? "Calling..." : "Call"}
-                </Button>
-              )}
+              <Button onClick={handleCall} disabled={calling || status === "on-call"}>
+                <PhoneCall className="h-4 w-4" /> {calling ? "Starting..." : status === "on-call" ? "On a call" : activeCall ? "Call again" : "Call"}
+              </Button>
+            </CardContent>
+            {activeCall && (
+              <CardContent className="flex flex-col gap-1 border-t border-line pt-3 text-xs text-muted">
+                <span className="font-medium text-ink" data-testid="call-state">
+                  {activeCall.state === "dialing" && "Dialing in the Zoom panel..."}
+                  {activeCall.state === "ringing" && "Ringing..."}
+                  {activeCall.state === "connected" && "Connected"}
+                  {activeCall.state === "ended" &&
+                    (activeCall.result === "missed"
+                      ? "No answer"
+                      : activeCall.result === "rejected"
+                        ? "Call rejected"
+                        : "Call ended")}
+                </span>
+                <span>Hold, mute and transfer are in the Zoom phone panel (bottom right). Then pick an outcome below.</span>
+              </CardContent>
+            )}
+            <CardContent className="flex justify-end border-t border-line pt-3">
+              <BookMeetingDialog leadId={current.lead.id} leadName={current.lead.full_name} />
             </CardContent>
           </Card>
 

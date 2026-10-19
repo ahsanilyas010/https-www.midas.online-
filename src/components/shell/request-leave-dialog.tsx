@@ -5,18 +5,11 @@ import { useFormStatus } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { submitLeaveRequest, type LeaveRequestResult } from "@/lib/actions/attendance";
+import { requestLeave, type LeaveActionState } from "@/lib/actions/attendance-v2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const initialState: LeaveRequestResult = {};
+const initialState: LeaveActionState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -37,7 +30,7 @@ function SubmitButton() {
 }
 
 export function RequestLeaveDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const [state, formAction] = useActionState(submitLeaveRequest, initialState);
+  const [state, formAction] = useActionState(requestLeave, initialState);
 
   useEffect(() => {
     if (state.ok) {
@@ -54,22 +47,6 @@ export function RequestLeaveDialog({ open, onOpenChange }: { open: boolean; onOp
           <DialogTitle>Request leave</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="leave_type">Type</Label>
-            <Select name="leave_type" defaultValue="annual">
-              <SelectTrigger id="leave_type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="annual">Annual</SelectItem>
-                <SelectItem value="sick">Sick</SelectItem>
-                <SelectItem value="casual">Casual</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
-                <SelectItem value="bereavement">Bereavement</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="from_date">From</Label>

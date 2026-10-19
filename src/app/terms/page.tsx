@@ -33,7 +33,7 @@ export default function TermsPage() {
           when you upgrade, through our payment provider, Stripe.
         </li>
         <li>You can change or cancel seats at any time; changes are prorated on the next invoice. Fees already paid are non-refundable except where the law requires.</li>
-        <li>Call minutes, phone numbers and your dialer subscription are billed by your telephony provider, not by us.</li>
+        <li>Calling runs through your own Zoom Phone account; Zoom bills call minutes and phone numbers to you, not us.</li>
       </ul>
 
       <h2>Acceptable use and compliance</h2>

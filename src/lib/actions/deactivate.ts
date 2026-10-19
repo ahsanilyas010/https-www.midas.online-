@@ -1,57 +1,47 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { accounts } from "@/lib/accounts";
-import { getWorkspaceContext } from "@/lib/accounts/session";
-import { activeAgentCount, seatLimitMessage } from "@/lib/accounts/limits";
+import { revalidatePath } from "next/cache";
+import { requireRealProfile } from "@/lib/auth/current-profile";
+import { createServiceClient } from "@/lib/supabase/service";
+import { getCurrentWorkspace } from "@/lib/workspace/current";
+import { activeAgentCount, seatLimitMessage } from "@/lib/workspace/limits";
 
 // Deactivate, never delete. A deleted user row orphans call attempts, QA
 // reviews and attendance history — the audit trail this exists for.
-async function setActive(userId: string, isActive: boolean) {
-  const supabase = await createClient();
-  const {
-    data: { user: caller },
-  } = await supabase.auth.getUser();
-  if (!caller) return { error: "Not signed in." };
+async function setActive(userId: string, isActive: boolean): Promise<{ error?: string }> {
+  const caller = await requireRealProfile();
+  if (!["super_admin", "ops_manager"].includes(caller.role)) return { error: "Only admins can change activation state." };
 
-  const { data: callerProfile } = await supabase
+  const admin = createServiceClient();
+  const workspace = await getCurrentWorkspace();
+
+  const { data: target } = await admin
     .from("profiles")
-    .select("role")
-    .eq("id", caller.id)
-    .single();
-
-  if (!callerProfile || !["super_admin", "ops_manager"].includes(callerProfile.role)) {
-    return { error: "Only admins can change activation state." };
+    .select("id, role")
+    .eq("id", userId)
+    .eq("workspace_id", workspace.id)
+    .maybeSingle();
+  if (!target) return { error: "Unknown user." };
+  if (target.id === caller.id && !isActive) return { error: "You can't deactivate your own account." };
+  if (target.id === workspace.created_by && !isActive) return { error: "The workspace owner can't be deactivated." };
+  if (target.role === "super_admin" && caller.role !== "super_admin") {
+    return { error: "Only a super admin can change another super admin." };
+  }
+  if (isActive && target.role === "agent" && (await activeAgentCount(admin, workspace.id)) >= workspace.seat_limit) {
+    return { error: seatLimitMessage(workspace.seat_limit) };
   }
 
-  // Customer workspaces: the login is switched on/off in the accounts
-  // backend too, and reactivating an agent needs a free seat.
-  const ws = await getWorkspaceContext();
-  if (ws) {
-    const member = ws.members.find((m) => m.uid === userId);
-    if (!member) return { error: "Unknown user." };
-    if (member.uid === ws.workspace.ownerUid && !isActive) return { error: "The workspace owner can't be deactivated." };
-    if (isActive && member.role === "agent" && activeAgentCount(ws.store) >= ws.workspace.agentSeats) {
-      return { error: seatLimitMessage(ws.workspace.agentSeats) };
-    }
-    await accounts().setMemberActive(userId, isActive);
-  }
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({ is_active: isActive })
-    .eq("id", userId);
-
+  const { error } = await admin.from("profiles").update({ is_active: isActive }).eq("id", userId);
   if (error) return { error: error.message };
 
-  if (!isActive) {
-    await supabase
-      .from("user_sessions")
-      .update({ ended_at: new Date().toISOString(), ended_reason: "forced" })
-      .eq("user_id", userId)
-      .is("ended_at", null);
+  // Ban/unban the Supabase Auth login too, so a deactivated person's existing
+  // session can't be refreshed and they can't sign back in.
+  const { error: authError } = await admin.auth.admin.updateUserById(userId, { ban_duration: isActive ? "none" : "87600h" });
+  if (authError) {
+    return { error: `Profile updated, but the login couldn't be ${isActive ? "re-enabled" : "disabled"}: ${authError.message}` };
   }
 
+  revalidatePath("/admin/people");
   return {};
 }
 

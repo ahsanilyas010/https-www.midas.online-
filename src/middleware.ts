@@ -2,10 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { PRIVATE_PATH_PREFIXES } from "@/lib/site";
 
-// Sales-demo persona cookie (src/lib/actions/demo.ts) — no Supabase session
-// behind it at all.
-const DEMO_COOKIE = "leadcallient_demo_user";
-
 function hasRealSessionCookie(request: NextRequest) {
   return request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
 }
@@ -24,12 +20,10 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   let response = NextResponse.next({ request });
-  let signedIn = Boolean(request.cookies.get(DEMO_COOKIE)?.value);
+  let signedIn = false;
 
-  // Only bother constructing a real Supabase client (and refreshing its
-  // session) when a real auth cookie might actually be present — keeps a
-  // pure sales-demo deployment, with no Supabase env vars configured,
-  // working without ever touching the network here.
+  // Only construct a Supabase client (and refresh its session) when an auth
+  // cookie is actually present.
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && hasRealSessionCookie(request)) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -67,11 +61,10 @@ export async function middleware(request: NextRequest) {
     return noindex(NextResponse.redirect(url));
   }
 
-  // A stale or revoked sign-in lands here; clear both cookie schemes so the
+  // A stale or revoked sign-in lands here; clear the session cookies so the
   // login page shows instead of bouncing back into the app.
   if (pathname === "/login" && request.nextUrl.searchParams.has("signed_out")) {
     const res = noindex(NextResponse.next({ request }));
-    res.cookies.delete(DEMO_COOKIE);
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && hasRealSessionCookie(request)) {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -104,11 +97,9 @@ const PUBLIC_PATHS = [
   "/login",
   "/signup",
   "/reset-password",
-  "/api/unsubscribe",
   "/api/leads/inbound",
   "/api/billing/webhook",
   "/api/email/unsubscribe",
-  "/api/twilio",
 ];
 
 export const config = {

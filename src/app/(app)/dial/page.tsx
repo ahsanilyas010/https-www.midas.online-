@@ -13,15 +13,15 @@ const STAFF_ROLES = ["super_admin", "ops_manager", "team_lead", "agent", "qa_ana
 // /workspace, which the pre-existing demo-store-backed dial screen still
 // owns; see src/lib/supabase/server.ts's header comment for why that one
 // is untouched). A real signed-up workspace's agents use this one, backed
-// by the real compliance gate (next_lead_for_agent) and real Twilio calls.
+// by the real compliance gate (next_lead_for_agent) and calls placed through
+// Zoom Phone's Smart Embed.
 export default async function DialWorkspacePage() {
   const profile = await requireRealProfile();
   if (!STAFF_ROLES.includes(profile.role)) redirect("/start");
 
-  const workspace = await getCurrentWorkspace();
-  const [dispositions, dueCallbacks] = await Promise.all([listDispositions(), getDueCallbacks()]);
+  const [dispositions, dueCallbacks, workspace] = await Promise.all([listDispositions(), getDueCallbacks(), getCurrentWorkspace()]);
 
   return (
-    <DialWorkspaceClient workspaceId={workspace.id} dispositions={dispositions} initialDueCallbacks={dueCallbacks} />
+    <DialWorkspaceClient dispositions={dispositions} initialDueCallbacks={dueCallbacks} isDemo={workspace.is_demo} />
   );
 }

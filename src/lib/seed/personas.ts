@@ -45,8 +45,15 @@ export const DEMO_PERSONAS: DemoPersonaSeed[] = [
     email: "agent@leadcallient.demo",
     fullName: "Alex Rivera",
     role: "agent",
-    title: "Calling agent",
+    title: "Sales agent",
     blurb: "Dials leads, logs outcomes and manages callbacks.",
+  },
+  {
+    email: "leadgen@leadcallient.demo",
+    fullName: "Riley Chen",
+    role: "lead_gen",
+    title: "Lead generation",
+    blurb: "Finds and loads leads, connects Zapier, and hands them to sales.",
   },
   {
     email: "qa@leadcallient.demo",
@@ -68,7 +75,8 @@ export const DEMO_ROLE_LABEL: Record<AppRole, string> = {
   super_admin: "Super admin",
   ops_manager: "Ops manager",
   team_lead: "Team lead",
-  agent: "Agent",
+  agent: "Sales agent",
+  lead_gen: "Lead gen",
   qa_analyst: "QA",
   client: "Client",
 };

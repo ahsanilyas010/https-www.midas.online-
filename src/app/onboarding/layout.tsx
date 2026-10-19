@@ -5,7 +5,7 @@ import { requireRealProfile } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { BrandMark } from "@/components/brand/mark";
 import { BRAND } from "@/lib/brand";
-import { ONBOARDING_STEPS, STEP_LABEL, isOnboardingStep } from "./steps";
+import { ONBOARDING_STEPS, STEP_LABEL, normalizeStep } from "./steps";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -21,7 +21,7 @@ export default async function OnboardingLayout({
   // Already onboarded — this whole wizard is a one-time flow.
   if (workspace.status === "active") redirect("/start");
 
-  const currentStep = isOnboardingStep(workspace.onboarding_step) ? workspace.onboarding_step : "brand";
+  const currentStep = normalizeStep(workspace.onboarding_step);
   const currentIndex = ONBOARDING_STEPS.indexOf(currentStep);
 
   return (

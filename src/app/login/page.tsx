@@ -1,27 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Headset, Video, Activity, ShieldCheck, Sparkles, ArrowLeft } from "lucide-react";
+import { Headset, CalendarCheck, Activity, ShieldCheck, Sparkles, ArrowLeft } from "lucide-react";
 import { LoginForm } from "./login-form";
-import { PersonaPicker } from "./persona-picker";
 import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
-import { DEMO_PERSONAS, DEMO_PASSWORD } from "@/lib/demo/seed";
-import { AccountList } from "./account-list";
 import { FREE_AGENT_SEATS } from "@/lib/plan";
-import { getStore } from "@/lib/demo/store";
 import { RealDemoPicker } from "./real-demo-picker";
 import { getRealDemoPersonas } from "@/lib/actions/real-demo";
 
 export const metadata: Metadata = {
-  title: "Sign in or try the live demo",
+  title: "Sign in",
   description:
-    "Explore LeadCallient with realistic sample data: pick a role (admin, manager, team lead, agent, QA or client) and start dialling, booking Zoom meetings and watching the live floor.",
+    "Sign in to LeadCallient, or try the live demo workspace as an admin, manager, team lead, agent, QA analyst or client.",
   alternates: { canonical: "/login" },
   openGraph: {
     type: "website",
     siteName: BRAND.productName,
-    title: `Try the ${BRAND.productName} live demo`,
-    description: "Pick a role and explore the dialer, Zoom meetings and live floor with sample data.",
+    title: `Try the ${BRAND.productName} demo workspace`,
+    description: "Pick a role and explore the dialer, live floor, attendance and QA on a real demo workspace.",
     url: "/login",
     // Overriding openGraph drops the inherited card, so name it again.
     images: ["/opengraph-image"],
@@ -30,7 +26,7 @@ export const metadata: Metadata = {
 
 const HIGHLIGHTS = [
   { icon: Headset, title: "Power-dial workspace", text: "Scripts, dispositions and callbacks in one screen." },
-  { icon: Video, title: "Zoom built in", text: "Book, start and review Zoom meetings from any lead." },
+  { icon: CalendarCheck, title: "Attendance", text: "Clock-ins, breaks, shifts and leave in one place." },
   { icon: Activity, title: "Live floor", text: "See every agent's state, calls and conversions in real time." },
   { icon: ShieldCheck, title: "Compliance first", text: "TPS/DNC screening, audit trail and QA scorecards." },
 ];
@@ -41,20 +37,6 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const store = getStore();
-  const profiles = store.tables.profiles;
-  const accounts = store.tables.demo_auth
-    .map((a) => {
-      const p = profiles.find((x) => x.id === a.id);
-      return p && p.is_active
-        ? { id: a.id as string, email: a.email as string, name: p.full_name as string, role: p.role as string, team: (store.tables.teams.find((t) => t.id === p.team_id)?.name as string) ?? null }
-        : null;
-    })
-    .filter((a): a is NonNullable<typeof a> => a !== null);
-  const personas = DEMO_PERSONAS.map((p) => ({
-    ...p,
-    name: (profiles.find((x) => x.id === p.id)?.full_name as string) ?? p.title,
-  }));
   const realDemoPersonas = await getRealDemoPersonas();
 
   return (
@@ -77,14 +59,14 @@ export default async function LoginPage({
 
         <div className="relative max-w-lg">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-gold-soft ring-1 ring-white/20">
-            <Sparkles className="h-3.5 w-3.5" /> Interactive demo
+            <Sparkles className="h-3.5 w-3.5" /> Live platform
           </span>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight">
             Every call, <span className="text-gold-gradient">connected.</span>
           </h2>
           <p className="mt-3 text-sm text-white/75">
-            A contact-centre CRM with a dial workspace, live floor, attendance, QA, compliance and
-            Zoom meetings in one place. Pick a role on the right to try it with realistic data.
+            A contact-centre CRM with a dial workspace, live floor, attendance, QA and compliance
+            in one place, running on a real database.
           </p>
 
           <div className="mt-8 grid grid-cols-2 gap-3">
@@ -102,8 +84,7 @@ export default async function LoginPage({
         </div>
 
         <p className="relative text-xs text-white/50">
-          {BRAND.productName} is a product of {COMPANY.legalName} · {companyAddressLine()}. This demo uses sample data
-          only and resets whenever you like.
+          {BRAND.productName} is a product of {COMPANY.legalName} · {companyAddressLine()}.
         </p>
       </div>
 
@@ -134,29 +115,7 @@ export default async function LoginPage({
             <LoginForm next={next} />
           </div>
 
-          <div id="demo" className="mt-10 flex scroll-mt-6 items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
-            <span className="h-px flex-1 bg-line" /> Or explore the live demo <span className="h-px flex-1 bg-line" />
-          </div>
-          <h2 className="mt-6 font-display text-xl font-semibold text-ink">Choose a demo role</h2>
-          <p className="mt-1 text-sm text-muted">
-            Sample data only. Each role sees the app the way that person would, and you can switch any time from the demo bar.
-          </p>
-
-          <PersonaPicker personas={personas} next={next} />
-
-          <div className="mt-6 rounded-xl border border-line bg-surface/90 p-4 shadow-sm backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-ink">All demo accounts</div>
-              <div className="text-xs text-muted">
-                Same password for everyone:{" "}
-                <span className="rounded-md bg-gold-tint px-1.5 py-0.5 font-mono font-semibold text-gold-text ring-1 ring-gold/40">
-                  {DEMO_PASSWORD}
-                </span>
-              </div>
-            </div>
-            <AccountList accounts={accounts} next={next} />
-          </div>
-
+          <div id="demo" className="scroll-mt-6" />
           <RealDemoPicker personas={realDemoPersonas} />
         </div>
       </div>

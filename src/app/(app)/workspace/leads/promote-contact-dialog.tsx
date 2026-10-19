@@ -24,17 +24,15 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to dial queue"}
+      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to my leads"}
     </Button>
   );
 }
 
 interface PromotableContact {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
-  project_title: string | null;
-  role: string | null;
+  full_name: string | null;
+  company_name: string | null;
   country_hint: string;
 }
 
@@ -50,7 +48,7 @@ export function PromoteContactDialog({ contact }: { contact: PromotableContact }
     }
   }, [state.ok, router]);
 
-  const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ") || "This contact";
+  const name = contact.full_name || "This contact";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -61,8 +59,8 @@ export function PromoteContactDialog({ contact }: { contact: PromotableContact }
         <DialogHeader>
           <DialogTitle>Add a phone number</DialogTitle>
           <DialogDescription>
-            {name} came from a contacts export with no phone number. Once you add one, they move
-            into your dial queue like any other lead.
+            {name} has no phone number on file. Once you add one it is checked against the suppression
+            list and they join your lead list; a manager screens it before it can be dialed.
           </DialogDescription>
         </DialogHeader>
 
@@ -70,8 +68,8 @@ export function PromoteContactDialog({ contact }: { contact: PromotableContact }
           <input type="hidden" name="contact_id" value={contact.id} />
 
           <div className="rounded-md bg-canvas px-3 py-2 text-xs text-muted">
-            {contact.project_title && <div className="font-medium text-ink">{contact.project_title}</div>}
-            {contact.role && <div>{contact.role}</div>}
+            {contact.full_name && <div className="font-medium text-ink">{contact.full_name}</div>}
+            {contact.company_name && <div>{contact.company_name}</div>}
           </div>
 
           <div className="flex flex-col gap-1.5">

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createRealClient } from "@/lib/supabase/real";
 import { BrandMark } from "@/components/brand/mark";
 import { ChangePasswordForm } from "./change-password-form";
 
 export const metadata: Metadata = { title: "Change password", robots: { index: false, follow: false } };
 
 export default async function ChangePasswordPage() {
-  const supabase = await createClient();
+  const supabase = await createRealClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

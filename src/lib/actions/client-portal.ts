@@ -13,11 +13,21 @@ export interface ClientPortalData {
 // Every field here comes from a SECURITY DEFINER function scoped to the
 // caller's own client_id (migration 00000000000064) — this action is a
 // thin wrapper, not where the access boundary actually lives.
-export async function getClientPortalData(anonymize: boolean): Promise<ClientPortalData> {
+export async function getClientPortalData(anonymize: boolean, clientId?: string): Promise<ClientPortalData> {
   const profile = await requireRealProfile();
-  if (profile.role !== "client") throw new Error("Only a client login can view the client portal.");
-
   const supabase = await createRealClient();
+
+  // A manager previews any one client's report; a client login only ever
+  // gets their own (the client_* functions scope by my_client_id()).
+  if (profile.role === "super_admin" || profile.role === "ops_manager") {
+    if (!clientId) return { funnel: [], outcomes: [], activity: [] };
+    const { data, error } = await supabase.rpc("manager_client_report", { p_client_id: clientId, p_anonymize: anonymize });
+    if (error) throw new Error(error.message);
+    const report = data as unknown as ClientPortalData;
+    return { funnel: report.funnel ?? [], outcomes: report.outcomes ?? [], activity: report.activity ?? [] };
+  }
+  if (profile.role !== "client") throw new Error("Only a client login or an admin can view client reports.");
+
   const [{ data: funnel }, { data: outcomes }, { data: activity }] = await Promise.all([
     supabase.rpc("client_campaign_funnel"),
     supabase.rpc("client_disposition_breakdown"),
@@ -31,14 +41,14 @@ export async function getClientPortalData(anonymize: boolean): Promise<ClientPor
 // Generates on demand rather than only on a schedule — a client can
 // always get this month's report immediately instead of waiting for a
 // cron job neither of us can verify runs in this environment.
-export async function generateMonthlyReport(): Promise<{ error?: string; path?: string }> {
+export async function generateMonthlyReport(clientId?: string): Promise<{ error?: string; path?: string }> {
   const profile = await requireRealProfile();
   if (profile.role !== "client" && profile.role !== "super_admin" && profile.role !== "ops_manager") {
     return { error: "Not authorized." };
   }
 
   const { renderClientReportPdf } = await import("@/lib/reports/client-report-pdf-v2");
-  const data = await getClientPortalData(profile.role === "client" ? true : false);
+  const data = await getClientPortalData(profile.role === "client", clientId);
 
   const pdfBuffer = await renderClientReportPdf({
     monthLabel: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),

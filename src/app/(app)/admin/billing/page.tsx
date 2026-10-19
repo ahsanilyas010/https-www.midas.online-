@@ -1,9 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CheckCircle2, Sparkles, Users } from "lucide-react";
+import { CheckCircle2, Users } from "lucide-react";
 import { requireProfile } from "@/lib/auth/current-profile";
-import { getWorkspaceContext } from "@/lib/accounts/session";
-import { activeAgentCount } from "@/lib/accounts/limits";
+import { getCurrentWorkspace } from "@/lib/workspace/current";
+import { activeAgentCount } from "@/lib/workspace/limits";
+import { workspaceFromRow } from "@/lib/accounts/adapters";
+import { createRealClient } from "@/lib/supabase/real";
 import { stripeConfigured } from "@/lib/billing/stripe";
 import { FREE_AGENT_SEATS, SELF_SERVE_MAX_AGENTS } from "@/lib/plan";
 import { ManageBillingButton, SeatPicker } from "./seat-picker";
@@ -12,36 +13,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const profile = await requireProfile();
   if (profile.role !== "super_admin") redirect("/start");
   const { status } = await searchParams;
-  const ws = await getWorkspaceContext();
-
-  // The demo has no billing — point presenters at a real workspace.
-  if (!ws) {
-    return (
-      <div className="p-4">
-        <div className="brand-hero relative overflow-hidden rounded-3xl p-8 text-white">
-          <div className="brand-orb brand-orb-2" aria-hidden />
-          <div className="relative max-w-xl">
-            <Sparkles className="h-6 w-6 text-gold-soft" />
-            <h1 className="mt-3 font-display text-2xl font-semibold">Plan &amp; billing lives in your own workspace</h1>
-            <p className="mt-2 text-white/75">
-              This is the demo. Create a free workspace to get {FREE_AGENT_SEATS} agents free, then add seats with a card when you grow.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-xl bg-gold-gradient px-5 py-2.5 text-sm font-semibold text-ink">
-                Start free <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/contact" className="inline-flex items-center rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold ring-1 ring-white/25">
-                Contact us
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const { workspace } = ws;
-  const used = activeAgentCount(ws.store);
+  const workspace = workspaceFromRow(await getCurrentWorkspace());
+  const used = await activeAgentCount(await createRealClient(), workspace.id);
   const pct = Math.min(100, Math.round((used / workspace.agentSeats) * 100));
   const paid = workspace.plan === "paid";
   // "simulate" (a Stripe-less preview upgrade) no longer applies — real

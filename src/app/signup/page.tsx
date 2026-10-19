@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Headset, PhoneCall, ShieldCheck, Video } from "lucide-react";
+import { Check, Headset, PhoneCall, ShieldCheck, CalendarCheck } from "lucide-react";
 import { BrandMark } from "@/components/brand/mark";
 import { MetaPixel } from "@/components/marketing/meta-pixel";
 import { AttributionCapture } from "@/components/marketing/attribution";
@@ -10,7 +10,7 @@ import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = {
   title: "Start free: 3 agents on us",
-  description: `Create your ${BRAND.productName} workspace in two minutes. ${FREE_AGENT_SEATS} agents free forever, every feature included, no card needed. Bring your own dialer and Zoom.`,
+  description: `Create your ${BRAND.productName} workspace in two minutes. ${FREE_AGENT_SEATS} agents free forever, every feature included, no card needed. Call through your own Zoom Phone account.`,
   alternates: { canonical: "/signup" },
   openGraph: {
     type: "website",
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
 
 const POINTS = [
   { icon: Headset, text: `${FREE_AGENT_SEATS} agents free forever, plus unlimited admins, managers and QA` },
-  { icon: PhoneCall, text: "Dial with the phone system you already use: Zoom Phone, Dialpad, Aircall and more" },
-  { icon: Video, text: "Book Zoom meetings from any call" },
+  { icon: PhoneCall, text: "Call through your own Zoom Phone account" },
+  { icon: CalendarCheck, text: "Clock-in, shifts and leave built in" },
   { icon: ShieldCheck, text: "Compliance, QA and live floor built in" },
 ];
 
@@ -87,7 +87,7 @@ export default function SignupPage() {
             <Link href="/login#demo" className="font-medium text-brand-blue hover:underline">
               Explore the live demo
             </Link>{" "}
-            with sample data instead.
+            on a real demo workspace instead.
           </p>
         </div>
       </main>

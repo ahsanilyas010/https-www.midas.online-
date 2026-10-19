@@ -2,12 +2,12 @@ import { ImageResponse } from "next/og";
 import { BRAND } from "@/lib/brand";
 
 // Social share card (1200×630) used for Open Graph and Twitter/X previews.
-export const alt = `${BRAND.productName} — contact-centre CRM with your own dialer and Zoom`;
+export const alt = `${BRAND.productName} — contact-centre CRM with a Zoom Phone calling`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function OpengraphImage() {
-  const chips = ["Dial workspace", "Bring-your-own dialer", "Zoom meetings", "Live floor", "QA & compliance"];
+  const chips = ["Dial workspace", "Zoom Phone calling", "Attendance", "Live floor", "QA & compliance"];
   return new ImageResponse(
     (
       <div

@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { assignAgentToCampaign } from "@/lib/actions/assignment";
+import { assignPersonToCampaign } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -43,10 +42,9 @@ export function AssignToCampaignDialog({
   onOpenChange: (open: boolean) => void;
   userId: string;
   userName: string;
-  campaigns: { id: string; name: string; code: string }[];
+  campaigns: { id: string; name: string; code?: string | null }[];
 }) {
   const [campaignId, setCampaignId] = useState("");
-  const [dailyTarget, setDailyTarget] = useState("20");
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -55,9 +53,8 @@ export function AssignToCampaignDialog({
       toast.error("Pick a campaign first.");
       return;
     }
-    const target = Math.max(1, Number(dailyTarget) || 20);
     startTransition(async () => {
-      const result = await assignAgentToCampaign(campaignId, userId, target);
+      const result = await assignPersonToCampaign(campaignId, userId);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -89,20 +86,11 @@ export function AssignToCampaignDialog({
               <SelectContent>
                 {campaigns.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.name} ({c.code})
+                    {c.code ? `${c.name} (${c.code})` : c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Daily target</Label>
-            <Input
-              type="number"
-              min={1}
-              value={dailyTarget}
-              onChange={(e) => setDailyTarget(e.target.value)}
-            />
           </div>
         </div>
         <DialogFooter>

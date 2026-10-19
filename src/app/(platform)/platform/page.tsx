@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { CheckCircle2, XCircle } from "lucide-react";
 import { requirePlatformAdmin } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { SuspendButton } from "./platform-actions";
@@ -7,8 +6,8 @@ import { SuspendButton } from "./platform-actions";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 // Read-only except for suspend/reactivate. RLS (supabase/migrations/00000000000044_rls.sql)
-// is what actually enforces "never leads, recordings or Twilio
-// credentials" here — this page uses the RLS-governed client, not the
+// is what actually enforces "never leads, recordings or
+// call content" here — this page uses the RLS-governed client, not the
 // service role, so that guarantee holds structurally.
 export default async function PlatformDashboardPage() {
   const admin = await requirePlatformAdmin();
@@ -32,7 +31,7 @@ export default async function PlatformDashboardPage() {
     <div className="mx-auto max-w-6xl p-8">
       <h1 className="font-display text-2xl font-semibold text-ink">Workspaces</h1>
       <p className="mt-1 text-sm text-muted">
-        Signed in as {admin.email}. This view never shows lead phone numbers, recordings or Twilio credentials.
+        Signed in as {admin.email}. This view never shows lead phone numbers, recordings or call content.
       </p>
       <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -43,7 +42,6 @@ export default async function PlatformDashboardPage() {
               <th className="px-4 py-3">Seats used</th>
               <th className="px-4 py-3">Active today</th>
               <th className="px-4 py-3">Calls today</th>
-              <th className="px-4 py-3">Twilio</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -65,13 +63,6 @@ export default async function PlatformDashboardPage() {
                   </td>
                   <td className="px-4 py-3">{s?.agents_active_today ?? 0}</td>
                   <td className="px-4 py-3">{s?.calls_today ?? 0}</td>
-                  <td className="px-4 py-3">
-                    {s?.twilio_connected ? (
-                      <CheckCircle2 className="h-4 w-4 text-brand-green-text" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted" />
-                    )}
-                  </td>
                   <td className="px-4 py-3 capitalize">{w.status}</td>
                   <td className="px-4 py-3">
                     <SuspendButton workspaceId={w.id} status={w.status} />
@@ -81,7 +72,7 @@ export default async function PlatformDashboardPage() {
             })}
             {(workspaces ?? []).length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">
                   No workspaces yet.
                 </td>
               </tr>

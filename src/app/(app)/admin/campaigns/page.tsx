@@ -1,26 +1,47 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth/current-profile";
-import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreateCampaignDialog } from "./create-campaign-dialog";
-import { CreateClientDialog } from "./create-client-dialog";
-import { EditClientDialog } from "./edit-client-dialog";
 import { BRAND } from "@/lib/brand";
+import { countryLabel } from "@/lib/campaign-options";
+import { CreateCampaignDialog } from "./create-campaign-dialog";
+import { CreateClientDialog, EditClientDialog } from "./client-dialogs";
+import { InboundWebhookPanel } from "./inbound-webhook-panel";
+
+const STATUS_BADGE = {
+  active: { variant: "confirm", label: "Live" },
+  paused: { variant: "neutral", label: "Paused" },
+  archived: { variant: "warning", label: "Archived" },
+} as const;
 
 export default async function CampaignsPage() {
-  const profile = await requireProfile();
-  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
+  const profile = await requireRole(["super_admin", "ops_manager"]);
+  const supabase = await createRealClient();
 
-  const supabase = await createClient();
-  const [{ data: campaigns }, { data: clients }] = await Promise.all([
-    supabase
-      .from("campaigns")
-      .select("*, clients(name)")
-      .order("created_at", { ascending: false }),
-    supabase.from("clients").select("*").order("name"),
-  ]);
+  const [{ data: campaigns }, { data: clients }, { data: tokenRow }, { data: rosters }] =
+    await Promise.all([
+      supabase.from("campaigns").select("*").eq("workspace_id", profile.workspace_id).order("created_at", { ascending: false }),
+      supabase.from("clients").select("*").eq("workspace_id", profile.workspace_id).order("name"),
+      supabase.from("lead_intake_tokens").select("token_prefix, last_used_at").eq("workspace_id", profile.workspace_id).maybeSingle(),
+      supabase.from("campaign_assignments").select("campaign_id").eq("workspace_id", profile.workspace_id),
+    ]);
+
+  const clientName = new Map((clients ?? []).map((c) => [c.id, c.name]));
+  const rosterCount = new Map<string, number>();
+  for (const r of rosters ?? []) rosterCount.set(r.campaign_id, (rosterCount.get(r.campaign_id) ?? 0) + 1);
+
+  // Per-campaign lead counts (head-only count queries, one per campaign).
+  const leadCounts = new Map<string, number>();
+  await Promise.all(
+    (campaigns ?? []).map(async (c) => {
+      const { count } = await supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", c.id);
+      leadCounts.set(c.id, count ?? 0);
+    }),
+  );
 
   return (
     <div className="p-4">
@@ -29,69 +50,54 @@ export default async function CampaignsPage() {
           <TabsList>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="clients">Clients</TabsTrigger>
+            <TabsTrigger value="webhook">Inbound webhook</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="campaigns">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs text-muted">
-              {campaigns?.length ?? 0} campaigns · never mix markets in one campaign
-            </p>
+            <p className="text-xs text-muted">{campaigns?.length ?? 0} campaigns · one country per campaign</p>
             <CreateCampaignDialog clients={clients ?? []} />
           </div>
 
           {(campaigns ?? []).length === 0 ? (
             <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
               <p className="text-sm text-muted">
-                No campaigns yet. Create the first one — e.g.{" "}
-                <code className="tabular">CONST-UK</code> and{" "}
-                <code className="tabular">CONST-US</code> as two separate campaigns for the
-                construction client.
+                No campaigns yet. Add a client first, then create the first campaign.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {(campaigns ?? []).map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/admin/campaigns/${c.id}`}
-                  className="animate-slide-up block rounded-lg border border-line bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="mb-2 flex items-start justify-between">
-                    <div>
-                      <div className="text-sm font-semibold text-ink">{c.name}</div>
-                      <div className="tabular text-xs text-muted">{c.code}</div>
+              {(campaigns ?? []).map((c) => {
+                const s = STATUS_BADGE[c.status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.paused;
+                return (
+                  <Link
+                    key={c.id}
+                    href={`/admin/campaigns/${c.id}`}
+                    className="animate-slide-up block rounded-lg border border-line bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="mb-2 flex items-start justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-ink">{c.name}</div>
+                        <div className="tabular text-xs text-muted">{c.code ?? "No code"}</div>
+                      </div>
+                      <Badge variant={s.variant}>{s.label}</Badge>
                     </div>
-                    {c.is_active ? (
-                      <Badge variant="confirm">Live</Badge>
-                    ) : (
-                      <Badge variant="neutral">Not activated</Badge>
-                    )}
-                  </div>
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    <Badge variant="blue">{c.market}</Badge>
-                    <Badge variant="neutral">{c.audience}</Badge>
-                    <Badge variant="neutral">{c.vertical.replace(/_/g, " ")}</Badge>
-                    {c.risk_tier === "high" && <Badge variant="danger">High risk</Badge>}
-                    {c.risk_tier === "elevated" && <Badge variant="warning">Elevated risk</Badge>}
-                  </div>
-                  <div className="space-y-1 text-xs text-muted">
-                    <div>
-                      Client: {(c as { clients?: { name: string } | null }).clients?.name ?? "—"}
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                      <Badge variant="blue">{countryLabel(c.country)}</Badge>
+                      <Badge variant="neutral">{c.audience}</Badge>
+                      {c.vertical && <Badge variant="neutral">{c.vertical.replace(/_/g, " ")}</Badge>}
+                      {c.recording_enabled && <Badge variant="warning">Recording</Badge>}
                     </div>
-                    <div>
-                      Screening: {c.requires_tps_screening && "TPS "}
-                      {c.requires_ctps_screening && "CTPS "}
-                      {c.requires_us_dnc_screening && "US DNC "}
-                      {!c.requires_tps_screening &&
-                      !c.requires_ctps_screening &&
-                      !c.requires_us_dnc_screening
-                        ? "None required"
-                        : `· expires after ${c.screening_max_age_days}d`}
+                    <div className="space-y-1 text-xs text-muted">
+                      <div>Client: {c.client_id ? (clientName.get(c.client_id) ?? "-") : "-"}</div>
+                      <div>
+                        {leadCounts.get(c.id) ?? 0} leads · {rosterCount.get(c.id) ?? 0} agents
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -102,13 +108,13 @@ export default async function CampaignsPage() {
             <CreateClientDialog />
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-line bg-white">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
                   <th className="px-3 py-2 font-medium">Name</th>
                   <th className="px-3 py-2 font-medium">Country</th>
-                  <th className="px-3 py-2 font-medium">Contact email</th>
+                  <th className="px-3 py-2 font-medium">Contact</th>
                   <th className="px-3 py-2 font-medium">Controller</th>
                   <th className="px-3 py-2 font-medium">DPA signed</th>
                   <th className="px-3 py-2 font-medium" />
@@ -118,9 +124,16 @@ export default async function CampaignsPage() {
                 {(clients ?? []).map((c) => (
                   <tr key={c.id} className="h-[38px] border-b border-line last:border-0">
                     <td className="px-3 py-1.5 font-medium text-ink">{c.name}</td>
-                    <td className="px-3 py-1.5 text-muted">{c.country ?? "—"}</td>
+                    <td className="px-3 py-1.5 text-muted">{c.country ?? "-"}</td>
                     <td className="px-3 py-1.5 text-muted">
-                      {c.contact_email ?? <span className="text-warning">Not set</span>}
+                      {c.contact_email ? (
+                        <>
+                          {c.contact_name ? `${c.contact_name} · ` : ""}
+                          {c.contact_email}
+                        </>
+                      ) : (
+                        <span className="text-warning">Not set</span>
+                      )}
                     </td>
                     <td className="px-3 py-1.5">
                       {c.is_data_controller ? (
@@ -130,9 +143,7 @@ export default async function CampaignsPage() {
                       )}
                     </td>
                     <td className="px-3 py-1.5 text-muted">
-                      {c.dpa_signed_on ?? (
-                        <span className="text-warning">Not on file</span>
-                      )}
+                      {c.dpa_signed_on ?? <span className="text-warning">Not on file</span>}
                     </td>
                     <td className="px-3 py-1.5 text-right">
                       <EditClientDialog client={c} />
@@ -149,6 +160,17 @@ export default async function CampaignsPage() {
               </tbody>
             </table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="webhook">
+          <InboundWebhookPanel
+            tokenPrefix={tokenRow?.token_prefix ?? null}
+            lastUsedAt={tokenRow?.last_used_at ?? null}
+            exampleCampaignId={campaigns?.[0]?.id ?? null}
+          />
+          <p className="mt-3 text-xs text-muted">
+            Bulk imports and vendor feeds live under <Link href="/admin/data" className="text-brand-blue hover:underline">Data</Link>.
+          </p>
         </TabsContent>
       </Tabs>
     </div>

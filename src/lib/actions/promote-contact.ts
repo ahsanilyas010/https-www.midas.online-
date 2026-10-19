@@ -1,33 +1,31 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { parsePhoneNumberWithError } from "libphonenumber-js";
-import { createClient } from "@/lib/supabase/server";
+import { requireProfile } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
+import { countryToRegion } from "@/lib/campaign-options";
 
 export interface ActionResult {
   error?: string;
   ok?: boolean;
 }
 
-// Turns a phone-less contact into a real, dialable lead. RLS on
-// `unphoned_contacts` (agent sees only their own assigned rows) covers "not
-// found" for both "doesn't exist" and "not yours" — same pattern as
-// `updateAssignedLead`. The actual insert into `leads` happens inside
-// `promote_unphoned_contact`, which re-checks ownership itself since it
-// runs as SECURITY DEFINER.
-export async function promoteContact(
-  _prev: ActionResult,
-  formData: FormData,
-): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
+// Turns a phone-less contact into a real lead via promote_unphoned_contact()
+// (migration 075): the one path that runs the suppression + duplicate check
+// and inserts the lead as screening_status = 'pending' (not dialable until a
+// manager screens it). Migration 072 then hands the new lead to the agent.
+export async function promoteContact(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const profile = await requireProfile();
+  if (!["agent", "team_lead", "super_admin", "ops_manager"].includes(profile.role)) {
+    return { error: "You can't promote contacts." };
+  }
 
   const contactId = String(formData.get("contact_id") ?? "");
-  if (!contactId) return { error: "Missing contact." };
+  if (!z.string().uuid().safeParse(contactId).success) return { error: "Missing contact." };
 
+  const supabase = await createRealClient();
   const { data: contact } = await supabase
     .from("unphoned_contacts")
     .select("id, country_hint, promoted_lead_id")
@@ -41,7 +39,7 @@ export async function promoteContact(
 
   let phoneE164: string;
   try {
-    const parsed = parsePhoneNumberWithError(phoneRaw, contact.country_hint as never);
+    const parsed = parsePhoneNumberWithError(phoneRaw, countryToRegion(contact.country_hint) as never);
     if (!parsed.isPossible()) throw new Error("invalid");
     phoneE164 = parsed.number;
   } catch {
@@ -53,14 +51,12 @@ export async function promoteContact(
     p_phone_e164: phoneE164,
     p_phone_raw: phoneRaw,
   });
-
   if (error) {
-    if (error.code === "23505") {
-      return { error: "That phone number is already used by another lead in this campaign." };
-    }
+    if (error.code === "23505") return { error: "That phone number already exists as a lead." };
     return { error: error.message };
   }
 
   revalidatePath("/workspace/leads");
+  revalidatePath("/admin/campaigns", "layout");
   return { ok: true };
 }

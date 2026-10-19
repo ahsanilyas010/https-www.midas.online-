@@ -9,7 +9,7 @@ import { SiteFooter, SiteHeader } from "@/components/landing/site-chrome";
 
 export const metadata: Metadata = {
   title: "Contact us",
-  description: `Talk to the ${BRAND.productName} team at ${COMPANY.legalName}, ${companyAddressLine()}. Message us on WhatsApp about plans, onboarding or connecting your dialer.`,
+  description: `Talk to the ${BRAND.productName} team at ${COMPANY.legalName}, ${companyAddressLine()}. Message us on WhatsApp about plans, onboarding or setting up Zoom Phone calling.`,
   alternates: { canonical: "/contact" },
   openGraph: {
     type: "website",
@@ -83,7 +83,7 @@ export default function ContactPage() {
               Let&apos;s <span className="text-gold-gradient">talk.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/75">
-              Questions about plans, onboarding your team or connecting your dialer? Message us on WhatsApp and a real person will reply.
+              Questions about plans, onboarding your team or setting up Zoom Phone calling? Message us on WhatsApp and a real person will reply.
             </p>
             <div className="mt-8 flex justify-center">
               <WhatsAppButton />
@@ -140,7 +140,7 @@ export default function ContactPage() {
             <div className="flex flex-col gap-4">
               {[
                 { href: "/signup", icon: PlayCircle, title: "Start free", text: `${FREE_AGENT_SEATS} agents free, set up in two minutes.` },
-                { href: "/login#demo", icon: Sparkles, title: "Try the live demo", text: "Six roles, sample data, no sign-up." },
+                { href: "/login#demo", icon: Sparkles, title: "Try the live demo", text: "Six roles on a real demo workspace, no sign-up." },
               ].map(({ href, icon: Icon, title, text }) => (
                 <Link
                   key={href}

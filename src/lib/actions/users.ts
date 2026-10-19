@@ -1,15 +1,14 @@
 "use server";
 
-import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { requireRealProfile } from "@/lib/auth/current-profile";
 import { createServiceClient } from "@/lib/supabase/service";
-import { DEMO_PASSWORD } from "@/lib/demo/seed";
 import { generateTempPassword } from "@/lib/auth/generate-password";
-import { accounts, AccountError, type Role } from "@/lib/accounts";
-import { getWorkspaceContext } from "@/lib/accounts/session";
-import { activeAgentCount, seatLimitMessage } from "@/lib/accounts/limits";
-import type { Enums } from "@/lib/supabase/types";
+import { accounts, AccountError } from "@/lib/accounts";
+import { getCurrentWorkspace } from "@/lib/workspace/current";
+import { activeAgentCount, seatLimitMessage } from "@/lib/workspace/limits";
+import { createRealClient } from "@/lib/supabase/real";
 
 export interface CreateUserResult {
   error?: string;
@@ -17,126 +16,111 @@ export interface CreateUserResult {
   fullName?: string;
 }
 
-// Section 3.1 — the credential flow the admin panel implements. Runs with
-// the service-role client (bypasses RLS) but re-checks the caller's role
-// itself first, since RLS isn't there to protect a service-role call.
-export async function createUser(
-  _prev: CreateUserResult,
-  formData: FormData,
-): Promise<CreateUserResult> {
-  const supabase = await createClient();
-  const {
-    data: { user: caller },
-  } = await supabase.auth.getUser();
-  if (!caller) return { error: "Not signed in." };
+const ROLES = ["super_admin", "ops_manager", "team_lead", "agent", "lead_gen", "qa_analyst", "client"] as const;
 
-  const { data: callerProfile } = await supabase
+// Only these IANA zones are offered by the UI; a free-text typo ("UK") once
+// crashed the header clock for that account on every page.
+const TIMEZONES = [
+  "Asia/Karachi",
+  "Europe/London",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+] as const;
+
+const createSchema = z.object({
+  full_name: z.string().trim().min(1, "Name and email are required."),
+  email: z.string().trim().email("Enter a valid email address."),
+  role: z.enum(ROLES),
+  agent_code: z.string().trim().max(32).optional(),
+  team_id: z.string().uuid().optional(),
+  client_id: z.string().uuid().optional(),
+  timezone: z.enum(TIMEZONES).default("Asia/Karachi"),
+});
+
+function blankToUndefined(v: FormDataEntryValue | null) {
+  const s = String(v ?? "").trim();
+  return s === "" ? undefined : s;
+}
+
+// Admin-issued credentials: a one-time password the person must change at
+// first sign-in. Runs with the service role (creating an auth user needs it)
+// so it re-checks the caller's role and workspace itself.
+export async function createUser(_prev: CreateUserResult, formData: FormData): Promise<CreateUserResult> {
+  const caller = await requireRealProfile();
+  if (!["super_admin", "ops_manager"].includes(caller.role)) return { error: "Only admins can create users." };
+
+  const parsed = createSchema.safeParse({
+    full_name: formData.get("full_name"),
+    email: formData.get("email"),
+    role: formData.get("role") ?? "agent",
+    agent_code: blankToUndefined(formData.get("agent_code")),
+    team_id: blankToUndefined(formData.get("team_id")),
+    client_id: blankToUndefined(formData.get("client_id")),
+    timezone: blankToUndefined(formData.get("timezone")),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const input = parsed.data;
+
+  // Only a super admin may mint another super admin.
+  if (input.role === "super_admin" && caller.role !== "super_admin") {
+    return { error: "Only a super admin can create another super admin." };
+  }
+  if (input.role === "client" && !input.client_id) return { error: "Choose which client this login belongs to." };
+
+  const admin = createServiceClient();
+  const workspace = await getCurrentWorkspace();
+
+  // team_id / client_id must belong to the caller's own workspace.
+  if (input.team_id) {
+    const { data } = await admin.from("teams").select("id").eq("id", input.team_id).eq("workspace_id", workspace.id).maybeSingle();
+    if (!data) return { error: "Unknown team." };
+  }
+  if (input.client_id) {
+    const { data } = await admin.from("clients").select("id").eq("id", input.client_id).eq("workspace_id", workspace.id).maybeSingle();
+    if (!data) return { error: "Unknown client." };
+  }
+
+  if (input.role === "agent") {
+    const used = await activeAgentCount(admin, workspace.id);
+    if (used >= workspace.seat_limit) return { error: seatLimitMessage(workspace.seat_limit) };
+  }
+
+  const tempPassword = generateTempPassword();
+  let uid: string;
+  try {
+    uid = (
+      await accounts().createMember({
+        workspaceId: workspace.id,
+        email: input.email,
+        password: tempPassword,
+        fullName: input.full_name,
+        role: input.role,
+      })
+    ).uid;
+  } catch (e) {
+    return { error: e instanceof AccountError ? e.message : "Could not create the login. Try again." };
+  }
+
+  const { error: updateError } = await admin
     .from("profiles")
-    .select("role")
-    .eq("id", caller.id)
-    .single();
-
-  if (!callerProfile || !["super_admin", "ops_manager"].includes(callerProfile.role)) {
-    return { error: "Only admins can create users." };
-  }
-
-  const fullName = String(formData.get("full_name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const role = String(formData.get("role") ?? "agent") as Enums<"app_role">;
-  const agentCode = String(formData.get("agent_code") ?? "").trim() || null;
-  const teamId = String(formData.get("team_id") ?? "").trim() || null;
-  const clientId = String(formData.get("client_id") ?? "").trim() || null;
-  const timezone = String(formData.get("timezone") ?? "Asia/Karachi").trim();
-  const allowOutsideShift = formData.get("allow_login_outside_shift") === "on";
-
-  if (!fullName || !email) {
-    return { error: "Name and email are required." };
-  }
-
-  // A customer workspace: the login goes into the accounts backend
-  // (Firebase) with a one-time password, and agents need a free seat.
-  const ws = await getWorkspaceContext();
-  if (ws) {
-    if (role === "agent" && activeAgentCount(ws.store) >= ws.workspace.agentSeats) {
-      return { error: seatLimitMessage(ws.workspace.agentSeats) };
-    }
-    const tempPassword = generateTempPassword();
-    let uid: string;
-    try {
-      uid = (await accounts().createMember({ workspaceId: ws.workspace.id, email, password: tempPassword, fullName, role: role as Role })).uid;
-    } catch (e) {
-      return { error: e instanceof AccountError ? e.message : "Could not create the login. Try again." };
-    }
-    const wsAdmin = createAdminClient(ws.store);
-    await wsAdmin.from("profiles").upsert({
-      id: uid,
-      full_name: fullName,
-      agent_code: agentCode,
-      role,
-      team_id: teamId,
-      client_id: clientId,
-      timezone,
-      allow_login_outside_shift: allowOutsideShift,
-      must_change_password: true,
-    });
-    await wsAdmin.from("credential_events").insert([
-      { user_id: uid, actor_id: caller.id, event: "created" },
-      { user_id: uid, actor_id: caller.id, event: "temp_issued" },
-    ]);
-    // Real Postgres credential_events (migration 00000000000066) — the
-    // in-memory insert above is the CRM store's own mirror, kept for the
-    // legacy pages that already read it; this is the durable record.
-    await createServiceClient()
-      .from("credential_events")
-      .insert([
-        { workspace_id: ws.workspace.id, user_id: uid, actor_id: caller.id, event: "created" },
-        { workspace_id: ws.workspace.id, user_id: uid, actor_id: caller.id, event: "temp_issued" },
-      ]);
-    return { tempPassword, fullName };
-  }
-
-  const admin = createAdminClient();
-  // Demo build: every account shares the same password.
-  const tempPassword = DEMO_PASSWORD;
-
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password: tempPassword,
-    email_confirm: true,
-  });
-
-  if (createError || !created.user) {
-    return { error: createError?.message ?? "Could not create the auth user." };
-  }
-
-  const { error: profileError } = await admin.from("profiles").insert({
-    id: created.user.id,
-    full_name: fullName,
-    agent_code: agentCode,
-    role,
-    team_id: teamId,
-    client_id: clientId,
-    timezone,
-    allow_login_outside_shift: allowOutsideShift,
-    must_change_password: false,
-  });
-
-  if (profileError) {
-    // Roll back the orphaned auth user so a failed create doesn't leave a
-    // login with no profile behind it.
-    await admin.auth.admin.deleteUser(created.user.id);
-    return { error: profileError.message };
-  }
-
-  const hdrs = await headers();
-  const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    .update({
+      agent_code: input.agent_code ?? null,
+      team_id: input.team_id ?? null,
+      client_id: input.client_id ?? null,
+      timezone: input.timezone,
+    })
+    .eq("id", uid);
+  if (updateError) return { error: `Created the login but couldn't save the profile details: ${updateError.message}` };
 
   await admin.from("credential_events").insert([
-    { user_id: created.user.id, actor_id: caller.id, event: "created", ip },
-    { user_id: created.user.id, actor_id: caller.id, event: "temp_issued", ip },
+    { workspace_id: workspace.id, user_id: uid, actor_id: caller.id, event: "created" },
+    { workspace_id: workspace.id, user_id: uid, actor_id: caller.id, event: "temp_issued" },
   ]);
 
-  return { tempPassword, fullName };
+  revalidatePath("/admin/people");
+  return { tempPassword, fullName: input.full_name };
 }
 
 export interface ResetPasswordResult {
@@ -144,64 +128,65 @@ export interface ResetPasswordResult {
   tempPassword?: string;
 }
 
-export async function resetPassword(
-  _prev: ResetPasswordResult,
-  formData: FormData,
-): Promise<ResetPasswordResult> {
-  const supabase = await createClient();
-  const {
-    data: { user: caller },
-  } = await supabase.auth.getUser();
-  if (!caller) return { error: "Not signed in." };
-
-  const { data: callerProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", caller.id)
-    .single();
-
-  if (!callerProfile || !["super_admin", "ops_manager"].includes(callerProfile.role)) {
-    return { error: "Only admins can reset passwords." };
-  }
+export async function resetPassword(_prev: ResetPasswordResult, formData: FormData): Promise<ResetPasswordResult> {
+  const caller = await requireRealProfile();
+  if (!["super_admin", "ops_manager"].includes(caller.role)) return { error: "Only admins can reset passwords." };
 
   const userId = String(formData.get("user_id") ?? "");
   if (!userId) return { error: "Missing user." };
 
-  const ws = await getWorkspaceContext();
-  if (ws) {
-    if (!ws.members.some((m) => m.uid === userId)) return { error: "Unknown user." };
-    const tempPassword = generateTempPassword();
-    try {
-      await accounts().setPassword(userId, tempPassword);
-      await accounts().updateMember(userId, { mustChangePassword: true });
-    } catch (e) {
-      return { error: e instanceof AccountError ? e.message : "Could not reset the password." };
-    }
-    const wsAdmin = createAdminClient(ws.store);
-    await wsAdmin.from("profiles").update({ must_change_password: true }).eq("id", userId);
-    await wsAdmin.from("credential_events").insert({ user_id: userId, actor_id: caller.id, event: "reset_by_admin" });
-    await createServiceClient()
-      .from("credential_events")
-      .insert({ workspace_id: ws.workspace.id, user_id: userId, actor_id: caller.id, event: "reset_by_admin" });
-    return { tempPassword };
+  const admin = createServiceClient();
+  const { data: target } = await admin
+    .from("profiles")
+    .select("id, role")
+    .eq("id", userId)
+    .eq("workspace_id", caller.workspace_id)
+    .maybeSingle();
+  if (!target) return { error: "Unknown user." };
+  if (target.role === "super_admin" && caller.role !== "super_admin") {
+    return { error: "Only a super admin can reset another super admin's password." };
   }
 
-  const admin = createAdminClient();
-  // Demo build: every account shares the same password.
-  const tempPassword = DEMO_PASSWORD;
+  const tempPassword = generateTempPassword();
+  try {
+    await accounts().setPassword(userId, tempPassword);
+    await accounts().updateMember(userId, { mustChangePassword: true });
+  } catch (e) {
+    return { error: e instanceof AccountError ? e.message : "Could not reset the password." };
+  }
 
-  const { error } = await admin.auth.admin.updateUserById(userId, { password: tempPassword });
-  if (error) return { error: error.message };
-
-
-  const hdrs = await headers();
-  const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  await admin.from("credential_events").insert({
-    user_id: userId,
-    actor_id: caller.id,
-    event: "reset_by_admin",
-    ip,
-  });
-
+  await admin
+    .from("credential_events")
+    .insert({ workspace_id: caller.workspace_id, user_id: userId, actor_id: caller.id, event: "reset_by_admin" });
   return { tempPassword };
+}
+
+export interface AssignResult {
+  error?: string;
+  ok?: boolean;
+}
+
+// People row menu: put an agent on a campaign's roster.
+export async function assignPersonToCampaign(campaignId: string, userId: string): Promise<AssignResult> {
+  const caller = await requireRealProfile();
+  if (!["super_admin", "ops_manager"].includes(caller.role)) return { error: "Only admins can assign people to campaigns." };
+
+  const supabase = await createRealClient();
+  const [{ data: campaign }, { data: person }] = await Promise.all([
+    supabase.from("campaigns").select("id").eq("id", campaignId).maybeSingle(),
+    supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle(),
+  ]);
+  if (!campaign || !person) return { error: "Unknown campaign or person." };
+  if (person.role !== "agent") return { error: "Only agents are assigned to campaigns." };
+
+  const { error } = await supabase
+    .from("campaign_assignments")
+    .upsert(
+      { workspace_id: caller.workspace_id, campaign_id: campaignId, user_id: userId },
+      { onConflict: "campaign_id,user_id", ignoreDuplicates: true },
+    );
+  if (error) return { error: error.message };
+  revalidatePath("/admin/people");
+  revalidatePath("/admin/campaigns");
+  return { ok: true };
 }

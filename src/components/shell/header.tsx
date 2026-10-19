@@ -20,16 +20,17 @@ import { Separator } from "@/components/ui/separator";
 import { AttendanceControl } from "@/components/shell/attendance-control";
 import { FollowupTray } from "@/components/shell/followup-tray";
 import type { Profile } from "@/lib/auth/current-profile";
-import type { CurrentSession } from "@/lib/actions/attendance";
-import type { FollowupRow } from "@/lib/actions/followups";
+import type { CallbackRow } from "@/lib/actions/callbacks";
+import type { RealTables } from "@/lib/supabase/real-types";
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super admin",
   ops_manager: "Ops manager",
   team_lead: "Team lead",
-  qa: "QA",
-  agent: "Agent",
-  client_viewer: "Client",
+  qa_analyst: "QA analyst",
+  agent: "Sales agent",
+  lead_gen: "Lead gen",
+  client: "Client",
 };
 
 // profile.timezone is a free-text field (see admin/people/create-user-dialog)
@@ -65,8 +66,13 @@ function initials(name: string) {
 }
 
 const TITLES: Record<string, string> = {
-  workspace: "Dial workspace",
-  admin: "Live floor",
+  dial: "Dial workspace",
+  live: "Live floor",
+  portal: "Client reports",
+  quality: "Quality",
+  billing: "Plan & billing",
+  branding: "Branding",
+  email: "Email templates",
   performance: "Performance",
   people: "People",
   campaigns: "Campaigns",
@@ -74,35 +80,39 @@ const TITLES: Record<string, string> = {
   compliance: "Compliance",
   data: "Data",
   security: "Security & audit",
-  client: "Client reports",
-  qa: "QA queue",
-  meetings: "Zoom meetings",
   integrations: "Integrations",
   leads: "My leads",
+  leadgen: "Lead gen",
+  connectors: "Connectors",
+  meetings: "Meetings",
+  zoom: "Zoom",
 };
 
 function useTitle() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
-  const last = segments[segments.length - 1] ?? "admin";
+  const last = segments[segments.length - 1] ?? "live";
+  if (segments[0] === "leadgen" && last === "leads") return "Lead inbox";
   return TITLES[last] ?? BRAND.productName;
 }
 
 export function Header({
   profile,
-  initialSession,
-  initialFollowups,
+  initialEvent,
+  initialCallbacks,
   onMenuClick,
 }: {
   profile: Profile;
-  initialSession: CurrentSession | null;
-  initialFollowups: FollowupRow[];
+  initialEvent: RealTables<"attendance_events">["event_type"] | null;
+  initialCallbacks: CallbackRow[];
   onMenuClick?: () => void;
 }) {
   const title = useTitle();
   const [now, setNow] = useState<Date | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const isStaff = profile.role !== "client_viewer";
+  // Clock-in, callbacks and leave are for people on a shift; clients and the
+  // lead-gen seat have none.
+  const isStaff = profile.role !== "client" && profile.role !== "lead_gen";
 
   useEffect(() => {
     setNow(new Date());
@@ -133,9 +143,9 @@ export function Header({
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         {isStaff && (
           <>
-            <AttendanceControl initialSession={initialSession} />
+            <AttendanceControl initialEvent={initialEvent} />
             <Separator orientation="vertical" className="hidden h-5 sm:block" />
-            <FollowupTray userId={profile.id} initial={initialFollowups} />
+            <FollowupTray userId={profile.id} initial={initialCallbacks} />
             <Separator orientation="vertical" className="hidden h-5 md:block" />
           </>
         )}

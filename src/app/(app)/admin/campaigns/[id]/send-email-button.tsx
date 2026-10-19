@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { sendLeadEmail } from "@/lib/actions/email";
+import { sendLeadEmail } from "@/lib/actions/email-v2";
 import { Button } from "@/components/ui/button";
 import {
   Select,

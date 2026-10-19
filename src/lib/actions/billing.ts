@@ -1,16 +1,19 @@
 "use server";
 
 import { headers } from "next/headers";
-import { getWorkspaceContext } from "@/lib/accounts/session";
-import { activeAgentCount } from "@/lib/accounts/limits";
+import { requireRealProfile } from "@/lib/auth/current-profile";
+import { getCurrentWorkspace } from "@/lib/workspace/current";
+import { activeAgentCount } from "@/lib/workspace/limits";
+import { workspaceFromRow } from "@/lib/accounts/adapters";
+import { createServiceClient } from "@/lib/supabase/service";
 import { createCheckoutSession, createPortalSession, stripeConfigured } from "@/lib/billing/stripe";
 import { FREE_AGENT_SEATS, SELF_SERVE_MAX_AGENTS } from "@/lib/plan";
 
 async function ownerContext() {
-  const ws = await getWorkspaceContext();
-  if (!ws) return { error: "Billing is available in your own workspace." } as const;
-  if (ws.member.role !== "super_admin") return { error: "Only the workspace admin can manage billing." } as const;
-  return { ws } as const;
+  const member = await requireRealProfile();
+  if (member.role !== "super_admin") return { error: "Only the workspace admin can manage billing." } as const;
+  const workspace = workspaceFromRow(await getCurrentWorkspace());
+  return { ws: { workspace, member } } as const;
 }
 
 async function origin() {
@@ -24,7 +27,7 @@ export async function startCheckout(seats: number): Promise<{ url?: string; erro
   if ("error" in ctx) return { error: ctx.error };
   const { ws } = ctx;
   const n = Math.floor(seats);
-  const min = Math.max(FREE_AGENT_SEATS + 1, activeAgentCount(ws.store));
+  const min = Math.max(FREE_AGENT_SEATS + 1, (await activeAgentCount(createServiceClient(), ws.workspace.id)));
   if (!Number.isFinite(n) || n < min) return { error: `Choose at least ${min} agent seats.` };
   if (n > SELF_SERVE_MAX_AGENTS) return { error: `For more than ${SELF_SERVE_MAX_AGENTS} agents, contact us for volume pricing.` };
   if (!stripeConfigured()) return { error: "Online payments aren't switched on yet. Contact us to upgrade." };

@@ -8,7 +8,6 @@ import { createRealClient } from "@/lib/supabase/real";
 import { createServiceClient } from "@/lib/supabase/service";
 import { activeAgentCount, seatLimitMessage } from "@/lib/workspace/limits";
 import { ingestLeadFile } from "@/lib/actions/lead-upload";
-import { verifyTwilioCredentials } from "@/lib/twilio/verify";
 import type { RealEnums } from "@/lib/supabase/real-types";
 
 export interface OnboardingActionState {
@@ -61,49 +60,6 @@ export async function createFirstCampaign(_prev: OnboardingActionState, formData
   });
   if (error) return { error: error.message };
 
-  await advance(supabase, workspace.id, "twilio");
-  revalidatePath("/onboarding", "layout");
-  return { ok: true };
-}
-
-// Step 3 — Twilio connect. Real verification (a test API call + listing
-// owned numbers) via src/lib/twilio/verify.ts.
-const twilioSchema = z.object({
-  account_sid: z.string().trim().min(10, "Enter a valid Account SID.").max(64),
-  auth_token: z.string().trim().min(10, "Enter a valid Auth Token.").max(128),
-});
-
-export async function saveTwilioCredentials(_prev: OnboardingActionState, formData: FormData): Promise<OnboardingActionState> {
-  await requireManager();
-  const workspace = await getCurrentWorkspace();
-
-  const parsed = twilioSchema.safeParse({
-    account_sid: formData.get("account_sid"),
-    auth_token: formData.get("auth_token"),
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid Twilio credentials." };
-
-  const admin = createServiceClient();
-  const { error } = await admin.rpc("set_twilio_credentials", {
-    p_workspace_id: workspace.id,
-    p_account_sid: parsed.data.account_sid,
-    p_auth_token: parsed.data.auth_token,
-  });
-  if (error) return { error: error.message };
-
-  const verified = await verifyTwilioCredentials(workspace.id, parsed.data.account_sid, parsed.data.auth_token);
-  if (!verified.ok) return { error: verified.error };
-
-  const supabase = await createRealClient();
-  await advance(supabase, workspace.id, "data");
-  revalidatePath("/onboarding", "layout");
-  return { ok: true };
-}
-
-export async function skipTwilioStep(): Promise<OnboardingActionState> {
-  await requireManager();
-  const workspace = await getCurrentWorkspace();
-  const supabase = await createRealClient();
   await advance(supabase, workspace.id, "data");
   revalidatePath("/onboarding", "layout");
   return { ok: true };

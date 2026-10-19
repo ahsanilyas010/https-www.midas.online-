@@ -1,308 +1,413 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth/current-profile";
-import { getConnector, connectorRegistry } from "@/lib/connectors/registry";
-import { importLeads } from "@/lib/connectors/pipeline";
-import { parseVendorFile, normaliseVendorRow, type VendorCsvFieldMap } from "@/lib/connectors/vendor-csv";
+import * as XLSX from "xlsx";
+import { z } from "zod";
+import { parsePhoneNumberWithError } from "libphonenumber-js";
+import { requireRealProfile } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
 import { captureException } from "@/lib/error-tracking";
-import type { Json } from "@/lib/supabase/types";
 
 export interface ActionResult {
   error?: string;
   ok?: boolean;
   imported?: number;
   rejected?: number;
-  assigned?: number;
+  unphoned?: number;
 }
 
-// Resolves who a direct-to-agent upload's leads go to, before anything is
-// imported — a team with no active agents fails the whole upload up
-// front rather than leaving a just-committed batch stranded unassigned
-// with no clean way to signal "the import worked but the assignment
-// didn't."
-async function resolveAssignmentTargets(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  assignToAgentId: string | null,
-  assignToTeamId: string | null,
-): Promise<{ agentIds: string[] | null; error?: string }> {
-  if (!assignToAgentId && !assignToTeamId) return { agentIds: null };
-  if (assignToAgentId) return { agentIds: [assignToAgentId] };
+const MANAGERS = ["super_admin", "ops_manager"];
+// Lead gen registers sources and imports files too (RLS limits it to inserting
+// its own sources / batches / runs; it cannot edit or deactivate a source).
+const IMPORTERS = ["super_admin", "ops_manager", "lead_gen"];
 
-  const { data: members } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("team_id", assignToTeamId!)
-    .eq("role", "agent")
-    .eq("is_active", true)
-    .order("full_name");
-  const agentIds = (members ?? []).map((m) => m.id);
-  if (agentIds.length === 0) {
-    return { agentIds: null, error: "That team has no active agents to assign to." };
-  }
-  return { agentIds };
-}
+const SOURCE_TYPES = [
+  "client_supplied",
+  "vendor_licensed",
+  "public_open_data",
+  "inbound_web_form",
+  "referral",
+  "manual_entry",
+] as const;
+const LAWFUL_BASES = ["consent", "legitimate_interest", "contract", "not_personal_data"] as const;
 
-// Direct-to-agent upload — skips the manual "Assign to..." step by tagging
-// every lead this run imports with an agent (or, for a team, round-robining
-// across the agentIds resolveAssignmentTargets found) right away, and
-// marks them screened immediately so there's no "Unassigned"/"unscreened"
-// gap for the agent to wait through. Only ever called for leads this exact
-// run just inserted (outcome.insertedIds) — never touches anyone else's
-// leads, and never touches a lead importLeads() already suppressed
-// (do_not_call=true stays blocked regardless of this flow).
-async function assignImportedLeads(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  insertedIds: string[],
-  agentIds: string[],
-): Promise<number> {
-  if (insertedIds.length === 0 || agentIds.length === 0) return 0;
+const sourceSchema = z.object({
+  name: z.string().trim().min(1, "A name is required.").max(120),
+  source_type: z.enum(SOURCE_TYPES),
+  lawful_basis: z.enum(LAWFUL_BASES, { message: "A lawful basis is required." }),
+  market: z.string().trim().max(20).optional(),
+  provider_url: z.string().trim().max(300).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
 
-  // Screening first: assignment below only picks up leads that are now
-  // 'passed', same gate the manual dropdown uses. do_not_call=false is
-  // enough to exclude a suppression-list hit — importLeads() only ever
-  // sets do_not_call=true together with screening_status='blocked'.
-  await supabase
-    .from("leads")
-    .update({ screening_status: "passed", screened_at: new Date().toISOString() })
-    .in("id", insertedIds)
-    .eq("do_not_call", false);
+export async function registerDataSource(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const profile = await requireRealProfile();
+  if (!IMPORTERS.includes(profile.role)) return { error: "Only an admin or lead gen can register data sources." };
 
-  const { data: assignable } = await supabase
-    .from("leads")
-    .select("id")
-    .in("id", insertedIds)
-    .eq("do_not_call", false)
-    .eq("screening_status", "passed")
-    .order("created_at");
-
-  const nowIso = new Date().toISOString();
-  const results = await Promise.all(
-    (assignable ?? []).map((lead, i) =>
-      supabase
-        .from("leads")
-        .update({ assigned_to: agentIds[i % agentIds.length], assigned_at: nowIso, status: "assigned" })
-        .eq("id", lead.id),
-    ),
-  );
-
-  return results.filter((r) => !r.error).length;
-}
-
-// Registers a data_source row backed by one of the built-in connectors.
-// `config.connector_key` is how the admin/data screen knows which
-// connector's "Run fetch" dialog to offer for this source.
-export async function registerConnectorSource(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
-  const profile = await requireProfile();
-  if (!["super_admin", "ops_manager"].includes(profile.role)) return { error: "Not authorized." };
-
-  const connectorKey = String(formData.get("connector_key") ?? "");
-  const connector = connectorRegistry[connectorKey];
-  if (!connector) return { error: "Unknown connector." };
-
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { error: "A name is required." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("data_sources").insert({
-    name,
-    source_type: connector.market === "UK" && connectorKey === "companies_house" ? "public_api" : "public_open_data",
-    market: connector.market,
-    lawful_basis: connector.lawfulBasis,
-    config: { connector_key: connectorKey } as Json,
+  const parsed = sourceSchema.safeParse({
+    name: formData.get("name"),
+    source_type: formData.get("source_type"),
+    lawful_basis: formData.get("lawful_basis"),
+    market: formData.get("market") || undefined,
+    provider_url: formData.get("provider_url") || undefined,
+    notes: formData.get("notes") || undefined,
   });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
+  const supabase = await createRealClient();
+  const { error } = await supabase.from("data_sources").insert({
+    workspace_id: profile.workspace_id,
+    name: parsed.data.name,
+    source_type: parsed.data.source_type,
+    lawful_basis: parsed.data.lawful_basis,
+    market: parsed.data.market ?? null,
+    provider_url: parsed.data.provider_url ?? null,
+    notes: parsed.data.notes ?? null,
+    created_by: profile.id,
+  });
+  if (error) return { error: error.code === "23505" ? "A source with that name already exists." : error.message };
+  revalidatePath("/admin/data");
+  revalidatePath("/leadgen/leads");
+  return { ok: true };
+}
+
+export async function setDataSourceActive(id: string, active: boolean): Promise<ActionResult> {
+  const profile = await requireRealProfile();
+  if (!MANAGERS.includes(profile.role)) return { error: "Only an admin can change data sources." };
+  const supabase = await createRealClient();
+  const { error } = await supabase
+    .from("data_sources")
+    .update({ is_active: active })
+    .eq("id", id)
+    .eq("workspace_id", profile.workspace_id);
   if (error) return { error: error.message };
   revalidatePath("/admin/data");
   return { ok: true };
 }
 
-// Section 6.4 — triggers one of the registered API/open-data connectors.
-// Runs the whole fetch -> normalise -> import cycle and records it in
-// source_fetch_runs regardless of outcome, so a failed run is as visible
-// as a successful one.
-export async function runConnectorFetch(params: {
-  connectorKey: string;
-  dataSourceId: string;
-  campaignId: string;
-  fetchParams: Record<string, unknown>;
-}): Promise<ActionResult> {
-  const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) {
-    return { error: "Not authorized." };
-  }
-
-  const connector = getConnector(params.connectorKey);
-  if (!connector) return { error: `Unknown connector "${params.connectorKey}".` };
-
-  const supabase = await createClient();
-  const { data: run, error: runError } = await supabase
-    .from("source_fetch_runs")
-    .insert({
-      data_source_id: params.dataSourceId,
-      campaign_id: params.campaignId,
-      triggered_by: profile.id,
-      params: params.fetchParams as Json,
-      status: "running",
-    })
-    .select("id")
-    .single();
-  if (runError || !run) return { error: runError?.message ?? "Could not start fetch run." };
-
-  try {
-    const raw = await connector.fetch(params.fetchParams);
-    const records = raw.map((r) => connector.normalise(r)).filter((r) => r !== null);
-
-    const outcome = await importLeads({
-      supabase,
-      campaignId: params.campaignId,
-      dataSourceId: params.dataSourceId,
-      records,
-    });
-
-    await supabase
-      .from("source_fetch_runs")
-      .update({
-        finished_at: new Date().toISOString(),
-        records_found: raw.length,
-        records_imported: outcome.imported,
-        records_rejected: raw.length - records.length + outcome.rejected,
-        status: "complete",
-      })
-      .eq("id", run.id);
-
-    revalidatePath("/admin/data");
-    return { ok: true, imported: outcome.imported, rejected: outcome.rejected };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Fetch failed.";
-    captureException(err, { action: "runConnectorFetch", dataSourceId: params.dataSourceId, runId: run.id });
-    await supabase
-      .from("source_fetch_runs")
-      .update({ finished_at: new Date().toISOString(), status: "failed", error: message })
-      .eq("id", run.id);
-    revalidatePath("/admin/data");
-    return { error: message };
-  }
+// Same algorithm as compute_phone_hash() (migration 047).
+function phoneHash(e164: string): string {
+  return createHash("sha256").update(e164).digest("hex");
 }
 
-// Section 6.4 — "Vendor CSV | Both | Licensed | Generic import path with
-// mandatory provenance capture." Same commit path as the API connectors;
-// logged the same way in source_fetch_runs so import history is one list,
-// not two.
-export async function uploadVendorCsv(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
-  const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) {
-    return { error: "Not authorized." };
-  }
+function cell(row: Record<string, unknown>, key: string | undefined): string | undefined {
+  if (!key) return undefined;
+  const v = row[key];
+  if (v === null || v === undefined) return undefined;
+  const s = String(v).trim();
+  return s || undefined;
+}
 
-  const campaignId = String(formData.get("campaign_id") ?? "");
+// Section 6.4: a vendor/client file import with mandatory provenance. Every
+// lead gets a data_source_id (and the batch records it too); rows without a
+// usable phone but with a name or email land in unphoned_contacts instead of
+// being fabricated or silently dropped. Dedupe against existing leads and
+// the suppression list mirrors ingestLeadFile() in lead-upload.ts.
+export async function importVendorFile(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const profile = await requireRealProfile();
+  if (!IMPORTERS.includes(profile.role)) return { error: "Only an admin or lead gen can import leads." };
+  const isLeadGen = profile.role === "lead_gen";
+
   const dataSourceId = String(formData.get("data_source_id") ?? "");
-  const countryHint = String(formData.get("country") ?? "GB");
+  const campaignId = String(formData.get("campaign_id") ?? "") || null;
+  const country = (String(formData.get("country") ?? "GB").trim() || "GB").toUpperCase();
   const file = formData.get("file");
-  const assignToAgentId = String(formData.get("assign_to_agent_id") ?? "") || null;
-  const assignToTeamId = String(formData.get("assign_to_team_id") ?? "") || null;
+  const map = {
+    phone: String(formData.get("map_phone") ?? "") || undefined,
+    name: String(formData.get("map_name") ?? "") || undefined,
+    first: String(formData.get("map_first_name") ?? "") || undefined,
+    last: String(formData.get("map_last_name") ?? "") || undefined,
+    email: String(formData.get("map_email") ?? "") || undefined,
+    ref: String(formData.get("map_external_ref") ?? "") || undefined,
+  };
 
-  if (!campaignId || !dataSourceId || !(file instanceof File)) {
-    return { error: "Campaign, data source and a file are required." };
+  if (!z.string().uuid().safeParse(dataSourceId).success) return { error: "Pick a data source." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a CSV or XLSX file." };
+  if (!map.phone) return { error: "A phone-number column mapping is required." };
+
+  const supabase = await createRealClient();
+  const ws = profile.workspace_id;
+
+  const { data: source } = await supabase
+    .from("data_sources")
+    .select("id, name, lawful_basis, is_active")
+    .eq("id", dataSourceId)
+    .eq("workspace_id", ws)
+    .maybeSingle();
+  if (!source) return { error: "Data source not found." };
+  if (!source.lawful_basis) return { error: "No lawful basis on file for this data source: refusing to import." };
+  if (!source.is_active) return { error: "This data source is inactive." };
+
+  if (campaignId) {
+    if (isLeadGen) {
+      // lead_gen has no direct read on campaigns: use the name-only pick-list.
+      const { data: list } = await supabase.rpc("leadgen_campaigns");
+      if (!(list ?? []).some((c) => c.id === campaignId)) return { error: "Campaign not found." };
+    } else {
+      const { data: camp } = await supabase.from("campaigns").select("id").eq("id", campaignId).eq("workspace_id", ws).maybeSingle();
+      if (!camp) return { error: "Campaign not found." };
+    }
   }
 
-  const supabase = await createClient();
-  const { agentIds, error: assignmentError } = await resolveAssignmentTargets(
-    supabase,
-    assignToAgentId,
-    assignToTeamId,
-  );
-  if (assignmentError) return { error: assignmentError };
-
-  const fieldMap: VendorCsvFieldMap = {
-    phone: String(formData.get("map_phone") ?? "") || undefined,
-    firstName: String(formData.get("map_first_name") ?? "") || undefined,
-    lastName: String(formData.get("map_last_name") ?? "") || undefined,
-    companyName: String(formData.get("map_company_name") ?? "") || undefined,
-    jobTitle: String(formData.get("map_job_title") ?? "") || undefined,
-    email: String(formData.get("map_email") ?? "") || undefined,
-    addressLine1: String(formData.get("map_address") ?? "") || undefined,
-    city: String(formData.get("map_city") ?? "") || undefined,
-    region: String(formData.get("map_region") ?? "") || undefined,
-    postcode: String(formData.get("map_postcode") ?? "") || undefined,
-    externalRef: String(formData.get("map_external_ref") ?? "") || undefined,
-    council: String(formData.get("map_council") ?? "") || undefined,
-    projectName: String(formData.get("map_project_name") ?? "") || undefined,
-    projectType: String(formData.get("map_project_type") ?? "") || undefined,
-    units: String(formData.get("map_units") ?? "") || undefined,
-    summary: String(formData.get("map_summary") ?? "") || undefined,
-    decision: String(formData.get("map_decision") ?? "") || undefined,
-    decisionDate: String(formData.get("map_decision_date") ?? "") || undefined,
-    contactNameAddress: String(formData.get("map_contact_name_address") ?? "") || undefined,
-    portalUrl: String(formData.get("map_portal_url") ?? "") || undefined,
-    sourceNotes: String(formData.get("map_source_notes") ?? "") || undefined,
-    applicationDate: String(formData.get("map_application_date") ?? "") || undefined,
-    authority: String(formData.get("map_authority") ?? "") || undefined,
-    category: String(formData.get("map_category") ?? "") || undefined,
-    applicationType: String(formData.get("map_application_type") ?? "") || undefined,
-    proposal: String(formData.get("map_proposal") ?? "") || undefined,
-    architectName: String(formData.get("map_architect_name") ?? "") || undefined,
-    web: String(formData.get("map_web") ?? "") || undefined,
-    contact: String(formData.get("map_contact") ?? "") || undefined,
-    comments: String(formData.get("map_comments") ?? "") || undefined,
-    disposition: String(formData.get("map_disposition") ?? "") || undefined,
-  };
-  if (!fieldMap.phone) return { error: "A phone-number column mapping is required." };
+  let buffer: Buffer;
+  let rows: Record<string, unknown>[];
+  try {
+    buffer = Buffer.from(await file.arrayBuffer());
+    const wb = XLSX.read(buffer, { type: "buffer" });
+    rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]], { defval: null });
+  } catch {
+    return { error: "Could not parse the uploaded file." };
+  }
+  if (rows.length === 0) return { error: "The file has no rows." };
 
   const { data: run, error: runError } = await supabase
     .from("source_fetch_runs")
     .insert({
+      workspace_id: ws,
       data_source_id: dataSourceId,
       campaign_id: campaignId,
       triggered_by: profile.id,
-      params: { fieldMap, filename: file.name } as Json,
+      params: { filename: file.name, mapping: map, country },
+      records_found: rows.length,
       status: "running",
-      assigned_to: assignToAgentId,
-      assigned_team_id: assignToTeamId,
-      skip_screening: agentIds !== null,
     })
     .select("id")
     .single();
-  if (runError || !run) return { error: runError?.message ?? "Could not start import run." };
+  if (runError || !run) return { error: runError?.message ?? "Could not start the import run." };
 
-  try {
-    const { rows } = parseVendorFile(await file.arrayBuffer());
-    const records = rows
-      .map((row) => normaliseVendorRow(row, fieldMap, countryHint))
-      .filter((r) => r !== null);
-
-    const outcome = await importLeads({
-      supabase,
-      campaignId,
-      dataSourceId,
-      records,
-    });
-
-    const assigned = agentIds ? await assignImportedLeads(supabase, outcome.insertedIds, agentIds) : 0;
-
-    await supabase
-      .from("source_fetch_runs")
-      .update({
-        finished_at: new Date().toISOString(),
-        records_found: rows.length,
-        records_imported: outcome.imported,
-        records_rejected: rows.length - records.length + outcome.rejected,
-        status: "complete",
-      })
-      .eq("id", run.id);
-
-    revalidatePath("/admin/data");
-    revalidatePath("/agent");
-    return { ok: true, imported: outcome.imported, rejected: outcome.rejected, assigned };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Import failed.";
-    captureException(err, { action: "uploadVendorCsv", dataSourceId, runId: run.id });
+  const fail = async (message: string): Promise<ActionResult> => {
     await supabase
       .from("source_fetch_runs")
       .update({ finished_at: new Date().toISOString(), status: "failed", error: message })
       .eq("id", run.id);
     revalidatePath("/admin/data");
+    revalidatePath("/leadgen", "layout");
     return { error: message };
+  };
+
+  try {
+    type Parsed = { phone: string; hash: string; name: string | null; email: string | null };
+    const good: Parsed[] = [];
+    const phoneless: { name: string | null; email: string | null; ref: string | null }[] = [];
+    let invalid = 0;
+
+    for (const row of rows) {
+      const name =
+        cell(row, map.name) ?? ([cell(row, map.first), cell(row, map.last)].filter(Boolean).join(" ") || undefined);
+      const email = cell(row, map.email);
+      const raw = cell(row, map.phone);
+      if (!raw) {
+        if (name || email) phoneless.push({ name: name ?? null, email: email ?? null, ref: cell(row, map.ref) ?? null });
+        else invalid += 1;
+        continue;
+      }
+      try {
+        const p = parsePhoneNumberWithError(raw, country as never);
+        if (!p.isPossible()) throw new Error("invalid");
+        good.push({ phone: p.number, hash: phoneHash(p.number), name: name ?? null, email: email ?? null });
+      } catch {
+        invalid += 1;
+      }
+    }
+
+    // Dedupe: within the file, against existing leads, and against suppression.
+    const hashes = [...new Set(good.map((g) => g.hash))];
+    const skip = new Set<string>();
+    for (let i = 0; i < hashes.length; i += 300) {
+      const chunk = hashes.slice(i, i + 300);
+      if (isLeadGen) {
+        // lead_gen can only read a slice of leads and no suppression list, so
+        // the workspace-wide check goes through a hashes-only RPC.
+        const { data: known, error: knownErr } = await supabase.rpc("leadgen_known_hashes", { p_hashes: chunk });
+        if (knownErr) return fail(knownErr.message);
+        for (const r of known ?? []) if (r.phone_hash) skip.add(r.phone_hash);
+        continue;
+      }
+      const [{ data: existing }, { data: sup }] = await Promise.all([
+        supabase.from("leads").select("phone_hash").eq("workspace_id", ws).in("phone_hash", chunk),
+        supabase.from("suppression_list").select("phone_hash").eq("workspace_id", ws).in("phone_hash", chunk),
+      ]);
+      for (const r of existing ?? []) if (r.phone_hash) skip.add(r.phone_hash);
+      for (const r of sup ?? []) skip.add(r.phone_hash);
+    }
+    const seen = new Set<string>();
+    const toInsert = good.filter((g) => {
+      if (skip.has(g.hash) || seen.has(g.hash)) return false;
+      seen.add(g.hash);
+      return true;
+    });
+    const duplicates = good.length - toInsert.length;
+
+    // Batch row (+ the raw file, same bucket/path convention as lead-upload.ts).
+    let batchId: string | null = null;
+    if (toInsert.length > 0) {
+      const path = `${ws}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error: upErr } = await supabase.storage
+        .from("lead-uploads")
+        .upload(path, buffer, { contentType: file.type || "text/csv" });
+      if (upErr) return fail(`Could not store the file: ${upErr.message}`);
+
+      const { data: batch, error: batchErr } = await supabase
+        .from("lead_batches")
+        .insert({
+          workspace_id: ws,
+          campaign_id: campaignId,
+          data_source_id: dataSourceId,
+          source: `${source.name}: ${file.name}`,
+          uploaded_by: profile.id,
+          row_count: toInsert.length,
+          status: "uploaded",
+          storage_path: path,
+        })
+        .select("id")
+        .single();
+      if (batchErr || !batch) return fail(batchErr?.message ?? "Could not create the batch.");
+      batchId = batch.id;
+
+      for (let i = 0; i < toInsert.length; i += 500) {
+        const chunk = toInsert.slice(i, i + 500).map((r) => ({
+          workspace_id: ws,
+          campaign_id: campaignId,
+          batch_id: batch.id,
+          data_source_id: dataSourceId,
+          phone_e164: r.phone,
+          full_name: r.name,
+          email: r.email,
+        }));
+        const { error } = await supabase.from("leads").insert(chunk);
+        if (error) return fail(error.message);
+      }
+    }
+
+    // Phone-less contacts: skip refs already held for this source.
+    let unphonedInserted = 0;
+    if (phoneless.length > 0) {
+      const refs = phoneless.map((p) => p.ref).filter((r): r is string => Boolean(r));
+      const have = new Set<string>();
+      if (refs.length > 0) {
+        const { data: existing } = await supabase
+          .from("unphoned_contacts")
+          .select("external_ref")
+          .eq("workspace_id", ws)
+          .eq("data_source_id", dataSourceId)
+          .in("external_ref", refs);
+        for (const e of existing ?? []) if (e.external_ref) have.add(e.external_ref);
+      }
+      const seenRefs = new Set<string>();
+      const fresh = phoneless.filter((p) => {
+        if (!p.ref) return true;
+        if (have.has(p.ref) || seenRefs.has(p.ref)) return false;
+        seenRefs.add(p.ref);
+        return true;
+      });
+      const rowFor = (p: (typeof fresh)[number]) => ({
+        workspace_id: ws,
+        campaign_id: campaignId,
+        data_source_id: dataSourceId,
+        run_id: run.id,
+        external_ref: p.ref,
+        full_name: p.name,
+        email: p.email,
+        country_hint: country,
+      });
+      for (let i = 0; i < fresh.length; i += 500) {
+        const slice = fresh.slice(i, i + 500);
+        const { error } = await supabase.from("unphoned_contacts").insert(slice.map(rowFor));
+        if (!error) {
+          unphonedInserted += slice.length;
+          continue;
+        }
+        if (error.code !== "23505") return fail(error.message);
+        // A ref we could not see (held by another user) clashed: fall back to
+        // row-by-row and skip just the clashing ones.
+        for (const p of slice) {
+          const { error: rowErr } = await supabase.from("unphoned_contacts").insert(rowFor(p));
+          if (!rowErr) unphonedInserted += 1;
+          else if (rowErr.code !== "23505") return fail(rowErr.message);
+        }
+      }
+    }
+
+    const rejected = invalid + duplicates;
+    await supabase
+      .from("source_fetch_runs")
+      .update({
+        finished_at: new Date().toISOString(),
+        batch_id: batchId,
+        records_imported: toInsert.length,
+        records_rejected: rejected,
+        records_unphoned: unphonedInserted,
+        status: "complete",
+      })
+      .eq("id", run.id);
+
+    revalidatePath("/admin/data");
+    revalidatePath("/admin/settings/leads");
+    revalidatePath("/leadgen", "layout");
+    return { ok: true, imported: toInsert.length, rejected, unphoned: unphonedInserted };
+  } catch (err) {
+    captureException(err, { action: "importVendorFile", dataSourceId, runId: run.id });
+    return fail(err instanceof Error ? err.message : "Import failed.");
   }
+}
+
+export async function assignUnphonedContact(contactId: string, agentId: string | null): Promise<ActionResult> {
+  const profile = await requireRealProfile();
+  if (!MANAGERS.includes(profile.role)) return { error: "Only an admin can assign contacts." };
+  const supabase = await createRealClient();
+  if (agentId) {
+    const { data: a } = await supabase.from("profiles").select("id").eq("id", agentId).eq("workspace_id", profile.workspace_id).maybeSingle();
+    if (!a) return { error: "Agent not found." };
+  }
+  const { error } = await supabase
+    .from("unphoned_contacts")
+    .update({ assigned_to: agentId })
+    .eq("id", contactId)
+    .eq("workspace_id", profile.workspace_id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/data");
+  return { ok: true };
+}
+
+// Turns a phone-less contact into a real lead. promote_unphoned_contact()
+// (migration 075) re-checks authorisation, the suppression list and
+// duplicates itself, since it runs as SECURITY DEFINER.
+export async function promoteContact(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const profile = await requireRealProfile();
+  const contactId = String(formData.get("contact_id") ?? "");
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
+  if (!z.string().uuid().safeParse(contactId).success) return { error: "Missing contact." };
+  if (!phoneRaw) return { error: "Enter a phone number." };
+
+  const supabase = await createRealClient();
+  const { data: contact } = await supabase
+    .from("unphoned_contacts")
+    .select("id, country_hint, promoted_lead_id")
+    .eq("id", contactId)
+    .eq("workspace_id", profile.workspace_id)
+    .maybeSingle();
+  if (!contact) return { error: "Contact not found, or it isn't assigned to you." };
+  if (contact.promoted_lead_id) return { error: "This contact has already been queued as a lead." };
+
+  let e164: string;
+  try {
+    const p = parsePhoneNumberWithError(phoneRaw, contact.country_hint as never);
+    if (!p.isPossible()) throw new Error("invalid");
+    e164 = p.number;
+  } catch {
+    return { error: `"${phoneRaw}" doesn't parse as a valid phone number.` };
+  }
+
+  const { error } = await supabase.rpc("promote_unphoned_contact", {
+    p_contact_id: contactId,
+    p_phone_e164: e164,
+    p_phone_raw: phoneRaw,
+  });
+  if (error) {
+    if (error.code === "23505") return { error: "That phone number already exists as a lead." };
+    return { error: error.message };
+  }
+  revalidatePath("/admin/data");
+  return { ok: true };
 }

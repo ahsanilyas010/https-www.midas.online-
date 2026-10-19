@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Headset,
   Phone,
-  Video,
   Activity,
   BarChart3,
   CalendarCheck,
@@ -25,7 +24,6 @@ import {
   Radio,
   PhoneCall,
   Trophy,
-  Film,
   FileText,
   Ban,
   Clock,
@@ -35,35 +33,32 @@ import {
 import { BrandMark } from "@/components/brand/mark";
 import { BRAND } from "@/lib/brand";
 import { absoluteUrl, siteUrl } from "@/lib/site";
-import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 import { Reveal } from "@/components/landing/reveal";
-import { DialerShowcase } from "@/components/landing/dialer-showcase";
 import { SiteHeader, SiteFooter, demoCta } from "@/components/landing/site-chrome";
 import { FREE_AGENT_SEATS } from "@/lib/plan";
 import { jsonLdHtml, organizationJsonLd } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
-  title: { absolute: `${BRAND.productName} — contact-centre CRM that dials with your phone system` },
+  title: { absolute: `${BRAND.productName} — contact-centre CRM that calls through Zoom Phone` },
   description:
-    "Dial workspace, bring-your-own dialer (Zoom Phone, Dialpad, Aircall, RingCentral and more), Zoom meetings, live floor, attendance, QA, compliance and client reporting in one CRM.",
+    "Dial workspace that places calls through your own Zoom Phone account, live floor, attendance, QA, compliance and client reporting in one CRM.",
   alternates: { canonical: "/" },
 };
 
 const FEATURES: { icon: LucideIcon; title: string; text: string; tint: string }[] = [
   { icon: Headset, title: "Dial workspace", text: "One screen per call: lead details, script, objection handling, dispositions and callbacks. Keyboard shortcuts keep agents moving.", tint: "from-[var(--gold)] to-[#ea580c]" },
-  { icon: Phone, title: "Bring-your-own dialer", text: "Calls run through the phone system you already pay for. A built-in softphone with mute, hold, record and transfer.", tint: "from-[#34d399] to-[var(--teal)]" },
-  { icon: Video, title: "Zoom meetings", text: "Book a Zoom consultation from any lead, start it in one click, and get the recording and AI summary back.", tint: "from-[#60a5fa] to-[#0b5cff]" },
+  { icon: Phone, title: "Zoom Phone calling", text: "Calls run through your own Zoom Phone account in an embedded Zoom dial pad. Call minutes bill to you, not to us.", tint: "from-[#34d399] to-[var(--teal)]" },
   { icon: Activity, title: "Live floor", text: "Who's available, on a call or on break, plus today's calls, connects and conversions, as it happens.", tint: "from-[#34d399] to-[#059669]" },
   { icon: BarChart3, title: "Performance", text: "Campaign funnels and per-agent scorecards: calls, connects, conversions and talk time.", tint: "from-[var(--gold)] to-[#f97316]" },
   { icon: CalendarCheck, title: "Attendance & shifts", text: "Clock in/out, break and status tracking, shift rosters, lateness and leave requests with approvals.", tint: "from-[#38bdf8] to-[var(--brand-blue)]" },
   { icon: ClipboardCheck, title: "QA scorecards", text: "Review calls against weighted criteria with fatal-error rules, coaching notes and agent acknowledgement.", tint: "from-[#a78bfa] to-[var(--violet)]" },
-  { icon: ShieldCheck, title: "Compliance built in", text: "TPS/CTPS and US DNC screening, a global suppression list, calling windows and an offshore-disclosure prompt.", tint: "from-[#34d399] to-[#059669]" },
-  { icon: Database, title: "Data sourcing", text: "Import vendor CSV/XLSX, pull from public registers, and track every batch from source to dial.", tint: "from-[#818cf8] to-[var(--brand-blue)]" },
+  { icon: ShieldCheck, title: "Compliance built in", text: "Lead screening, a workspace suppression list, calling windows, attempt limits and cooling-off periods enforced on every call.", tint: "from-[#34d399] to-[#059669]" },
+  { icon: Database, title: "Data sourcing", text: "Import vendor CSV/XLSX with a recorded lawful basis, and track every batch from source to dial.", tint: "from-[#818cf8] to-[var(--brand-blue)]" },
   { icon: Mail, title: "Email templates", text: "Approved templates only, with merge fields, unsubscribe handling and a send log per lead.", tint: "from-[#f472b6] to-[var(--magenta)]" },
   { icon: Building2, title: "Client portal", text: "A read-only login for each client: funnel, outcomes, agent activity and downloadable PDF reports.", tint: "from-[#22d3ee] to-[var(--teal)]" },
-  { icon: Lock, title: "Security & audit", text: "Role-based access, credential events, active sessions and a full audit trail of every change.", tint: "from-[#fb7185] to-[#e11d48]" },
+  { icon: Lock, title: "Security & audit", text: "Role-based access, credential events, recent sign-ins and a full audit trail of every change.", tint: "from-[#fb7185] to-[#e11d48]" },
   { icon: Users, title: "People & teams", text: "Create users, assign teams and campaigns, set targets and deactivate leavers in seconds.", tint: "from-[#f472b6] to-[var(--magenta)]" },
-  { icon: BellRing, title: "Follow-up tray", text: "Callbacks and booked meetings pop up when they're due, with snooze limits so nothing slips.", tint: "from-[var(--gold)] to-[#ea580c]" },
+  { icon: BellRing, title: "Follow-up tray", text: "Callbacks pop up when they're due, with snooze limits so nothing slips.", tint: "from-[var(--gold)] to-[#ea580c]" },
   { icon: Command, title: "Fast to use", text: "Ctrl+K to jump anywhere, an animated live dashboard, and a layout that works on a phone.", tint: "from-[#c084fc] to-[var(--magenta)]" },
 ];
 
@@ -71,23 +66,19 @@ const ROLES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: Crown, title: "Super admin", text: "Everything: floor, campaigns, people, integrations, compliance and audit." },
   { icon: Briefcase, title: "Ops manager", text: "Runs campaigns, assigns data, approves leave and watches performance." },
   { icon: Users, title: "Team lead", text: "Watches the live floor and coaches their own team." },
-  { icon: Headset, title: "Agent", text: "Dials, dispositions, books Zoom meetings and works callbacks." },
+  { icon: Headset, title: "Agent", text: "Dials, logs outcomes and works callbacks." },
   { icon: ClipboardCheck, title: "QA analyst", text: "Scores calls and leaves coaching notes." },
   { icon: Building2, title: "Client", text: "Sees their own campaign results and downloads reports." },
 ];
 
 const FAQ: { q: string; a: string }[] = [
   {
-    q: "Do we have to switch phone systems?",
-    a: "No. LeadCallient connects to the dialer you already subscribe to: Zoom Phone, Dialpad, Google Voice, Aircall, RingCentral, Twilio or Vonage. Agents use one softphone and one Call button whichever you pick, and you can switch provider from the Integrations page.",
-  },
-  {
-    q: "How does the Zoom integration work?",
-    a: "Agents book a Zoom meeting from the lead they're talking to. It's linked to the lead and campaign, added to their follow-up tray, and after the meeting the recording and AI summary are saved against it.",
+    q: "Which phone system does it use?",
+    a: "Zoom Phone. Calls run through your own Zoom Phone account: agents sign in to Zoom inside an embedded dial pad, and Zoom bills call minutes to you. Your Zoom admin needs a Zoom Phone licence and has to install the Zoom Phone Smart Embed app.",
   },
   {
     q: "What does compliance cover?",
-    a: "Leads are screened (TPS/CTPS in the UK, National DNC in the US) before they reach the queue. Do-not-call requests go on a global suppression list in the same step as the call is logged, and calling windows, attempt limits and disclosures are enforced per campaign.",
+    a: "Leads must pass screening before they reach the queue, and the system never hands an agent a suppressed number. Do-not-call outcomes are added to the suppression list in the same step as the call is logged, and calling windows, attempt limits and cooling-off periods are enforced per campaign. Screening is a manual step today; a live TPS/DNC provider plugs in behind the same interface.",
   },
   {
     q: "Can our clients see their results?",
@@ -95,11 +86,11 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does it cost to start?",
-    a: `Every workspace starts free with ${FREE_AGENT_SEATS} agents, and admins, managers, team leads and QA are always free. When you need more agents, your admin adds seats from Plan & billing. Call minutes are billed by your own dialer provider, not by LeadCallient.`,
+    a: `Every workspace starts free with ${FREE_AGENT_SEATS} agents, and admins, managers, team leads and QA are always free. When you need more agents, your admin adds seats from Plan & billing. Call minutes are billed by Zoom to your own Zoom Phone account, not by LeadCallient.`,
   },
   {
     q: "Is the demo using real data?",
-    a: "No. The demo runs entirely on generated sample data: fictional clients, leads and agents. Nothing you do in it is stored permanently, and you can reset it at any time.",
+    a: "The demo is a real workspace running on the live database, filled with fictional clients, leads and agents. Calls from it only ever reach an allow-list of numbers, and it can be reset at any time.",
   },
 ];
 
@@ -192,14 +183,14 @@ function HeroMock() {
         </div>
       </div>
 
-      {/* Floating Zoom chip */}
+      {/* Floating callback chip */}
       <div className="absolute -left-3 -top-5 flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-xl ring-1 ring-black/5 sm:-left-8">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0b5cff] text-white">
-          <Video className="h-3.5 w-3.5" />
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-gradient text-white">
+          <BellRing className="h-3.5 w-3.5" />
         </span>
         <div>
-          <div className="text-[10px] font-semibold text-ink">Zoom booked</div>
-          <div className="text-[9px] text-muted">Tomorrow 10:30 · with Oscar</div>
+          <div className="text-[10px] font-semibold text-ink">Callback due</div>
+          <div className="text-[9px] text-muted">Tomorrow 10:30 · Oscar</div>
         </div>
       </div>
     </div>
@@ -264,14 +255,14 @@ export default async function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1.05fr_1fr]">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-gold-soft ring-1 ring-white/20">
-              <Sparkles className="h-3.5 w-3.5" /> Contact-centre CRM · Dialer · Zoom
+              <Sparkles className="h-3.5 w-3.5" /> Contact-centre CRM · Zoom Phone dialer
             </span>
             <h1 className="mt-5 font-display text-4xl font-semibold leading-[1.08] sm:text-5xl lg:text-6xl">
               Every call, <span className="text-gold-gradient">connected.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg text-white/75">
               {BRAND.productName} runs your whole calling floor: dial workspace, live dashboard, attendance, QA, compliance and client
-              reports. Calls go through the phone system you already pay for, and Zoom meetings are built in.
+              reports. Calls run through your own Zoom Phone account.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
@@ -299,34 +290,11 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Works with */}
-      <section className="border-b border-line bg-surface px-4 py-10">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-muted">Works with the dialer you already have</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {DIALER_PROVIDERS.map((p) => (
-              <span key={p.key} className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas px-3 py-1.5 text-sm font-medium text-ink">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md font-display text-[9px] font-bold text-white" style={{ background: p.color }}>
-                  {p.initials}
-                </span>
-                {p.name}
-              </span>
-            ))}
-            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas px-3 py-1.5 text-sm font-medium text-ink">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#0b5cff] text-white">
-                <Video className="h-3.5 w-3.5" />
-              </span>
-              Zoom Meetings
-            </span>
-          </div>
-        </div>
-      </section>
-
       {/* Numbers */}
       <section className="px-4 py-14">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { n: "7", l: "dialer integrations" },
+            { n: String(FREE_AGENT_SEATS), l: "agents free forever" },
             { n: "6", l: "roles with their own view" },
             { n: "30", l: "call outcomes out of the box" },
             { n: "1", l: "screen per call" },
@@ -369,27 +337,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Dialer */}
-      <section id="dialer" className="brand-hero relative scroll-mt-16 overflow-hidden px-4 py-24">
-        <div className="brand-orb brand-orb-1" aria-hidden />
-        <div className="relative mx-auto max-w-6xl">
-          <Reveal>
-            <SectionHeading
-              light
-              eyebrow="Bring your own dialer"
-              title={
-                <>
-                  Keep your phone system. <span className="text-gold-gradient">Upgrade everything around it.</span>
-                </>
-              }
-              text="Pick the provider your team already uses. The softphone, the Call button and the call log stay the same, so agents never notice when you switch."
-            />
-          </Reveal>
-          <Reveal delay={0.1} className="mt-12">
-            <DialerShowcase />
-          </Reveal>
-        </div>
-      </section>
 
       {/* Deep dives */}
       <section className="space-y-24 px-4 py-24">
@@ -398,7 +345,7 @@ export default async function LandingPage() {
             id: "workspace",
             eyebrow: "Dial workspace",
             title: "Everything an agent needs, on one screen",
-            text: "The queue hands agents the next lead, so there's no cherry-picking. Script and objections sit alongside, dispositions are one keystroke away, and a callback or Zoom meeting takes seconds to book.",
+            text: "The queue hands agents the next lead, so there's no cherry-picking. Script and objections sit alongside, dispositions are one keystroke away, and a callback takes seconds to book.",
             points: ["Due-now and fresh lead queues", "Scripts with the opening disclosure agents must read", "Keyboard shortcuts: D for outcome, N for notes, Ctrl+Enter to save", "Wrap-up timer and a celebration when a deal lands"],
             visual: (
               <div className="rounded-2xl border border-line bg-surface p-5 shadow-xl">
@@ -411,35 +358,12 @@ export default async function LandingPage() {
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-1.5 text-sm font-medium text-ink"><PhoneCall className="h-4 w-4" /> Call</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#0b5cff] px-3 py-1.5 text-sm font-medium text-white"><Video className="h-4 w-4" /> Book Zoom</span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-green-tint px-3 py-1.5 text-xs font-medium text-brand-green-text"><span className="h-2 w-2 rounded-full bg-brand-green" /> Connected 02:41</span>
                 </div>
                 <div className="mt-4 rounded-xl border border-line p-3 text-sm">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted">Disposition</div>
                   <div className="mt-1.5 rounded-lg border border-line px-3 py-2 text-ink">Appointment set</div>
                   <div className="mt-3 rounded-lg bg-brand-gradient py-2 text-center text-sm font-semibold text-white">Save &amp; next · Ctrl+Enter</div>
-                </div>
-              </div>
-            ),
-          },
-          {
-            id: "zoom",
-            eyebrow: "Zoom meetings",
-            title: "Turn a good call into a booked meeting",
-            text: "When a prospect wants to see more, the agent books a Zoom meeting without leaving the call. It's linked to the lead, reminds the agent when it's due, and brings the recording and AI summary back afterwards.",
-            points: ["Schedule or start an instant meeting from any lead", "Invite link, passcode and calendar file in one click", "Upcoming, live and past meetings on one board with a countdown", "Cloud recording and AI Companion summary saved to the meeting"],
-            visual: (
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-midnight-gradient p-5 text-white shadow-xl">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gold-soft">Next up</div>
-                  <div className="mt-1 font-display text-lg font-semibold">NWR-UK: Discovery call with Oscar Carter</div>
-                  <div className="text-sm text-white/70">Tomorrow 10:30 · 30 min</div>
-                  <div className="shimmer-text mt-2 font-display text-3xl font-semibold tabular">21m 57s</div>
-                </div>
-                <div className="rounded-2xl border border-line bg-surface p-4 shadow-lg">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-gold-text"><Sparkles className="h-3.5 w-3.5" /> AI Companion summary</div>
-                  <p className="mt-1 text-sm text-ink">Prospect confirmed budget and wants the survey before month end. Surveyor visit booked for Tuesday 10:00.</p>
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#0b5cff]"><Film className="h-3.5 w-3.5" /> Cloud recording</div>
                 </div>
               </div>
             ),
@@ -527,8 +451,8 @@ export default async function LandingPage() {
         </Reveal>
         <div className="mx-auto mt-12 grid max-w-5xl gap-4 md:grid-cols-3">
           {[
-            { icon: Plug, t: "Connect your tools", s: "Link the dialer you subscribe to and your Zoom account from the Integrations page." },
-            { icon: Database, t: "Load and screen your data", s: "Import lead lists or pull from public registers. Everything is screened before it's dialled." },
+            { icon: Plug, t: "Connect your tools", s: "Connect Zoom from the Integrations page and set a caller ID per campaign." },
+            { icon: Database, t: "Load and screen your data", s: "Import lead lists with their source recorded. Everything is screened before it's dialled." },
             { icon: Headset, t: "Start calling", s: "Agents clock in and dial. Managers watch the live floor, and clients see their own results." },
           ].map((s, i) => (
             <Reveal key={s.t} delay={i * 0.08}>

@@ -1,11 +1,9 @@
-import { getStore } from "@/lib/demo/store";
-import { getWorkspaceContext } from "@/lib/accounts/session";
-import { activeAgentCount } from "@/lib/accounts/limits";
-import { DEMO_PASSWORD } from "@/lib/demo/seed";
 import { KeyRound } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth/current-profile";
-import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
+import { createServiceClient } from "@/lib/supabase/service";
+import { getCurrentWorkspace } from "@/lib/workspace/current";
+import { activeAgentCount } from "@/lib/workspace/limits";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CreateUserDialog } from "./create-user-dialog";
@@ -15,65 +13,49 @@ const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super admin",
   ops_manager: "Ops manager",
   team_lead: "Team lead",
-  qa: "QA",
-  agent: "Agent",
-  client_viewer: "Client",
+  qa_analyst: "QA analyst",
+  agent: "Sales agent",
+  lead_gen: "Lead gen",
+  client: "Client",
 };
 
-export default async function PeoplePage() {
-  const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) {
-    redirect("/start");
-  }
+// Last sign-in lives in Supabase Auth, not in profiles. Only admins see it.
+async function lastSignIns(canSee: boolean): Promise<Map<string, string | null>> {
+  const map = new Map<string, string | null>();
+  if (!canSee) return map;
+  const { data } = await createServiceClient().auth.admin.listUsers({ perPage: 1000 });
+  for (const u of data?.users ?? []) map.set(u.id, u.last_sign_in_at ?? null);
+  return map;
+}
 
-  const supabase = await createClient();
-  const [{ data: people }, { data: teams }, { data: clients }, { data: campaigns }] = await Promise.all([
-    supabase
-      .from("profiles")
-      // profiles.team_id -> teams.id AND teams.team_lead_id -> profiles.id
-      // both exist, so an unqualified `teams(name)` embed is ambiguous and
-      // PostgREST rejects the whole query — silently rendering as "0 people"
-      // since the error was never checked. Same fix pattern already used
-      // for profiles embeds on audit_log/credential_events.
-      .select("*, teams!profiles_team_id_fkey(name)")
-      .order("full_name"),
+export default async function PeoplePage() {
+  const profile = await requireRole(["super_admin", "ops_manager", "team_lead"]);
+  const canCreate = profile.role === "super_admin" || profile.role === "ops_manager";
+
+  const supabase = await createRealClient();
+  const [workspace, { data: people }, { data: teams }, { data: clients }, { data: campaigns }, signIns] = await Promise.all([
+    getCurrentWorkspace(),
+    supabase.from("profiles").select("*").order("full_name"),
     supabase.from("teams").select("id, name").order("name"),
     supabase.from("clients").select("id, name").order("name"),
-    supabase.from("campaigns").select("id, name, code").order("name"),
+    supabase.from("campaigns").select("id, name").order("name"),
+    lastSignIns(canCreate),
   ]);
-
-  const canCreate = profile.role === "super_admin" || profile.role === "ops_manager";
-  // Customers' logins come from their accounts; in the demo every person
-  // has a login with the same password.
-  const ws = await getWorkspaceContext();
-  const loginEmail = ws
-    ? new Map(ws.members.map((m) => [m.uid, m.email]))
-    : new Map(getStore().tables.demo_auth.map((a) => [a.id as string, a.email as string]));
+  const agentsUsed = await activeAgentCount(supabase, workspace.id);
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   return (
     <div className="p-4">
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted">
-            {people?.length ?? 0} people · one login per human, no exceptions
-          </p>
-        </div>
+        <p className="text-xs text-muted">{people?.length ?? 0} people · one login per human, no exceptions</p>
         {canCreate && <CreateUserDialog teams={teams ?? []} clients={clients ?? []} />}
       </div>
 
-      {ws ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3 py-2 text-xs text-muted">
-          <KeyRound className="h-4 w-4 text-brand-blue" />
-          {ws.workspace.plan === "free" ? "Free plan" : "Your plan"}: {activeAgentCount(ws.store)} of {ws.workspace.agentSeats} agent seats used.
-          Admins, managers, team leads, QA and client logins don&apos;t use a seat.
-        </div>
-      ) : (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-gold/40 bg-gold-tint px-3 py-2 text-xs text-gold-text">
-          <KeyRound className="h-4 w-4" />
-          Demo logins: each person signs in with the email shown below and the shared password
-          <span className="rounded-md bg-white px-1.5 py-0.5 font-mono font-semibold text-ink ring-1 ring-gold/40">{DEMO_PASSWORD}</span>
-        </div>
-      )}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3 py-2 text-xs text-muted">
+        <KeyRound className="h-4 w-4 text-brand-blue" />
+        {workspace.plan === "free" ? "Free plan" : "Your plan"}: {agentsUsed} of {workspace.seat_limit} agent seats used. Admins,
+        managers, team leads, lead gen, QA and client logins don&apos;t use a seat.
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[760px] text-sm">
@@ -85,60 +67,55 @@ export default async function PeoplePage() {
               <th className="px-3 py-2 font-medium">Team</th>
               <th className="px-3 py-2 font-medium">Agent code</th>
               <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Last login</th>
+              <th className="px-3 py-2 font-medium">Last sign-in</th>
               {canCreate && <th className="px-3 py-2 font-medium" />}
             </tr>
           </thead>
           <tbody>
-            {(people ?? []).map((p) => (
-              <tr key={p.id} className="h-[38px] border-b border-line last:border-0 hover:bg-canvas/60">
-                <td className="px-3 py-1.5">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-[10px]">
-                        {p.full_name
-                          .split(" ")
-                          .map((s: string) => s[0])
-                          .slice(0, 2)
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium text-ink">{p.full_name}</span>
-                    {p.must_change_password && (
-                      <Badge variant="warning">Must set password</Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-1.5 font-mono text-xs text-muted">{loginEmail.get(p.id) ?? "—"}</td>
-                <td className="px-3 py-1.5">
-                  <Badge variant="blue">{ROLE_LABEL[p.role]}</Badge>
-                </td>
-                <td className="px-3 py-1.5 text-muted">
-                  {(p as { teams?: { name: string } | null }).teams?.name ?? "—"}
-                </td>
-                <td className="px-3 py-1.5 tabular text-muted">{p.agent_code ?? "—"}</td>
-                <td className="px-3 py-1.5">
-                  {p.is_active ? (
-                    <Badge variant="confirm">Active</Badge>
-                  ) : (
-                    <Badge variant="danger">Deactivated</Badge>
-                  )}
-                </td>
-                <td className="px-3 py-1.5 tabular text-xs text-muted">
-                  {p.last_login_at ? new Date(p.last_login_at).toLocaleString() : "Never"}
-                </td>
-                {canCreate && (
-                  <td className="px-3 py-1.5 text-right">
-                    <PeopleRowActions
-                      userId={p.id}
-                      userName={p.full_name}
-                      isActive={p.is_active}
-                      campaigns={campaigns ?? []}
-                    />
+            {(people ?? []).map((p) => {
+              const last = signIns.get(p.id);
+              return (
+                <tr key={p.id} className="h-[38px] border-b border-line last:border-0 hover:bg-canvas/60">
+                  <td className="px-3 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-[10px]">
+                          {p.full_name
+                            .split(" ")
+                            .map((s: string) => s[0])
+                            .slice(0, 2)
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-ink">{p.full_name}</span>
+                      {p.must_change_password && <Badge variant="warning">Must set password</Badge>}
+                    </div>
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td className="px-3 py-1.5 font-mono text-xs text-muted">{p.email}</td>
+                  <td className="px-3 py-1.5">
+                    <Badge variant="blue">{ROLE_LABEL[p.role]}</Badge>
+                  </td>
+                  <td className="px-3 py-1.5 text-muted">{(p.team_id && teamName.get(p.team_id)) || "—"}</td>
+                  <td className="px-3 py-1.5 tabular text-muted">{p.agent_code ?? "—"}</td>
+                  <td className="px-3 py-1.5">
+                    {p.is_active ? <Badge variant="confirm">Active</Badge> : <Badge variant="danger">Deactivated</Badge>}
+                  </td>
+                  <td className="px-3 py-1.5 tabular text-xs text-muted">
+                    {canCreate ? (last ? new Date(last).toLocaleString() : "Never") : "—"}
+                  </td>
+                  {canCreate && (
+                    <td className="px-3 py-1.5 text-right">
+                      <PeopleRowActions
+                        userId={p.id}
+                        userName={p.full_name}
+                        isActive={p.is_active}
+                        campaigns={p.role === "agent" ? (campaigns ?? []) : []}
+                      />
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
             {(people ?? []).length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted">

@@ -6,24 +6,24 @@ import { getClientPortalData, generateMonthlyReport, getReportDownloadUrl, type 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export function PortalClient({ initialData }: { initialData: ClientPortalData }) {
+export function PortalClient({ initialData, clientId }: { initialData: ClientPortalData; clientId?: string }) {
   const [data, setData] = useState(initialData);
-  const [anonymize, setAnonymize] = useState(true);
+  const [anonymize, setAnonymize] = useState(!clientId);
   const [pending, startTransition] = useTransition();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     startTransition(async () => {
-      const next = await getClientPortalData(anonymize);
+      const next = await getClientPortalData(anonymize, clientId);
       setData(next);
     });
-  }, [anonymize]);
+  }, [anonymize, clientId]);
 
   async function handleDownload() {
     setDownloading(true);
     setDownloadError(null);
-    const gen = await generateMonthlyReport();
+    const gen = await generateMonthlyReport(clientId);
     if (gen.error || !gen.path) {
       setDownloadError(gen.error ?? "Could not generate the report.");
       setDownloading(false);

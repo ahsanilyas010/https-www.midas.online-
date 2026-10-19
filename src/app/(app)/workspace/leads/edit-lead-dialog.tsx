@@ -36,13 +36,12 @@ interface EditableLead {
   last_name: string | null;
   company_name: string | null;
   email: string | null;
-  phone_raw: string | null;
-  phone_e164: string;
+  phone_e164: string | null;
   address_line1: string | null;
   city: string | null;
   region: string | null;
   postcode: string | null;
-  custom: unknown;
+  agent_notes: string | null;
 }
 
 export function EditLeadDialog({ lead }: { lead: EditableLead }) {
@@ -57,8 +56,7 @@ export function EditLeadDialog({ lead }: { lead: EditableLead }) {
     }
   }, [state.ok, router]);
 
-  const custom = (lead.custom as Record<string, unknown> | null) ?? {};
-  const agentNotes = typeof custom.agent_notes === "string" ? custom.agent_notes : "";
+  const agentNotes = lead.agent_notes ?? "";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -69,8 +67,8 @@ export function EditLeadDialog({ lead }: { lead: EditableLead }) {
         <DialogHeader>
           <DialogTitle>Edit lead</DialogTitle>
           <DialogDescription>
-            Changes save straight to this lead. &ldquo;My notes&rdquo; is yours alone — it
-            doesn&rsquo;t touch the imported source history.
+            Changes save straight to this lead. Changing the phone number sends it back to
+            screening before it can be dialed again.
           </DialogDescription>
         </DialogHeader>
 
@@ -96,7 +94,7 @@ export function EditLeadDialog({ lead }: { lead: EditableLead }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" name="phone" mono defaultValue={lead.phone_raw ?? lead.phone_e164} />
+              <Input id="phone" name="phone" mono defaultValue={lead.phone_e164 ?? ""} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Email</Label>

@@ -17,9 +17,13 @@ import {
   Lock,
   Headset,
   Building2,
-  Video,
   PlugZap,
+  Settings,
   CreditCard,
+  Radar,
+  Plug,
+  Inbox,
+  Video,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -42,9 +46,13 @@ const ICON_MAP: Record<NavIconName, LucideIcon> = {
   Lock,
   Headset,
   Building2,
-  Video,
   PlugZap,
   CreditCard,
+  Settings,
+  Radar,
+  Plug,
+  Inbox,
+  Video,
 };
 
 // Per-icon (not per-position) gradient so a section always keeps the same
@@ -60,9 +68,13 @@ const ICON_GRADIENT: Record<NavIconName, string> = {
   Lock: "from-[#fb7185] to-[#e11d48]",
   Headset: "from-[var(--gold)] to-[#ea580c]",
   Building2: "from-[#22d3ee] to-[var(--teal)]",
-  Video: "from-[#60a5fa] to-[#0b5cff]",
   PlugZap: "from-[#c084fc] to-[var(--magenta)]",
   CreditCard: "from-[var(--gold)] to-[#f59e0b]",
+  Settings: "from-[#94a3b8] to-[#475569]",
+  Radar: "from-[#34d399] to-[#0ea5e9]",
+  Plug: "from-[#c084fc] to-[var(--magenta)]",
+  Inbox: "from-[#fbbf24] to-[#ea580c]",
+  Video: "from-[#60a5fa] to-[#2563eb]",
 };
 
 export interface SidebarBranding {

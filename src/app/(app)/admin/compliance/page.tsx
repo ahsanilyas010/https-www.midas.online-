@@ -1,150 +1,124 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth/current-profile";
 import { redirect } from "next/navigation";
+import { requireProfile } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
+import { SUPPRESSION_REASONS } from "@/lib/compliance/reasons";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddSuppressionDialog } from "./add-suppression-dialog";
 import { RunScreeningDialog } from "./run-screening-dialog";
+import { RemoveSuppressionButton } from "./remove-suppression-button";
+
+const reasonLabel = new Map<string, string>(SUPPRESSION_REASONS.map((r) => [r.value, r.label]));
 
 export default async function CompliancePage() {
   const profile = await requireProfile();
-  if (!["super_admin", "ops_manager", "qa"].includes(profile.role)) redirect("/start");
+  if (!["super_admin", "ops_manager", "qa_analyst"].includes(profile.role)) redirect("/start");
+  const canManage = ["super_admin", "ops_manager"].includes(profile.role);
 
-  const supabase = await createClient();
-  const [
-    { data: entries, count },
-    { count: passedCount },
-    { count: expiredCount },
-    { count: unscreenedCount },
-    { count: outOfWindowCount },
-    { data: campaigns },
-    { data: screeningRuns },
-  ] = await Promise.all([
+  const supabase = await createRealClient();
+  const ws = profile.workspace_id;
+
+  const [{ data: stats }, { data: entries }, { data: batches }, { data: campaigns }] = await Promise.all([
+    supabase.from("v_compliance_stats").select("*").eq("workspace_id", ws).maybeSingle(),
     supabase
       .from("suppression_list")
-      .select("*, profiles(full_name)", { count: "exact" })
+      .select("id, phone_hash, reason, phone_hint, note, added_by, created_at")
+      .eq("workspace_id", ws)
       .order("created_at", { ascending: false })
-      .limit(50),
-    // head:true counts exactly, at any table size — a plain
-    // .select("screening_status") over every lead used to under-count
-    // silently past Supabase's default 1000-row page size.
-    supabase.from("leads").select("id", { count: "exact", head: true }).eq("screening_status", "passed"),
-    supabase.from("leads").select("id", { count: "exact", head: true }).eq("screening_status", "expired"),
-    supabase.from("leads").select("id", { count: "exact", head: true }).eq("screening_status", "unscreened"),
+      .limit(100),
     supabase
-      .from("call_attempts")
-      .select("id", { count: "exact", head: true })
-      .eq("within_call_window", false),
-    supabase.from("campaigns").select("id, name, code").order("name"),
-    supabase
-      .from("suppression_runs")
-      .select("*, campaigns(name, code), profiles(full_name)")
-      .order("ran_at", { ascending: false })
-      .limit(20),
+      .from("lead_batches")
+      .select("id, source, campaign_id, row_count, status, screened_at, evidence_url, created_at")
+      .eq("workspace_id", ws)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase.from("campaigns").select("id, name").eq("workspace_id", ws),
   ]);
 
-  const counts = {
-    passed: passedCount ?? 0,
-    expired: expiredCount ?? 0,
-    unscreened: unscreenedCount ?? 0,
-  };
+  // Resolve a readable number for entries that came from a lead (e.g. a DNC
+  // disposition on a call); manual entries carry a masked hint instead.
+  const hashes = (entries ?? []).map((e) => e.phone_hash);
+  const { data: matchedLeads } = hashes.length
+    ? await supabase.from("leads").select("phone_hash, phone_e164").eq("workspace_id", ws).in("phone_hash", hashes)
+    : { data: [] as { phone_hash: string | null; phone_e164: string | null }[] };
+  const phoneByHash = new Map((matchedLeads ?? []).map((l) => [l.phone_hash, l.phone_e164]));
+
+  const addedByIds = [...new Set((entries ?? []).map((e) => e.added_by).filter((x): x is string => Boolean(x)))];
+  const { data: adders } = addedByIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", addedByIds)
+    : { data: [] as { id: string; full_name: string }[] };
+  const adderName = new Map((adders ?? []).map((a) => [a.id, a.full_name]));
+  const campaignName = new Map((campaigns ?? []).map((c) => [c.id, c.name]));
+
+  const byReason = new Map<string, number>();
+  for (const e of entries ?? []) byReason.set(e.reason, (byReason.get(e.reason) ?? 0) + 1);
+
+  const cards = [
+    { label: "Passed screening", value: stats?.leads_passed ?? 0, cls: "text-brand-green-text" },
+    { label: "Pending screening", value: stats?.leads_pending ?? 0, cls: "text-warning" },
+    { label: "Suppressed numbers", value: stats?.suppression_total ?? 0, cls: "text-ink" },
+    { label: "Leads blocked by suppression", value: stats?.leads_blocked_by_suppression ?? 0, cls: "text-danger" },
+  ];
 
   return (
     <div className="p-4">
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card className="animate-slide-up">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-semibold tabular text-brand-green-text">
-              {counts.passed ?? 0}
-            </div>
-            <div className="text-xs text-muted">Passed screening</div>
-          </CardContent>
-        </Card>
-        <Card className="animate-slide-up">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-semibold tabular text-warning">
-              {counts.expired ?? 0}
-            </div>
-            <div className="text-xs text-muted">Expired</div>
-          </CardContent>
-        </Card>
-        <Card className="animate-slide-up">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-semibold tabular text-danger">
-              {counts.unscreened ?? 0}
-            </div>
-            <div className="text-xs text-muted">Unscreened</div>
-          </CardContent>
-        </Card>
-        <Card className="animate-slide-up">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-semibold tabular text-ink">{count ?? 0}</div>
-            <div className="text-xs text-muted">Suppressed numbers</div>
-          </CardContent>
-        </Card>
+        {cards.map((c) => (
+          <Card key={c.label} className="animate-slide-up">
+            <CardContent className="pt-4">
+              <div className={`text-2xl font-semibold tabular ${c.cls}`}>{c.value}</div>
+              <div className="text-xs text-muted">{c.label}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card className="mb-4 animate-slide-up">
-        <CardContent className="flex items-center justify-between pt-4">
-          <div>
-            <div className="text-xs font-medium text-ink">Calling-window monitor</div>
-            <p className="text-[11px] text-muted">
-              Calls logged outside the lead&rsquo;s permitted local hours. Section 6.5: this should
-              always be zero — if it isn&rsquo;t, something upstream is broken.
-            </p>
-          </div>
-          {(outOfWindowCount ?? 0) === 0 ? (
-            <Badge variant="confirm">0 — clean</Badge>
-          ) : (
-            <Badge variant="danger">{outOfWindowCount} out-of-window calls</Badge>
-          )}
-        </CardContent>
-      </Card>
+      {byReason.size > 0 && (
+        <p className="mb-4 flex flex-wrap gap-1.5 text-xs text-muted">
+          Most recent 100 entries by reason:
+          {[...byReason].map(([r, n]) => (
+            <Badge key={r} variant="neutral">
+              {reasonLabel.get(r) ?? r} · {n}
+            </Badge>
+          ))}
+        </p>
+      )}
 
       <Card className="mb-4 animate-slide-up">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Screening runs</CardTitle>
-          <RunScreeningDialog campaigns={campaigns ?? []} />
+        <CardHeader>
+          <CardTitle>Screening history</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
+                <th className="px-4 py-2 font-medium">Batch</th>
                 <th className="px-4 py-2 font-medium">Campaign</th>
-                <th className="px-4 py-2 font-medium">Provider</th>
-                <th className="px-4 py-2 font-medium">Submitted</th>
-                <th className="px-4 py-2 font-medium">Matched</th>
+                <th className="px-4 py-2 font-medium">Rows</th>
+                <th className="px-4 py-2 font-medium">Screened</th>
                 <th className="px-4 py-2 font-medium">Evidence</th>
-                <th className="px-4 py-2 font-medium">Valid until</th>
-                <th className="px-4 py-2 font-medium">Ran by</th>
+                <th className="px-4 py-2 font-medium" />
               </tr>
             </thead>
             <tbody>
-              {(screeningRuns ?? []).map((r) => (
-                <tr key={r.id} className="h-[38px] border-b border-line last:border-0">
+              {(batches ?? []).map((b) => (
+                <tr key={b.id} className="h-[38px] border-b border-line last:border-0">
+                  <td className="px-4 py-1.5 font-medium text-ink">{b.source ?? "Batch"}</td>
+                  <td className="px-4 py-1.5 text-xs text-muted">{b.campaign_id ? campaignName.get(b.campaign_id) ?? "—" : "—"}</td>
+                  <td className="px-4 py-1.5 tabular text-muted">{b.row_count}</td>
                   <td className="px-4 py-1.5 text-xs text-muted">
-                    {(r as { campaigns?: { code: string } | null }).campaigns?.code ?? "—"}
+                    {b.screened_at ? new Date(b.screened_at).toLocaleString() : <Badge variant="warning">Not screened</Badge>}
                   </td>
-                  <td className="px-4 py-1.5">
-                    <Badge variant={r.provider === "INTERNAL" ? "neutral" : "blue"}>{r.provider}</Badge>
-                  </td>
-                  <td className="px-4 py-1.5 tabular text-muted">{r.numbers_submitted ?? 0}</td>
-                  <td className="px-4 py-1.5 tabular text-muted">{r.numbers_matched ?? 0}</td>
-                  <td className="px-4 py-1.5 text-xs text-muted">
-                    {r.evidence_path ? "On file" : "Internal check — no file"}
-                  </td>
-                  <td className="px-4 py-1.5 tabular text-xs text-muted">
-                    {r.valid_until ? new Date(r.valid_until).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-4 py-1.5 text-xs text-muted">
-                    {(r as { profiles?: { full_name: string } | null }).profiles?.full_name ?? "—"}
+                  <td className="px-4 py-1.5 text-xs text-muted">{b.evidence_url ? "On file" : "None"}</td>
+                  <td className="px-4 py-1.5 text-right">
+                    {canManage && !b.screened_at && <RunScreeningDialog batchId={b.id} label={b.source ?? "Batch"} />}
                   </td>
                 </tr>
               ))}
-              {(screeningRuns ?? []).length === 0 && (
+              {(batches ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
-                    No screening runs yet.
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                    No lead batches yet. Upload leads under Settings, then screen them here.
                   </td>
                 </tr>
               )}
@@ -156,39 +130,42 @@ export default async function CompliancePage() {
       <Card className="animate-slide-up">
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Suppression list</CardTitle>
-          <AddSuppressionDialog />
+          {canManage && <AddSuppressionDialog />}
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
-                <th className="px-4 py-2 font-medium">Phone</th>
+                <th className="px-4 py-2 font-medium">Number</th>
                 <th className="px-4 py-2 font-medium">Reason</th>
                 <th className="px-4 py-2 font-medium">Added by</th>
                 <th className="px-4 py-2 font-medium">Note</th>
                 <th className="px-4 py-2 font-medium">Added</th>
+                {canManage && <th className="px-4 py-2 font-medium" />}
               </tr>
             </thead>
             <tbody>
               {(entries ?? []).map((e) => (
-                <tr key={e.phone_e164} className="h-[38px] border-b border-line last:border-0">
-                  <td className="px-4 py-1.5 tabular font-medium text-ink">{e.phone_e164}</td>
+                <tr key={e.id} className="h-[38px] border-b border-line last:border-0">
+                  <td className="px-4 py-1.5 tabular font-medium text-ink">
+                    {phoneByHash.get(e.phone_hash) ?? e.phone_hint ?? `${e.phone_hash.slice(0, 10)}…`}
+                  </td>
                   <td className="px-4 py-1.5">
-                    <Badge variant="danger">{e.reason.replace(/_/g, " ")}</Badge>
+                    <Badge variant="danger">{reasonLabel.get(e.reason) ?? e.reason.replace(/_/g, " ")}</Badge>
                   </td>
-                  <td className="px-4 py-1.5 text-muted">
-                    {(e as { profiles?: { full_name: string } | null }).profiles?.full_name ??
-                      "System"}
-                  </td>
-                  <td className="px-4 py-1.5 text-muted">{e.evidence_note ?? "—"}</td>
-                  <td className="px-4 py-1.5 tabular text-xs text-muted">
-                    {new Date(e.created_at).toLocaleDateString()}
-                  </td>
+                  <td className="px-4 py-1.5 text-muted">{e.added_by ? adderName.get(e.added_by) ?? "—" : "System"}</td>
+                  <td className="px-4 py-1.5 text-muted">{e.note ?? "—"}</td>
+                  <td className="px-4 py-1.5 tabular text-xs text-muted">{new Date(e.created_at).toLocaleDateString()}</td>
+                  {canManage && (
+                    <td className="px-4 py-1.5 text-right">
+                      <RemoveSuppressionButton id={e.id} />
+                    </td>
+                  )}
                 </tr>
               ))}
               {(entries ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
+                  <td colSpan={canManage ? 6 : 5} className="px-4 py-8 text-center text-sm text-muted">
                     No suppressed numbers yet.
                   </td>
                 </tr>
@@ -199,15 +176,10 @@ export default async function CompliancePage() {
       </Card>
 
       <p className="mt-3 text-[11px] text-muted">
-        The internal suppression gate is unconditional — any signed-in user can add a number here,
-        and it blocks that number in <code className="tabular">v_dialable_leads</code> the instant
-        it commits. Screening runs are real too: &ldquo;Run screening&rdquo; above always offers the
-        internal check, and any TPS/CTPS/US DNC/state result can be applied by uploading the
-        bureau&rsquo;s own response file as retained evidence — there is no live bureau API
-        integration yet (needs a real account per spec section 9), so that path is
-        <code className="tabular"> ManualEvidenceProvider</code>, not an automated one. The
-        retention/purge action and a downloadable evidence vault are the remaining compliance
-        console gaps.
+        Suppression is enforced in the dial queue: a lead whose number is on this list is never handed to an agent.
+        Screening here is a manual stub: it records that a batch was screened (and keeps the evidence file you attach)
+        but there is no live TPS/CTPS/National DNC lookup yet. Add TPS/DNC matches to the suppression list by hand
+        until a real provider is wired into the ScreeningProvider interface.
       </p>
     </div>
   );

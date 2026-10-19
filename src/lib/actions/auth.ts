@@ -1,10 +1,9 @@
 "use server";
 
-import { headers, cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createRealClient } from "@/lib/supabase/real";
 import { checkRealRateLimit } from "@/lib/rate-limit";
-import { DEMO_COOKIE } from "@/lib/demo/client";
 
 function safeNext(next: string) {
   return next.startsWith("/") && !next.startsWith("//") ? next : "/start";
@@ -48,14 +47,9 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   redirect(profile?.must_change_password ? "/change-password" : safeNext(next));
 }
 
-// Shared by every signed-in header (Header calls this regardless of
-// whether the session is a real customer or a sales-demo persona), so it
-// clears both: a real Supabase Auth session, and the demo cookie.
 export async function signOut() {
   const supabase = await createRealClient();
   await supabase.auth.signOut();
-  const jar = await cookies();
-  jar.delete(DEMO_COOKIE);
   redirect("/");
 }
 

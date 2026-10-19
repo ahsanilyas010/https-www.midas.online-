@@ -5,15 +5,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar, type SidebarBranding } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
 import { PageTransition } from "@/components/shell/page-transition";
-import { DemoBar, type DemoAccount } from "@/components/shell/demo-bar";
 import { PlanBar, type PlanInfo } from "@/components/shell/plan-bar";
 import { CommandPalette } from "@/components/shell/command-palette";
-import { DialerProvider, type DialerInfo } from "@/components/dialer/dialer-context";
-import { Softphone } from "@/components/dialer/softphone";
+import { ZoomPhoneProvider } from "@/components/zoom-phone/zoom-phone-provider";
 import type { NavItem } from "@/lib/nav";
 import type { Profile } from "@/lib/auth/current-profile";
-import type { CurrentSession } from "@/lib/actions/attendance";
-import type { FollowupRow } from "@/lib/actions/followups";
+import type { CallbackRow } from "@/lib/actions/callbacks";
+import type { RealTables } from "@/lib/supabase/real-types";
 
 // Phase 8 — "Mobile layout for attendance and follow-ups (agents will
 // clock in on their phones)." The sidebar was always visible at 56-208px,
@@ -24,29 +22,26 @@ import type { FollowupRow } from "@/lib/actions/followups";
 export function AppChrome({
   items,
   profile,
-  initialSession,
-  initialFollowups,
-  demoAccounts,
+  initialEvent,
+  initialCallbacks,
   planInfo,
-  dialer,
   branding,
+  enablePhone,
   children,
 }: {
   items: NavItem[];
   profile: Profile;
-  initialSession: CurrentSession | null;
-  initialFollowups: FollowupRow[];
-  demoAccounts: DemoAccount[];
-  // Set for customer workspaces; the demo leaves it out.
-  planInfo?: PlanInfo | null;
-  dialer: DialerInfo;
+  initialEvent: RealTables<"attendance_events">["event_type"] | null;
+  initialCallbacks: CallbackRow[];
+  planInfo: PlanInfo;
   branding?: SidebarBranding;
+  // Dial roles get the Zoom Phone Smart Embed dock (mounted lazily on /dial).
+  enablePhone?: boolean;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  return (
-    <DialerProvider info={dialer}>
+  const shell = (
       <div className="flex h-screen w-full overflow-hidden">
         <AnimatePresence>
           {mobileNavOpen && (
@@ -69,18 +64,18 @@ export function AppChrome({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {planInfo ? <PlanBar info={planInfo} /> : <DemoBar accounts={demoAccounts} currentId={profile.id} />}
+          <PlanBar info={planInfo} />
           <Header
             profile={profile}
-            initialSession={initialSession}
-            initialFollowups={initialFollowups}
+            initialEvent={initialEvent}
+            initialCallbacks={initialCallbacks}
             onMenuClick={() => setMobileNavOpen(true)}
           />
           <PageTransition>{children}</PageTransition>
         </div>
         <CommandPalette items={items} />
-        <Softphone />
       </div>
-    </DialerProvider>
   );
+
+  return enablePhone ? <ZoomPhoneProvider>{shell}</ZoomPhoneProvider> : shell;
 }

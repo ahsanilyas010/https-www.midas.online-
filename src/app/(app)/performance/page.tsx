@@ -90,8 +90,8 @@ export default async function PerformancePage() {
                   <td className="px-4 py-3">{s.calls}</td>
                   <td className="px-4 py-3">{s.connects}</td>
                   <td className="px-4 py-3">{s.conversions}</td>
-                  <td className="px-4 py-3">{formatMinutes(s.talk_seconds)}</td>
-                  <td className="px-4 py-3">{formatMinutes(s.avg_wrap_seconds)}</td>
+                  <td className="px-4 py-3">{formatMinutes(s.talk_seconds ?? 0)}</td>
+                  <td className="px-4 py-3">{formatMinutes(s.avg_wrap_seconds ?? 0)}</td>
                 </tr>
               ))}
               {(scorecard ?? []).length === 0 && (

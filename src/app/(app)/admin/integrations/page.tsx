@@ -1,87 +1,134 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Mail, Building, ShieldCheck, Flag, Database, CircleDashed } from "lucide-react";
+import { CheckCircle2, CircleDashed, Phone, Mail, CreditCard, Video } from "lucide-react";
 import { requireProfile } from "@/lib/auth/current-profile";
-import { getZoomIntegration, listZoomMeetings } from "@/lib/actions/zoom";
+import { getCurrentWorkspace } from "@/lib/workspace/current";
+import { createRealClient } from "@/lib/supabase/real";
+import { stripeConfigured } from "@/lib/billing/stripe";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ZoomIntegrationCard } from "./zoom-integration-card";
-import { DialerIntegration } from "./dialer-integration";
-import { getDialerState, listRecentCalls, previewDialerRequest } from "@/lib/actions/dialer";
-import { DIALER_PROVIDERS } from "@/lib/telephony/providers";
 
+function Status({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
+  return ok ? (
+    <Badge variant="confirm">
+      <CheckCircle2 className="mr-1 h-3 w-3" /> {yes}
+    </Badge>
+  ) : (
+    <Badge variant="warning">
+      <CircleDashed className="mr-1 h-3 w-3" /> {no}
+    </Badge>
+  );
+}
+
+// Live status only: everything here is read from the database or the
+// server environment. Nothing is simulated.
 export default async function IntegrationsPage() {
   const profile = await requireProfile();
   if (profile.role !== "super_admin" && profile.role !== "ops_manager") redirect("/start");
 
-  const [zoom, meetings, dialer, calls] = await Promise.all([
-    getZoomIntegration(),
-    listZoomMeetings(),
-    getDialerState(),
-    listRecentCalls(500),
+  const workspace = await getCurrentWorkspace();
+  const supabase = await createRealClient();
+  const [{ data: zoom }, { count: templateCount }] = await Promise.all([
+    supabase.from("zoom_credentials").select("status, verified_at, last_error").eq("workspace_id", workspace.id).maybeSingle(),
+    supabase.from("email_templates").select("id", { count: "exact", head: true }).eq("workspace_id", workspace.id),
   ]);
-  const previews = Object.fromEntries(
-    await Promise.all(DIALER_PROVIDERS.map(async (p) => [p.key, await previewDialerRequest(p.key)] as const)),
-  );
-  const today = new Date().toISOString().slice(0, 10);
-  const todays = calls.filter((c) => c.started_at.slice(0, 10) === today);
-  const answered = calls.filter((c) => c.status === "completed");
-  const avg = answered.length ? Math.round(answered.reduce((s, c) => s + c.duration_seconds, 0) / answered.length) : 0;
-  const stats = {
-    callsToday: todays.length,
-    connectRate: calls.length ? `${Math.round((answered.length / calls.length) * 100)}%` : "—",
-    avgDuration: `${Math.floor(avg / 60)}m ${String(avg % 60).padStart(2, "0")}s`,
-  };
 
-  const others = [
-    { icon: Mail, name: "Email", text: "Template emails to leads with unsubscribe handling. Sends are simulated." },
-    { icon: Building, name: "Companies House", text: "UK company search for B2B data sourcing." },
-    { icon: ShieldCheck, name: "TPS / CTPS bureau", text: "UK do-not-call screening before dialling." },
-    { icon: Flag, name: "US National DNC", text: "FTC Do Not Call registry screening." },
-    { icon: Database, name: "Database", text: "The demo runs on in-memory sample data. Nothing is stored permanently." },
-  ];
+  const zoomConnected = zoom?.status === "connected";
+  const resendConfigured = Boolean(process.env.RESEND_API_KEY);
+  const stripeOn = stripeConfigured();
 
   return (
-    <div className="space-y-5 p-4 sm:p-6">
+    <div className="space-y-4 p-4 sm:p-6">
       <div>
         <h2 className="font-display text-xl font-semibold text-ink">Integrations</h2>
-        <p className="text-sm text-muted">
-          Connect the tools your floor already uses: the dialer your team subscribes to for calls, and Zoom for video meetings.
-        </p>
+        <p className="text-sm text-muted">What is connected to this workspace right now.</p>
       </div>
-
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Calling</h3>
-        <DialerIntegration state={dialer} previews={previews} stats={stats} />
-      </section>
-
-      <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted">Video meetings</h3>
-
-      <ZoomIntegrationCard
-        integration={zoom}
-        meetingCount={meetings.length}
-        endedCount={meetings.filter((m) => m.status === "ended").length}
-      />
 
       <Card>
         <CardHeader>
-          <CardTitle>Other services</CardTitle>
-          <CardDescription>Shown for completeness. In this demo each one runs in simulated mode.</CardDescription>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Video className="h-4 w-4" /> Zoom (Meetings API)
+            </span>
+            <Status ok={zoomConnected} yes="Connected" no={zoom ? zoom.status : "Not connected"} />
+          </CardTitle>
+          <CardDescription>Book and host Zoom meetings with leads from your own Zoom account.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {others.map(({ icon: Icon, name, text }, i) => (
-            <div key={name} className={`hover-lift animate-slide-up stagger-${i + 1} rounded-xl border border-line bg-surface p-3`}>
-              <div className="flex items-start justify-between gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-blue-tint text-brand-blue">
-                  <Icon className="h-4.5 w-4.5" />
-                </span>
-                <Badge variant="neutral">
-                  <CircleDashed className="h-3 w-3" /> Simulated
-                </Badge>
-              </div>
-              <div className="mt-2 text-sm font-semibold text-ink">{name}</div>
-              <div className="text-xs text-muted">{text}</div>
-            </div>
-          ))}
+        <CardContent className="space-y-2 text-sm">
+          {zoomConnected && zoom?.verified_at && (
+            <div className="text-xs text-muted">Last verified {new Date(zoom.verified_at).toLocaleString()}</div>
+          )}
+          {zoom?.last_error && !zoomConnected && <div className="text-xs text-danger">{zoom.last_error}</div>}
+          <Link href="/admin/settings/zoom" className="text-xs font-medium text-brand-green-text underline">
+            {zoomConnected ? "Manage Zoom settings" : "Connect Zoom"}
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Phone className="h-4 w-4" /> Zoom Phone (calling)
+            </span>
+            <Badge variant="neutral">Configured by your Zoom admin</Badge>
+          </CardTitle>
+          <CardDescription>
+            Calls use Zoom Phone Smart Embed on the dial screen. Its setup lives in your Zoom account, so it cannot be verified from
+            here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1 text-xs text-muted">
+          <Link href="/admin/settings/zoom" className="font-medium text-brand-green-text underline">
+            Zoom Phone setup checklist
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> Email (Resend)
+            </span>
+            <Status ok={resendConfigured} yes="Configured" no="Not configured" />
+          </CardTitle>
+          <CardDescription>
+            {resendConfigured
+              ? `Sending from ${process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev (Resend's test sender)"}.`
+              : "RESEND_API_KEY is not set on the server, so emails cannot be sent."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1 text-xs text-muted">
+          <div>{templateCount ?? 0} email template{templateCount === 1 ? "" : "s"} saved.</div>
+          <Link href="/admin/settings/email" className="font-medium text-brand-green-text underline">
+            Email templates
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" /> Billing (Stripe)
+            </span>
+            <Status ok={stripeOn} yes="Configured" no="Not configured" />
+          </CardTitle>
+          <CardDescription>
+            {stripeOn
+              ? "Checkout and the billing webhook are available."
+              : "STRIPE_SECRET_KEY / STRIPE_PRICE_ID are not set, so checkout is unavailable."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1 text-xs text-muted">
+          <div>
+            Plan: {workspace.plan} · billing status: {workspace.billing_status} · seat limit: {workspace.seat_limit}
+          </div>
+          <div>{workspace.stripe_subscription_id ? "Active Stripe subscription on file." : "No Stripe subscription on file."}</div>
+          <Link href="/admin/billing" className="font-medium text-brand-green-text underline">
+            Billing
+          </Link>
         </CardContent>
       </Card>
     </div>

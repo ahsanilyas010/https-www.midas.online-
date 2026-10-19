@@ -6,9 +6,8 @@ import { signInAsRealDemoPersona } from "@/lib/actions/real-demo";
 import type { RealDemoPersona } from "@/lib/actions/real-demo";
 
 // Only ever rendered when NEXT_PUBLIC_DEMO_MODE=true (checked server-side
-// in page.tsx, which passes an empty list otherwise) — the real,
-// Postgres-backed "demo" workspace's role switcher (spec, Phase 9),
-// distinct from the persona picker above it on this page.
+// in page.tsx, which passes an empty list otherwise) — the role switcher
+// for the real, Postgres-backed "demo" workspace (spec, Phase 9).
 export function RealDemoPicker({ personas }: { personas: RealDemoPersona[] }) {
   const [pending, startTransition] = useTransition();
   const [chosen, setChosen] = useState<string | null>(null);
@@ -19,10 +18,10 @@ export function RealDemoPicker({ personas }: { personas: RealDemoPersona[] }) {
   return (
     <div className="mt-8 rounded-xl border border-brand-blue/30 bg-brand-blue-tint/40 p-4">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-        <Sparkles className="h-4 w-4 text-brand-blue" /> Try the real system (demo mode)
+        <Sparkles className="h-4 w-4 text-brand-blue" /> Try the live demo
       </div>
       <p className="mt-1 text-xs text-muted">
-        Signs into the real, database-backed demo workspace. Calls only ever reach the numbers on its allow-list.
+        Pick a role to sign in to a real demo workspace backed by the live database. Calls only ever reach the numbers on its allow-list.
       </p>
       <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
         {personas.map((p) => (

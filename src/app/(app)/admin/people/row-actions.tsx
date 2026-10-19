@@ -34,7 +34,7 @@ export function PeopleRowActions({
   userId: string;
   userName: string;
   isActive: boolean;
-  campaigns: { id: string; name: string; code: string }[];
+  campaigns: { id: string; name: string; code?: string | null }[];
 }) {
   const router = useRouter();
   const [resetOpen, setResetOpen] = useState(false);

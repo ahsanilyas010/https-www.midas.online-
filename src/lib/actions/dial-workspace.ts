@@ -31,7 +31,8 @@ export async function pullNextLead(): Promise<PullResult> {
 
   const { data: lead, error } = await supabase.rpc("next_lead_for_agent", { p_agent_id: profile.id });
   if (error) return { error: error.message };
-  if (!lead) return { lead: null };
+  // The RPC returns an all-null composite row (not null) when nothing is eligible.
+  if (!lead?.id) return { lead: null };
 
   const { data: campaign } = lead.campaign_id
     ? await supabase.from("campaigns").select("*").eq("id", lead.campaign_id).maybeSingle()
@@ -59,8 +60,8 @@ export async function submitDisposition(input: SubmitDispositionInput): Promise<
   const { error } = await supabase.rpc("record_call_attempt", {
     p_lead_id: input.leadId,
     p_disposition_code: input.dispositionCode,
-    p_notes: input.notes ?? null,
-    p_callback_due_at: input.callbackDueAt ?? null,
+    p_notes: input.notes ?? undefined,
+    p_callback_due_at: input.callbackDueAt ?? undefined,
   });
   if (error) return { error: error.message };
   return {};

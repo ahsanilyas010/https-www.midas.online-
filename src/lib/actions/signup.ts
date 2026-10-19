@@ -97,8 +97,8 @@ export async function signUp(_prev: SignupState, formData: FormData): Promise<Si
     p_full_name: input.full_name,
     p_workspace_name: input.company,
     p_slug: slugify(input.company),
-    p_phone: input.phone ?? null,
-    p_team_size: input.team_size ?? null,
+    p_phone: input.phone ?? undefined,
+    p_team_size: input.team_size ?? undefined,
     p_signup: signup,
   });
 

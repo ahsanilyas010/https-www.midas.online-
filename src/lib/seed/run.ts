@@ -58,7 +58,7 @@ export async function seedPlatformAdmins(admin: Admin): Promise<number> {
 }
 
 // The vendor's own live workspace, seeded once from env vars — the only
-// workspace that ever reads TWILIO_*/ASSORTED_ADMIN_* directly. After this
+// workspace that ever reads ASSORTED_ADMIN_* directly. After this
 // runs it behaves like any other workspace (spec: "This is the only
 // workspace that reads env vars, and only at seed time").
 export async function seedAssortedWorkspace(admin: Admin): Promise<string | null> {
@@ -91,17 +91,6 @@ export async function seedAssortedWorkspace(admin: Admin): Promise<string | null
 
   await admin.from("workspaces").update({ status: "active" }).eq("id", ws.id);
 
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  if (sid && token) {
-    const { error: credError } = await admin.rpc("set_twilio_credentials", {
-      p_workspace_id: ws.id,
-      p_account_sid: sid,
-      p_auth_token: token,
-    });
-    if (credError) throw credError;
-  }
-
   return ws.id;
 }
 
@@ -119,6 +108,11 @@ function* chunks<T>(arr: T[], size: number): Generator<T[]> {
 async function clearDemoWorkspaceContent(admin: Admin, workspaceId: string) {
   // Children first. Profiles are left alone — they're upserted back onto
   // the same 6 fixed auth ids below, not recreated.
+  // Profiles point at their team/client; detach them so those can be deleted.
+  await admin.from("profiles").update({ team_id: null, client_id: null }).eq("workspace_id", workspaceId);
+  await admin.from("call_transfers").delete().eq("workspace_id", workspaceId);
+  await admin.from("callbacks").delete().eq("workspace_id", workspaceId);
+  await admin.from("calls").delete().eq("workspace_id", workspaceId);
   await admin.from("campaign_assignments").delete().eq("workspace_id", workspaceId);
   await admin.from("leads").delete().eq("workspace_id", workspaceId);
   await admin.from("lead_batches").delete().eq("workspace_id", workspaceId);
@@ -157,24 +151,6 @@ export async function seedDemoWorkspace(admin: Admin, opts: SeedDemoOptions = {}
     await clearDemoWorkspaceContent(admin, workspace.id);
   }
 
-  // Twilio credentials cloned from `assorted` — the one deliberate
-  // exception to tenant isolation, per spec, and what makes
-  // DEMO_ALLOWED_NUMBERS real-callable. Enforcing that only those numbers
-  // are dialable is Phase 3's concern, not this seed's.
-  const { data: assorted } = await admin.from("workspaces").select("id").eq("slug", "assorted").maybeSingle();
-  if (assorted) {
-    const { data: cred } = await admin
-      .from("twilio_credentials")
-      .select("account_sid")
-      .eq("workspace_id", assorted.id)
-      .maybeSingle();
-    const sid = cred?.account_sid ?? process.env.TWILIO_ACCOUNT_SID;
-    const token = process.env.TWILIO_AUTH_TOKEN;
-    if (sid && token) {
-      await admin.rpc("set_twilio_credentials", { p_workspace_id: workspace.id, p_account_sid: sid, p_auth_token: token });
-    }
-  }
-
   const profileByRole = new Map<AppRole, string>();
   for (const persona of DEMO_PERSONAS) {
     const user = await ensureAuthUser(admin, persona.email, DEMO_PASSWORD, persona.fullName);
@@ -188,6 +164,13 @@ export async function seedDemoWorkspace(admin: Admin, opts: SeedDemoOptions = {}
     });
     if (error) throw error;
     profileByRole.set(persona.role, user.id);
+  }
+
+  // Idempotent: the demo content (team, client, campaigns, leads) is only
+  // created once. Re-running the seed without --reset must not stack copies.
+  if (!opts.reset) {
+    const { count } = await admin.from("campaigns").select("id", { count: "exact", head: true }).eq("workspace_id", workspace.id);
+    if ((count ?? 0) > 0) return workspace.id;
   }
 
   const superAdminId = profileByRole.get("super_admin")!;

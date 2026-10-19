@@ -7,8 +7,11 @@ import { BRAND } from "@/lib/brand";
 // so canonical URLs, the sitemap and social cards always point at the real
 // site, including from preview builds. Nothing needs to be configured.
 export function siteUrl(): string {
+  // NEXT_PUBLIC_SITE_URL wins (e.g. an ngrok/cloudflared address while testing
+  // Zoom's embedded phone, which needs the exact origin approved by a Zoom admin).
+  const override = process.env.NEXT_PUBLIC_SITE_URL;
   const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return (prod ? `https://${prod}` : BRAND.siteUrl).replace(/\/$/, "");
+  return (override || (prod ? `https://${prod}` : BRAND.siteUrl)).replace(/\/$/, "");
 }
 
 export function absoluteUrl(path = "/"): string {
@@ -28,7 +31,6 @@ export const PRIVATE_PATH_PREFIXES = [
   "/portal",
   "/client",
   "/qa",
-  "/meetings",
   "/start",
   "/onboarding",
   "/platform",

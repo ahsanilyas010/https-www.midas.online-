@@ -1,6 +1,6 @@
-import type { Enums } from "@/lib/supabase/types";
+import type { RealEnums } from "@/lib/supabase/real-types";
 
-export type AppRole = Enums<"app_role">;
+export type AppRole = RealEnums<"app_role">;
 
 // Icon names only (strings, not component references) — this array is
 // built server-side in the (app) layout and passed as a prop into Client
@@ -19,9 +19,13 @@ export type NavIconName =
   | "Lock"
   | "Headset"
   | "Building2"
-  | "Video"
   | "PlugZap"
-  | "CreditCard";
+  | "CreditCard"
+  | "Settings"
+  | "Radar"
+  | "Plug"
+  | "Inbox"
+  | "Video";
 
 export interface NavItem {
   href: string;
@@ -30,57 +34,50 @@ export interface NavItem {
   roles: AppRole[];
 }
 
-// Section 6.8 — eight admin sections, cross-campaign by default.
-// team_lead sees a scoped subset (Live Floor, Performance, People read-only,
-// Attendance with approval rights) per the spec's design constraints.
-export const ADMIN_NAV: NavItem[] = [
-  { href: "/admin", label: "Live floor", icon: "Activity", roles: ["super_admin", "ops_manager", "team_lead"] },
-  { href: "/admin/performance", label: "Performance", icon: "BarChart3", roles: ["super_admin", "ops_manager", "team_lead"] },
-  { href: "/admin/people", label: "People", icon: "Users", roles: ["super_admin", "ops_manager", "team_lead"] },
-  { href: "/admin/campaigns", label: "Campaigns", icon: "Megaphone", roles: ["super_admin", "ops_manager"] },
-  { href: "/admin/attendance", label: "Attendance", icon: "CalendarCheck", roles: ["super_admin", "ops_manager", "team_lead"] },
-  { href: "/admin/compliance", label: "Compliance", icon: "ShieldCheck", roles: ["super_admin", "ops_manager"] },
-  { href: "/admin/data", label: "Data", icon: "Database", roles: ["super_admin", "ops_manager"] },
-  { href: "/client", label: "Client reports", icon: "Building2", roles: ["super_admin", "ops_manager"] },
-  { href: "/admin/integrations", label: "Integrations", icon: "PlugZap", roles: ["super_admin", "ops_manager"] },
+const MANAGERS: AppRole[] = ["super_admin", "ops_manager"];
+const MANAGERS_AND_LEADS: AppRole[] = ["super_admin", "ops_manager", "team_lead"];
+
+// Every route here is a real, Postgres-backed screen. team_lead sees a
+// scoped subset (live floor, performance, people, attendance).
+export const NAV: NavItem[] = [
+  { href: "/dial", label: "Dial workspace", icon: "Headset", roles: ["agent"] },
+  { href: "/workspace/leads", label: "My leads", icon: "Users", roles: ["agent"] },
+  { href: "/portal", label: "Reports", icon: "Building2", roles: ["client"] },
+  { href: "/leadgen", label: "Lead gen", icon: "Radar", roles: ["lead_gen"] },
+  { href: "/leadgen/leads", label: "Lead inbox", icon: "Inbox", roles: ["lead_gen"] },
+  { href: "/leadgen/connectors", label: "Connectors", icon: "Plug", roles: ["lead_gen"] },
+  { href: "/quality", label: "QA queue", icon: "ShieldCheck", roles: ["qa_analyst"] },
+  { href: "/meetings", label: "Meetings", icon: "Video", roles: ["super_admin", "ops_manager", "team_lead", "agent"] },
+  { href: "/live", label: "Live floor", icon: "Activity", roles: MANAGERS_AND_LEADS },
+  { href: "/performance", label: "Performance", icon: "BarChart3", roles: MANAGERS_AND_LEADS },
+  { href: "/admin/people", label: "People", icon: "Users", roles: MANAGERS_AND_LEADS },
+  { href: "/admin/campaigns", label: "Campaigns", icon: "Megaphone", roles: MANAGERS },
+  { href: "/admin/attendance", label: "Attendance", icon: "CalendarCheck", roles: MANAGERS_AND_LEADS },
+  { href: "/admin/compliance", label: "Compliance", icon: "ShieldCheck", roles: MANAGERS },
+  { href: "/admin/data", label: "Data", icon: "Database", roles: MANAGERS },
+  { href: "/quality", label: "Quality", icon: "ShieldCheck", roles: MANAGERS },
+  { href: "/portal", label: "Client reports", icon: "Building2", roles: MANAGERS },
+  { href: "/admin/integrations", label: "Integrations", icon: "PlugZap", roles: MANAGERS },
+  { href: "/admin/settings/branding", label: "Settings", icon: "Settings", roles: MANAGERS },
   { href: "/admin/security", label: "Security & audit", icon: "Lock", roles: ["super_admin"] },
   { href: "/admin/billing", label: "Plan & billing", icon: "CreditCard", roles: ["super_admin"] },
 ];
 
-export const PRIMARY_NAV: NavItem[] = [
-  { href: "/workspace", label: "Dial workspace", icon: "Headset", roles: ["agent"] },
-  { href: "/workspace/leads", label: "My leads", icon: "Users", roles: ["agent"] },
-  { href: "/client", label: "Reports", icon: "Building2", roles: ["client_viewer"] },
-  { href: "/qa", label: "QA queue", icon: "ShieldCheck", roles: ["qa"] },
-  ...ADMIN_NAV.slice(0, 1),
-  {
-    href: "/meetings",
-    label: "Zoom meetings",
-    icon: "Video",
-    roles: ["agent", "super_admin", "ops_manager", "team_lead", "qa", "client_viewer"],
-  },
-  ...ADMIN_NAV.slice(1),
-];
-
-// NOTE: these role strings (here and in ADMIN_NAV above) are the
-// legacy/demo schema's app_role values (src/lib/supabase/types.ts), used
-// by every pre-existing CRM page and the sales demo. Phase 1's new real
-// Postgres schema (src/lib/supabase/real-types.ts) uses the spec's exact
-// names (qa_analyst, client) instead — that's a separate identity/
-// onboarding surface, not this nav.
 export function navFor(role: AppRole): NavItem[] {
-  return PRIMARY_NAV.filter((item) => item.roles.includes(role));
+  return NAV.filter((item) => item.roles.includes(role));
 }
 
 export function homeFor(role: AppRole): string {
   switch (role) {
     case "agent":
-      return "/workspace";
-    case "client_viewer":
-      return "/client";
-    case "qa":
-      return "/qa";
+      return "/dial";
+    case "client":
+      return "/portal";
+    case "lead_gen":
+      return "/leadgen";
+    case "qa_analyst":
+      return "/quality";
     default:
-      return "/admin";
+      return "/live";
   }
 }

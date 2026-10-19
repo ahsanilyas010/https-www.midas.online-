@@ -5,7 +5,7 @@ import { BrandMark } from "@/components/brand/mark";
 import { BRAND, COMPANY, companyAddressLine } from "@/lib/brand";
 import { MetaPixel } from "@/components/marketing/meta-pixel";
 import { AttributionCapture } from "@/components/marketing/attribution";
-import { hasRealSessionCookie } from "@/lib/accounts/session";
+import { hasRealSessionCookie } from "@/lib/auth/session-cookie";
 
 // Header and footer shared by the public pages (landing, contact, legal).
 
@@ -13,7 +13,7 @@ import { hasRealSessionCookie } from "@/lib/accounts/session";
 // signed in (to a workspace or the demo).
 export async function demoCta() {
   const jar = await cookies();
-  const signedIn = hasRealSessionCookie(jar) || Boolean(jar.get("leadcallient_demo_user")?.value);
+  const signedIn = hasRealSessionCookie(jar);
   return {
     signedIn,
     href: signedIn ? "/start" : "/signup",
@@ -24,8 +24,8 @@ export async function demoCta() {
 
 const NAV = [
   { href: "/#features", label: "Features" },
-  { href: "/#dialer", label: "Dialer" },
-  { href: "/#zoom", label: "Zoom" },
+  { href: "/#workspace", label: "Dial workspace" },
+  { href: "/#floor", label: "Live floor" },
   { href: "/#compliance", label: "Compliance" },
   { href: "/contact", label: "Contact" },
 ];
@@ -80,8 +80,6 @@ const FOOTER_COLUMNS = [
     links: [
       { href: "/#features", label: "All features" },
       { href: "/#workspace", label: "Dial workspace" },
-      { href: "/#dialer", label: "Bring your own dialer" },
-      { href: "/#zoom", label: "Zoom meetings" },
       { href: "/#floor", label: "Live floor" },
       { href: "/#compliance", label: "Compliance" },
     ],

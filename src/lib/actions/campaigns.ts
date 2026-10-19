@@ -1,56 +1,14 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { presetFor } from "@/lib/campaign-presets";
+import { requireProfile } from "@/lib/auth/current-profile";
+import { createRealClient } from "@/lib/supabase/real";
 
 export interface CreateCampaignResult {
   error?: string;
   ok?: boolean;
-}
-
-export async function createCampaign(
-  _prev: CreateCampaignResult,
-  formData: FormData,
-): Promise<CreateCampaignResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
-
-  const name = String(formData.get("name") ?? "").trim();
-  const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  const clientId = String(formData.get("client_id") ?? "");
-  const market = String(formData.get("market") ?? "");
-  const audience = String(formData.get("audience") ?? "B2C");
-  const vertical = String(formData.get("vertical") ?? "general");
-
-  if (!name || !code || !clientId || !market) {
-    return { error: "Name, code, client and market are required." };
-  }
-
-  const preset = presetFor(vertical, market);
-
-  const { error } = await supabase.from("campaigns").insert({
-    name,
-    code,
-    client_id: clientId,
-    market,
-    audience,
-    vertical,
-    risk_tier: preset.riskTier,
-    requires_tps_screening: preset.requiresTps,
-    requires_ctps_screening: preset.requiresCtps,
-    requires_us_dnc_screening: preset.requiresUsDnc,
-    screening_max_age_days: preset.screeningMaxAgeDays,
-    is_active: false, // activation checklist (Phase 3.5) gates going live
-  });
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/campaigns");
-  return { ok: true };
+  id?: string;
 }
 
 export interface CreateClientResult {
@@ -58,28 +16,194 @@ export interface CreateClientResult {
   ok?: boolean;
 }
 
+const MANAGER_ROLES = ["super_admin", "ops_manager"];
+
+const timeOrNull = z
+  .string()
+  .trim()
+  .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use a valid time")
+  .or(z.literal(""))
+  .transform((v) => (v ? v.slice(0, 5) : null));
+
+const textOrNull = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v ? v : null));
+
+const campaignSchema = z
+  .object({
+    name: z.string().trim().min(2, "Campaign name is required.").max(120),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .max(24)
+      .regex(/^[A-Z0-9_-]*$/, "Code may only contain letters, numbers, - and _.")
+      .transform((v) => (v ? v : null)),
+    client_id: z.string().uuid("Choose a client."),
+    country: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z]{2}$/, "Choose a country.")
+      .transform((v) => v.toUpperCase()),
+    audience: z.enum(["B2C", "B2B"]),
+    vertical: textOrNull(60),
+    timezone: z.string().trim().min(1).max(64),
+    caller_id: z
+      .string()
+      .trim()
+      .max(32)
+      .refine((v) => v === "" || /^\+[1-9]\d{6,14}$/.test(v), "Caller ID must be an E.164 number such as +14155550123.")
+      .transform((v) => (v ? v : null)),
+    calling_window_start: timeOrNull,
+    calling_window_end: timeOrNull,
+    max_attempts: z.coerce.number().int().min(1, "Max attempts must be at least 1.").max(50),
+    cooling_off_hours: z.coerce.number().int().min(0).max(720),
+    recording_enabled: z.boolean(),
+    disclosure_script: textOrNull(4000),
+    objection_notes: textOrNull(4000),
+  })
+  .refine((v) => (v.calling_window_start === null) === (v.calling_window_end === null), {
+    message: "Set both calling window times, or neither.",
+    path: ["calling_window_end"],
+  })
+  .refine(
+    (v) =>
+      v.calling_window_start === null ||
+      v.calling_window_end === null ||
+      v.calling_window_start < v.calling_window_end,
+    { message: "Calling window must end after it starts.", path: ["calling_window_end"] },
+  );
+
+function campaignInput(formData: FormData) {
+  const get = (k: string) => String(formData.get(k) ?? "");
+  return campaignSchema.safeParse({
+    name: get("name"),
+    code: get("code"),
+    client_id: get("client_id"),
+    country: get("country"),
+    audience: get("audience") || "B2C",
+    vertical: get("vertical"),
+    timezone: get("timezone") || "UTC",
+    caller_id: get("caller_id"),
+    calling_window_start: get("calling_window_start"),
+    calling_window_end: get("calling_window_end"),
+    max_attempts: get("max_attempts") || "6",
+    cooling_off_hours: get("cooling_off_hours") || "24",
+    recording_enabled: formData.get("recording_enabled") === "on",
+    disclosure_script: get("disclosure_script"),
+    objection_notes: get("objection_notes"),
+  });
+}
+
+function dbMessage(error: { code?: string; message: string }): string {
+  if (error.code === "23505") return "Another campaign already uses that code.";
+  return error.message;
+}
+
+export async function createCampaign(
+  _prev: CreateCampaignResult,
+  formData: FormData,
+): Promise<CreateCampaignResult> {
+  const profile = await requireProfile();
+  if (!MANAGER_ROLES.includes(profile.role)) return { error: "Only an admin can create campaigns." };
+
+  const parsed = campaignInput(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid campaign." };
+
+  const supabase = await createRealClient();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      ...parsed.data,
+      workspace_id: profile.workspace_id,
+      // A new campaign starts paused: it only becomes dialable once a
+      // manager deliberately activates it.
+      status: "paused",
+    })
+    .select("id")
+    .single();
+  if (error) return { error: dbMessage(error) };
+
+  revalidatePath("/admin/campaigns", "layout");
+  return { ok: true, id: data.id };
+}
+
+export async function updateCampaign(
+  _prev: CreateCampaignResult,
+  formData: FormData,
+): Promise<CreateCampaignResult> {
+  const profile = await requireProfile();
+  if (!MANAGER_ROLES.includes(profile.role)) return { error: "Only an admin can edit campaigns." };
+
+  const id = z.string().uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Missing campaign." };
+  const parsed = campaignInput(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid campaign." };
+  const status = z.enum(["active", "paused", "archived"]).safeParse(formData.get("status"));
+  if (!status.success) return { error: "Choose a status." };
+
+  const supabase = await createRealClient();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .update({ ...parsed.data, status: status.data })
+    .eq("id", id.data)
+    .eq("workspace_id", profile.workspace_id)
+    .select("id");
+  if (error) return { error: dbMessage(error) };
+  if (!data || data.length === 0) return { error: "Campaign not found, or you don't have access to it." };
+
+  revalidatePath("/admin/campaigns", "layout");
+  return { ok: true, id: id.data };
+}
+
+const clientSchema = z.object({
+  name: z.string().trim().min(2, "Client name is required.").max(120),
+  country: textOrNull(80),
+  contact_name: textOrNull(120),
+  contact_email: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || z.string().email().safeParse(v).success, "Enter a valid contact email."),
+  is_data_controller: z.boolean(),
+  dpa_signed_on: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date")
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null)),
+});
+
+function clientInput(formData: FormData) {
+  const get = (k: string) => String(formData.get(k) ?? "");
+  return clientSchema.safeParse({
+    name: get("name"),
+    country: get("country"),
+    contact_name: get("contact_name"),
+    contact_email: get("contact_email"),
+    is_data_controller: formData.get("is_data_controller") === "on",
+    dpa_signed_on: get("dpa_signed_on"),
+  });
+}
+
 export async function createClientRecord(
   _prev: CreateClientResult,
   formData: FormData,
 ): Promise<CreateClientResult> {
-  const supabase = await createClient();
-  const name = String(formData.get("name") ?? "").trim();
-  const country = String(formData.get("country") ?? "").trim() || null;
-  const contactEmail = String(formData.get("contact_email") ?? "").trim() || null;
-  const isDataController = formData.get("is_data_controller") === "on";
+  const profile = await requireProfile();
+  if (!MANAGER_ROLES.includes(profile.role)) return { error: "Only an admin can add clients." };
+  const parsed = clientInput(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid client." };
 
-  if (!name) return { error: "Client name is required." };
-
-  const { error } = await supabase.from("clients").insert({
-    name,
-    country,
-    contact_email: contactEmail,
-    is_data_controller: isDataController,
-  });
-
+  const supabase = await createRealClient();
+  const { error } = await supabase.from("clients").insert({ ...parsed.data, workspace_id: profile.workspace_id });
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/campaigns");
+  revalidatePath("/admin/campaigns", "layout");
   return { ok: true };
 }
 
@@ -87,32 +211,23 @@ export async function updateClientRecord(
   _prev: CreateClientResult,
   formData: FormData,
 ): Promise<CreateClientResult> {
-  const supabase = await createClient();
-  const id = String(formData.get("id") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
-  const country = String(formData.get("country") ?? "").trim() || null;
-  const contactEmail = String(formData.get("contact_email") ?? "").trim() || null;
-  const isDataController = formData.get("is_data_controller") === "on";
+  const profile = await requireProfile();
+  if (!MANAGER_ROLES.includes(profile.role)) return { error: "Only an admin can edit clients." };
+  const id = z.string().uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Missing client id." };
+  const parsed = clientInput(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid client." };
 
-  if (!id) return { error: "Missing client id." };
-  if (!name) return { error: "Client name is required." };
-
+  const supabase = await createRealClient();
   const { data, error } = await supabase
     .from("clients")
-    .update({
-      name,
-      country,
-      contact_email: contactEmail,
-      is_data_controller: isDataController,
-    })
-    .eq("id", id)
+    .update(parsed.data)
+    .eq("id", id.data)
+    .eq("workspace_id", profile.workspace_id)
     .select("id");
-
   if (error) return { error: error.message };
-  if (!data || data.length === 0) {
-    return { error: "Client not found, or you don't have access to it." };
-  }
+  if (!data || data.length === 0) return { error: "Client not found, or you don't have access to it." };
 
-  revalidatePath("/admin/campaigns");
+  revalidatePath("/admin/campaigns", "layout");
   return { ok: true };
 }

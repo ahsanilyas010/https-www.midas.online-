@@ -3,21 +3,15 @@
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Plus } from "lucide-react";
-import { createShift, type CreateShiftResult } from "@/lib/actions/attendance";
+import { createShift, type ActionResult } from "@/lib/actions/attendance-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-const initialState: CreateShiftResult = {};
+const initialState: ActionResult = {};
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -66,27 +60,26 @@ export function CreateShiftDialog() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input id="timezone" name="timezone" defaultValue="Asia/Karachi" />
+              <Label htmlFor="timezone">Timezone (IANA)</Label>
+              <Input id="timezone" name="timezone" defaultValue="UTC" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="grace_minutes">Grace (minutes)</Label>
-              <Input id="grace_minutes" name="grace_minutes" type="number" defaultValue={10} />
+              <Input id="grace_minutes" name="grace_minutes" type="number" min={0} defaultValue={10} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Days</Label>
+            <div className="flex flex-wrap gap-2">
+              {DAYS.map((d, i) => (
+                <label key={d} className="flex items-center gap-1 text-xs text-ink">
+                  <input type="checkbox" name="days" value={i} defaultChecked={i >= 1 && i <= 5} /> {d}
+                </label>
+              ))}
             </div>
           </div>
 
-          <AnimatePresence>
-            {state.error && (
-              <motion.p
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger"
-              >
-                {state.error}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {state.error && <p className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger">{state.error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

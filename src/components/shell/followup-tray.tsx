@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bell, Clock, Check, AlarmClock, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getMyFollowups, snoozeFollowup, completeFollowup, cancelFollowup, type FollowupRow } from "@/lib/actions/followups";
+import { getMyCallbacks, snoozeCallback, completeCallback, cancelCallback, type CallbackRow } from "@/lib/actions/callbacks";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,12 +14,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function FollowupTray({ userId, initial }: { userId: string; initial: FollowupRow[] }) {
+export function FollowupTray({ userId, initial }: { userId: string; initial: CallbackRow[] }) {
   const [followups, setFollowups] = useState(initial);
   const router = useRouter();
 
   async function refresh() {
-    setFollowups(await getMyFollowups());
+    setFollowups(await getMyCallbacks());
   }
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function FollowupTray({ userId, initial }: { userId: string; initial: Fol
       .channel(`followups-${userId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "followups", filter: `assigned_to=eq.${userId}` },
+        { event: "*", schema: "public", table: "callbacks", filter: `agent_id=eq.${userId}` },
         () => {
           refresh();
         },
@@ -58,7 +58,7 @@ export function FollowupTray({ userId, initial }: { userId: string; initial: Fol
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-1.5rem))] p-0">
         <div className="border-b border-line px-3 py-2 text-xs font-medium text-muted">
-          Follow-ups due
+          Callbacks due
         </div>
         <div className="max-h-80 overflow-y-auto">
           {followups.length === 0 && (
@@ -70,21 +70,19 @@ export function FollowupTray({ userId, initial }: { userId: string; initial: Fol
               <div key={f.id} className="flex flex-col gap-1.5 border-b border-line px-3 py-2 last:border-0">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium text-ink">
-                    {[f.leads?.first_name, f.leads?.last_name].filter(Boolean).join(" ") ||
-                      f.leads?.phone_e164}
+                    {f.leads?.full_name || f.leads?.phone_e164 || "Lead"}
                   </span>
                   <Badge variant={due ? "accent" : "neutral"}>
                     <Clock className="h-2.5 w-2.5" />
                     {new Date(f.due_at).toLocaleString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}
                   </Badge>
                 </div>
-                {f.note && <p className="text-[11px] text-muted">{f.note}</p>}
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={async () => {
-                      const r = await completeFollowup(f.id);
+                      const r = await completeCallback(f.id);
                       if (r.error) toast.error(r.error);
                       else {
                         toast.success("Done");
@@ -100,10 +98,10 @@ export function FollowupTray({ userId, initial }: { userId: string; initial: Fol
                       size="sm"
                       variant="ghost"
                       onClick={async () => {
-                        const r = await snoozeFollowup(f.id);
+                        const r = await snoozeCallback(f.id);
                         if (r.error) toast.error(r.error);
                         else {
-                          toast.success("Snoozed 15 min");
+                          toast.success("Snoozed 30 min");
                           refresh();
                         }
                       }}
@@ -115,7 +113,7 @@ export function FollowupTray({ userId, initial }: { userId: string; initial: Fol
                     size="sm"
                     variant="ghost"
                     onClick={async () => {
-                      const r = await cancelFollowup(f.id);
+                      const r = await cancelCallback(f.id);
                       if (r.error) toast.error(r.error);
                       else {
                         refresh();

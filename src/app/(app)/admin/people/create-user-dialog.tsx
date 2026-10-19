@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -31,12 +30,13 @@ import {
 const initialState: CreateUserResult = {};
 
 const ROLES = [
-  { value: "agent", label: "Agent" },
+  { value: "agent", label: "Sales agent" },
+  { value: "lead_gen", label: "Lead gen" },
   { value: "team_lead", label: "Team lead" },
-  { value: "qa", label: "QA" },
+  { value: "qa_analyst", label: "QA analyst" },
   { value: "ops_manager", label: "Ops manager" },
   { value: "super_admin", label: "Super admin" },
-  { value: "client_viewer", label: "Client viewer" },
+  { value: "client", label: "Client viewer" },
 ];
 
 // A free-text timezone field once let someone type "UK" instead of
@@ -173,7 +173,7 @@ function CreateUserDialogRound({
                     <input type="hidden" name="timezone" value={timezone} />
                   </div>
                 </div>
-                {role !== "client_viewer" && (
+                {role !== "client" && (
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="team_id">Team</Label>
                     <Select value={teamId} onValueChange={setTeamId}>
@@ -191,7 +191,7 @@ function CreateUserDialogRound({
                     <input type="hidden" name="team_id" value={teamId} />
                   </div>
                 )}
-                {role === "client_viewer" && (
+                {role === "client" && (
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="client_id">Client</Label>
                     <Select value={clientId} onValueChange={setClientId}>
@@ -209,13 +209,6 @@ function CreateUserDialogRound({
                     <input type="hidden" name="client_id" value={clientId} />
                   </div>
                 )}
-                {role === "agent" && (
-                  <label className="flex items-center gap-2 text-xs text-muted">
-                    <Switch name="allow_login_outside_shift" />
-                    Allow login outside shift window
-                  </label>
-                )}
-
                 <AnimatePresence>
                   {state.error && (
                     <motion.p
