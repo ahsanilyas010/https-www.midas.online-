@@ -58,6 +58,6 @@ export async function openBillingPortal(): Promise<{ url?: string; error?: strin
 // there's no more unconfigured state for this to apply to — kept as a
 // stub so admin/billing/page.tsx's "offline" mode still has something to
 // call, but it always declines.
-export async function simulateUpgrade(_seats: number): Promise<{ error?: string }> {
+export async function simulateUpgrade(): Promise<{ error?: string }> {
   return { error: "Not available. Contact us to upgrade." };
 }

@@ -64,12 +64,16 @@ async function main() {
   // ---------------------------------------------------------------- 1
   console.log("\n1. setup_progress(): counts for the demo workspace");
   const cap = (n: number | null) => Math.min(n ?? 0, 1000);
+  // The filter callback takes a query builder whose exact generic type differs per
+  // table, so it is loosely typed in this test helper.
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const count = async (table: "profiles" | "campaigns" | "leads" | "campaign_assignments" | "calls", extra?: (q: any) => any) => {
     let q: any = admin.from(table).select("id", { count: "exact", head: true }).eq("workspace_id", demo.id);
     if (extra) q = extra(q);
     const { count: c } = await q;
     return cap(c);
   };
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   const expected = {
     agents: await count("profiles", (q) => q.eq("role", "agent").eq("is_active", true)),
     campaigns: await count("campaigns"),

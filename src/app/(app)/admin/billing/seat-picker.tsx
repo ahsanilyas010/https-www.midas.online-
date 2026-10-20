@@ -27,7 +27,7 @@ export function SeatPicker({
   const go = () =>
     start(async () => {
       if (mode === "simulate") {
-        const r = await simulateUpgrade(seats);
+        const r = await simulateUpgrade();
         if (r.error) toast.error(r.error);
         else {
           toast.success(`Upgraded to ${seats} agent seats (preview, no payment taken).`);
