@@ -31,6 +31,10 @@ async function visit(page: Page, path: string) {
   page.off("console", onConsole);
 
   if (status >= 400) return fail(`${path} -> HTTP ${status}`);
+  // A nav link must land on its own page, not be bounced somewhere else (a
+  // stale redirect once hid /meetings behind /live and still looked "ok").
+  const landed = new URL(page.url()).pathname;
+  if (landed !== path) return fail(`${path} -> redirected to ${landed}`);
   if (/Application error|Something went wrong|Unhandled Runtime Error|This page couldn.t load/i.test(body)) {
     return fail(`${path} -> error boundary: ${body.slice(0, 120).replace(/\s+/g, " ")}`);
   }

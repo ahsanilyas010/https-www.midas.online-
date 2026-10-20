@@ -289,8 +289,16 @@ async function main() {
     }
 
     console.log("\n[cross-workspace]");
-    const { data: w, error: wErr } = await svc.from("workspaces").insert({ name: "zoomproof-tmp", slug: `zoomproof-${Date.now()}` }).select("id").single();
-    if (wErr || !w) throw new Error(`temp workspace: ${wErr?.message}`);
+    // Workspaces can never be deleted (their audit trail is permanent), so this
+    // proof reuses one throwaway workspace across runs instead of creating a new
+    // one each time. It is parked as 'canceled' between runs.
+    let { data: w } = await svc.from("workspaces").select("id").eq("name", "zoomproof-tmp").order("created_at").limit(1).maybeSingle();
+    if (!w) {
+      const created = await svc.from("workspaces").insert({ name: "zoomproof-tmp", slug: `zoomproof-${Date.now()}` }).select("id").single();
+      if (created.error || !created.data) throw new Error(`temp workspace: ${created.error?.message}`);
+      w = created.data;
+    }
+    await svc.from("workspaces").update({ status: "active" }).eq("id", w.id);
     tempWs = w.id;
     const email = `zoomproof-${Date.now()}@leadcallient.demo`;
     const { data: u, error: uErr } = await svc.auth.admin.createUser({ email, password: DEMO_PASSWORD, email_confirm: true });
@@ -333,8 +341,7 @@ async function main() {
       await svc.from("audit_log").delete().eq("entity_type", "zoom_credentials").eq("entity_id", zrow.id);
     }
     if (tempUser) await svc.auth.admin.deleteUser(tempUser);
-    if (tempWs) await svc.from("workspaces").delete().eq("id", tempWs);
-    if (tempWs) await svc.from("audit_log").delete().eq("workspace_id", tempWs);
+    if (tempWs) await svc.from("workspaces").update({ status: "canceled" }).eq("id", tempWs);
     const { data: left } = await svc.from("zoom_meetings").select("id").eq("workspace_id", admin.profile.workspace_id);
     const { data: leftC } = await svc.from("zoom_credentials").select("workspace_id").eq("workspace_id", admin.profile.workspace_id);
     check((left ?? []).length === 0 && (leftC ?? []).length === 0, "no zoom rows left behind in the demo workspace");

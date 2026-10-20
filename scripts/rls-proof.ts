@@ -172,17 +172,26 @@ async function main() {
   // ---------------------------------------------------------------------
   console.log("\n6. Storage isolation");
   {
-    const path = `${demoWorkspace.id}/logo.txt`;
+    // The bucket only accepts small PNG/JPEG/WebP files (migration 95), so use
+    // a 1x1 PNG for the positive and the cross-workspace checks.
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
+    const path = `${demoWorkspace.id}/logo.png`;
     const { error: ownUploadError } = await byRole.super_admin.storage
       .from("workspace-branding")
-      .upload(path, Buffer.from("rls-proof"), { upsert: true, contentType: "text/plain" });
+      .upload(path, png, { upsert: true, contentType: "image/png" });
     check("demo super_admin can upload to their own workspace's branding path", !ownUploadError, ownUploadError?.message);
+    await admin.storage.from("workspace-branding").remove([path]);
 
-    const otherPath = `${assortedWorkspace.id}/logo.txt`;
+    const otherPath = `${assortedWorkspace.id}/logo.png`;
     const { error: otherUploadError } = await byRole.super_admin.storage
       .from("workspace-branding")
-      .upload(otherPath, Buffer.from("rls-proof"), { upsert: true, contentType: "text/plain" });
+      .upload(otherPath, png, { upsert: true, contentType: "image/png" });
     check("demo super_admin cannot upload to another workspace's branding path", Boolean(otherUploadError));
+
+    const { error: typeError } = await byRole.super_admin.storage
+      .from("workspace-branding")
+      .upload(`${demoWorkspace.id}/logo.txt`, Buffer.from("x"), { upsert: true, contentType: "text/plain" });
+    check("the branding bucket rejects non-image files", Boolean(typeError));
   }
 
   // ---------------------------------------------------------------------

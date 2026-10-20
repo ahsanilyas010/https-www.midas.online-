@@ -2214,6 +2214,58 @@ export type Database = {
           },
         ]
       }
+      user_guide_state: {
+        Row: {
+          checklist_dismissed_at: string | null
+          created_at: string
+          tour_completed_at: string | null
+          tour_seen_at: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          checklist_dismissed_at?: string | null
+          created_at?: string
+          tour_completed_at?: string | null
+          tour_seen_at?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          checklist_dismissed_at?: string | null
+          created_at?: string
+          tour_completed_at?: string | null
+          tour_seen_at?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_guide_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_guide_state_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "v_compliance_stats"
+            referencedColumns: ["workspace_id"]
+          },
+          {
+            foreignKeyName: "user_guide_state_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspaces: {
         Row: {
           billing_status: string
@@ -2922,6 +2974,19 @@ export type Database = {
           p_workspace_id: string
         }
         Returns: undefined
+      }
+      setup_progress: {
+        Args: never
+        Returns: {
+          agents: number
+          assignments: number
+          branded: boolean
+          calls: number
+          campaigns: number
+          leads: number
+          leads_passed: number
+          zoom_connected: boolean
+        }[]
       }
       sweep_rate_limit_hits: { Args: never; Returns: undefined }
       update_my_lead: {
