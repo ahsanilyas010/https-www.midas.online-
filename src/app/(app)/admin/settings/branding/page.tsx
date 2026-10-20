@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireRealProfile } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
-import { BrandForm } from "@/app/onboarding/brand/brand-form";
+import { BrandForm } from "./brand-form";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 // concept the way it is for a real signed-up workspace.
 export default async function BrandingSettingsPage() {
   const profile = await requireRealProfile();
-  if (profile.role !== "super_admin") redirect("/admin");
+  if (profile.role !== "super_admin" && profile.role !== "ops_manager") redirect("/admin");
 
   const workspace = await getCurrentWorkspace();
 

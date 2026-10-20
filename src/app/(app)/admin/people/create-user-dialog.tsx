@@ -64,6 +64,9 @@ function SubmitButton() {
 type DialogProps = {
   teams: { id: string; name: string }[];
   clients: { id: string; name: string }[];
+  label?: string;
+  hideTrigger?: boolean;
+  openEvent?: string;
 };
 
 // Remounted after each successful create so the next one starts from a
@@ -76,6 +79,9 @@ export function CreateUserDialog(props: DialogProps) {
 function CreateUserDialogRound({
   teams,
   clients,
+  label = "Create user",
+  hideTrigger = false,
+  openEvent,
   onFinished,
 }: DialogProps & { onFinished: () => void }) {
   const [open, setOpen] = useState(false);
@@ -87,6 +93,13 @@ function CreateUserDialogRound({
   const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!openEvent) return;
+    const onOpen = () => setOpen(true);
+    window.addEventListener(openEvent, onOpen);
+    return () => window.removeEventListener(openEvent, onOpen);
+  }, [openEvent]);
 
   useEffect(() => {
     if (state.tempPassword) {
@@ -106,9 +119,11 @@ function CreateUserDialogRound({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <Button onClick={() => setOpen(true)}>
-        <UserPlus className="h-4 w-4" /> Create user
-      </Button>
+      {!hideTrigger && (
+        <Button onClick={() => setOpen(true)}>
+          <UserPlus className="h-4 w-4" /> {label}
+        </Button>
+      )}
       <DialogContent>
         <AnimatePresence mode="wait">
           {!state.tempPassword ? (

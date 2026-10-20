@@ -1,4 +1,6 @@
-import { KeyRound } from "lucide-react";
+import { KeyRound, UserPlus } from "lucide-react";
+import { EmptyState } from "@/components/guide/empty-state";
+import { OpenDialogButton } from "@/components/guide/open-dialog-button";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -42,14 +44,33 @@ export default async function PeoplePage() {
     lastSignIns(canCreate),
   ]);
   const agentsUsed = await activeAgentCount(supabase, workspace.id);
+  // Just the account that signed up: nudge them to add their first agent.
+  const onlyOwner = (people ?? []).length <= 1;
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   return (
     <div className="p-4">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs text-muted">{people?.length ?? 0} people · one login per human, no exceptions</p>
-        {canCreate && <CreateUserDialog teams={teams ?? []} clients={clients ?? []} />}
+        {canCreate && <CreateUserDialog teams={teams ?? []} clients={clients ?? []} hideTrigger={onlyOwner} openEvent="guide:new-user" />}
       </div>
+
+      {canCreate && onlyOwner && (
+        <div className="mb-4">
+          <EmptyState
+            testId="people-empty"
+            icon={UserPlus}
+            title="Add your first agent"
+            action={
+              <OpenDialogButton event="guide:new-user" icon={<UserPlus className="h-4 w-4" />}>
+                Add your first agent
+              </OpenDialogButton>
+            }
+          >
+            Agents are the people who make the calls. Create a login for each one, share the one-time password, and they can sign in and start dialling.
+          </EmptyState>
+        </div>
+      )}
 
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3 py-2 text-xs text-muted">
         <KeyRound className="h-4 w-4 text-brand-blue" />

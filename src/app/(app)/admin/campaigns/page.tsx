@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { Megaphone } from "lucide-react";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/guide/empty-state";
+import { OpenDialogButton } from "@/components/guide/open-dialog-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BRAND } from "@/lib/brand";
 import { countryLabel } from "@/lib/campaign-options";
@@ -57,15 +60,29 @@ export default async function CampaignsPage() {
         <TabsContent value="campaigns">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-xs text-muted">{campaigns?.length ?? 0} campaigns · one country per campaign</p>
-            <CreateCampaignDialog clients={clients ?? []} />
+            <CreateCampaignDialog clients={clients ?? []} hideTrigger={(campaigns ?? []).length === 0} openEvent="guide:new-campaign" />
           </div>
 
           {(campaigns ?? []).length === 0 ? (
-            <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
-              <p className="text-sm text-muted">
-                No campaigns yet. Add a client first, then create the first campaign.
-              </p>
-            </div>
+            <EmptyState
+              testId="campaigns-empty"
+              icon={Megaphone}
+              title="Create your first campaign"
+              action={
+                (clients ?? []).length === 0 ? (
+                  <CreateClientDialog label="Add your client first" primary />
+                ) : (
+                  <OpenDialogButton event="guide:new-campaign" icon={<Megaphone className="h-4 w-4" />}>
+                    Create your first campaign
+                  </OpenDialogButton>
+                )
+              }
+            >
+              A campaign is one calling project. It holds the leads, the script, the calling hours and the agents working it.
+              {(clients ?? []).length === 0
+                ? " Every campaign belongs to a client, the company you are calling for. Add it first (use your own company if you call for yourself), then create the campaign."
+                : ""}
+            </EmptyState>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {(campaigns ?? []).map((c) => {

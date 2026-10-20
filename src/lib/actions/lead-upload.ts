@@ -62,8 +62,7 @@ interface IngestResult {
 
 // Shared core: parses the file, dedupes against existing leads and the
 // suppression list, and bulk-inserts. Used by both the standalone
-// uploadLeadBatch() action below and the onboarding wizard's data step
-// (src/lib/actions/onboarding.ts), so both ever behave identically.
+// uploadLeadBatch() action below and other lead intake paths.
 export async function ingestLeadFile(
   supabase: SupabaseClient<RealDatabase>,
   workspaceId: string,

@@ -4,7 +4,7 @@ import type { RealDatabase } from "@/lib/supabase/real-types";
 
 // Only agents use a paid seat. Admins, managers, team leads, QA analysts and
 // client logins are free on every plan. Real-Postgres version, for Phase
-// 1's new surfaces (onboarding invite step) — src/lib/accounts/limits.ts
+// 1's new surfaces (People page) — src/lib/accounts/limits.ts
 // has the original in-memory-store version the pre-existing CRM pages use.
 export async function activeAgentCount(supabase: SupabaseClient<RealDatabase>, workspaceId: string): Promise<number> {
   const { count } = await supabase

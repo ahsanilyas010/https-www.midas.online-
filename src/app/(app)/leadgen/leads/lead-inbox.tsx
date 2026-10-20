@@ -184,7 +184,7 @@ export function LeadInbox({ rows, campaigns }: { rows: InboxRow[]; campaigns: { 
             {rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted">
-                  No leads match. Add one, import a file, or connect Zapier.
+                  No leads here yet. To bring some in, use Import vendor file (a CSV or Excel file with a phone column), add one by hand, or connect a form under Connectors.
                 </td>
               </tr>
             )}

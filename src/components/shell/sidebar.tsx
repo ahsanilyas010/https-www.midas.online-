@@ -90,7 +90,7 @@ export function Sidebar({
   items: NavItem[];
   onNavigate?: () => void;
   // Set for a real workspace that's configured its own branding
-  // (src/app/onboarding/brand); falls back to the app's default BRAND
+  // (Settings -> Branding); falls back to the app's default BRAND
   // wordmark otherwise (the sales demo, or a workspace that skipped it).
   branding?: SidebarBranding;
 }) {
@@ -139,6 +139,7 @@ export function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.href}
                 onClick={onNavigate}
                 className={cn(
                   "group relative mb-1 flex h-10 items-center gap-3 rounded-xl px-2 text-sm transition-colors",

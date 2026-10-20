@@ -32,7 +32,6 @@ export const PRIVATE_PATH_PREFIXES = [
   "/client",
   "/qa",
   "/start",
-  "/onboarding",
   "/platform",
   "/change-password",
   "/api",

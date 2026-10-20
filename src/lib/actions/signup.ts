@@ -39,7 +39,11 @@ function slugify(name: string): string {
 
 // Creates the customer's workspace (free plan, 3 agent seats), makes them
 // its super admin and signs them in. The client then fires the ad pixel's
-// CompleteRegistration event and opens the onboarding wizard.
+// CompleteRegistration event and sends them to their dashboard (/start), where
+// the setup checklist and product tour guide them. The workspace is created
+// active; there is no setup wizard.
+// phone and team_size are no longer on the form but stay accepted so older
+// clients (and any saved form posts) keep working.
 export async function signUp(_prev: SignupState, formData: FormData): Promise<SignupState> {
   const raw = Object.fromEntries(formData.entries()) as Record<string, string>;
   const values = { full_name: raw.full_name, company: raw.company, email: raw.email, phone: raw.phone, team_size: raw.team_size };

@@ -83,7 +83,7 @@ function ClientFields({ client, prefix }: { client?: ClientRow; prefix: string }
   );
 }
 
-export function CreateClientDialog() {
+export function CreateClientDialog({ label = "Add client", primary = false }: { label?: string; primary?: boolean }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(createClientRecord, initialState);
   const router = useRouter();
@@ -97,8 +97,8 @@ export function CreateClientDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        <Building2 className="h-4 w-4" /> Add client
+      <Button variant={primary ? "primary" : "secondary"} onClick={() => setOpen(true)}>
+        <Building2 className="h-4 w-4" /> {label}
       </Button>
       <DialogContent>
         <DialogHeader>

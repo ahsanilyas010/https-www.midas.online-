@@ -9,6 +9,7 @@ import { reviewLeaveRequest } from "@/lib/actions/attendance-v2";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountUp } from "@/components/ui/count-up";
+import { GetStartedCard } from "@/components/guide/get-started-card";
 import { LeaveRequestForm } from "./leave-request-form";
 import type { RealTables } from "@/lib/supabase/real-types";
 
@@ -100,6 +101,7 @@ export function LiveFloorClient({
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+      <GetStartedCard />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-semibold text-ink">Live floor</h1>
         <div className="flex items-center gap-2">

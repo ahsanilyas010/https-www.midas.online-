@@ -22,8 +22,7 @@ const schema = z.object({
   brand_product_name: z.string().trim().max(60).optional(),
 });
 
-// Shared by the onboarding wizard's brand step and the post-onboarding
-// admin/settings/branding page — both call this same action.
+// Used by Settings -> Branding (admin/settings/branding).
 export async function updateBranding(_prev: BrandingState, formData: FormData): Promise<BrandingState> {
   const profile = await requireRealProfile();
   if (profile.role !== "super_admin" && profile.role !== "ops_manager") {
@@ -40,20 +39,25 @@ export async function updateBranding(_prev: BrandingState, formData: FormData): 
   }
 
   const workspace = await getCurrentWorkspace();
+
+  // A logo must be a file in THIS workspace's own folder of the branding
+  // bucket, never an arbitrary URL typed or tampered into the form.
+  const logoUrl = parsed.data.brand_logo_url || null;
+  if (logoUrl) {
+    const allowedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-branding/${workspace.id}/`;
+    if (!logoUrl.startsWith(allowedPrefix)) return { error: "That logo isn't valid. Please upload it again." };
+  }
+
   const supabase = await createRealClient();
   const { error } = await supabase
     .from("workspaces")
     .update({
-      brand_logo_url: parsed.data.brand_logo_url || null,
+      brand_logo_url: logoUrl,
       brand_primary_color: parsed.data.brand_primary_color || null,
       brand_product_name: parsed.data.brand_product_name || null,
     })
     .eq("id", workspace.id);
   if (error) return { error: error.message };
-
-  if (formData.get("advance") === "true") {
-    await supabase.rpc("mark_onboarding_step", { p_workspace_id: workspace.id, p_step: "campaign" });
-  }
 
   revalidatePath("/", "layout");
   return { ok: true };

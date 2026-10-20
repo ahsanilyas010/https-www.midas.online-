@@ -10,14 +10,6 @@ import { readAttribution, type Attribution } from "@/components/marketing/attrib
 import { trackPixel } from "@/components/marketing/meta-pixel";
 import { cn } from "@/lib/utils";
 
-const TEAM_SIZES = [
-  { v: "1-3", l: "1–3 agents" },
-  { v: "4-10", l: "4–10 agents" },
-  { v: "11-50", l: "11–50 agents" },
-  { v: "51-200", l: "51–200 agents" },
-  { v: "200+", l: "200+ agents" },
-];
-
 const inputCls =
   "h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted/70 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10 aria-[invalid=true]:border-danger";
 
@@ -73,7 +65,7 @@ export function SignupForm() {
     if (state.ok && !done.current) {
       done.current = true;
       trackPixel("CompleteRegistration", { content_name: "Free workspace", status: true });
-      router.push("/onboarding");
+      router.push("/start");
     }
   }, [state.ok, router]);
 
@@ -123,22 +115,6 @@ export function SignupForm() {
           </button>
         </div>
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="team_size" label="Team size">
-          <select id="team_size" name="team_size" defaultValue={v.team_size ?? ""} className={cn(inputCls, "cursor-pointer")}>
-            <option value="">Choose…</option>
-            {TEAM_SIZES.map((t) => (
-              <option key={t.v} value={t.v}>
-                {t.l}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field id="phone" label="Phone (optional)">
-          <input id="phone" name="phone" type="tel" autoComplete="tel" defaultValue={v.phone} className={inputCls} placeholder="+1 555 010 0000" />
-        </Field>
-      </div>
-
       <label className="flex cursor-pointer items-start gap-2.5 text-sm text-muted">
         <input type="checkbox" name="agree" className="mt-0.5 h-4 w-4 cursor-pointer accent-[var(--brand-blue)]" aria-invalid={!!fe.agree} />
         <span>

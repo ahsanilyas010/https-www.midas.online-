@@ -6,7 +6,9 @@ import { Sidebar, type SidebarBranding } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
 import { PageTransition } from "@/components/shell/page-transition";
 import { PlanBar, type PlanInfo } from "@/components/shell/plan-bar";
+import { brandStyle } from "@/lib/branding";
 import { CommandPalette } from "@/components/shell/command-palette";
+import { GuideProvider, type GuideInit } from "@/components/guide/guide-provider";
 import { ZoomPhoneProvider } from "@/components/zoom-phone/zoom-phone-provider";
 import type { NavItem } from "@/lib/nav";
 import type { Profile } from "@/lib/auth/current-profile";
@@ -27,6 +29,8 @@ export function AppChrome({
   planInfo,
   branding,
   enablePhone,
+  brandColor,
+  guide,
   children,
 }: {
   items: NavItem[];
@@ -37,12 +41,16 @@ export function AppChrome({
   branding?: SidebarBranding;
   // Dial roles get the Zoom Phone Smart Embed dock (mounted lazily on /dial).
   enablePhone?: boolean;
+  // The customer's chosen brand colour; re-themes the whole app.
+  brandColor?: string | null;
+  // Product tour + setup checklist state (see src/components/guide).
+  guide: GuideInit;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const shell = (
-      <div className="flex h-screen w-full overflow-hidden">
+      <div className="flex h-screen w-full overflow-hidden" style={brandStyle(brandColor)}>
         <AnimatePresence>
           {mobileNavOpen && (
             <motion.div
@@ -77,5 +85,6 @@ export function AppChrome({
       </div>
   );
 
-  return enablePhone ? <ZoomPhoneProvider>{shell}</ZoomPhoneProvider> : shell;
+  const withPhone = enablePhone ? <ZoomPhoneProvider>{shell}</ZoomPhoneProvider> : shell;
+  return <GuideProvider init={guide}>{withPhone}</GuideProvider>;
 }

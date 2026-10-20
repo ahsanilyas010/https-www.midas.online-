@@ -53,8 +53,30 @@ cp .env.example .env.local     # fill in the Supabase keys at minimum
    own workspace, then `npm run seed`. This always creates the **demo**
    workspace (3 campaigns, 500 leads, one login per role).
 5. `npm run dev`, open http://localhost:3000.
-6. Authentication → Email Templates / SMTP: configure a sender so the invite
-   step of onboarding can deliver email.
+6. Authentication → Email Templates / SMTP: configure a sender so account
+   emails (password resets, email templates) can be delivered.
+
+### Sign-up and guided setup
+
+Sign-up (`/signup`) asks for name, company, email and password only. The
+workspace is created **active** straight away (free plan, 3 agent seats) and
+the user lands on their dashboard. There is no setup wizard (`/onboarding`
+redirects to `/start`). Instead:
+
+- **Get started card** on the manager dashboard (`/live`): eight steps (brand,
+  Zoom, team, campaign, leads, screening, roster, first call), each with a
+  one-line reason and a button to the right page. Progress comes from one
+  manager-only RPC, `setup_progress()`, and updates as steps are completed.
+  "Hide" is remembered per user; the **Setup guide n/8** button in the header
+  reopens it from any page.
+- **Product tour**: a step-by-step walkthrough that spotlights real sidebar
+  items and header controls (`data-tour` attributes; steps per role in
+  `src/lib/guide/tours.ts`). A welcome dialog offers it once on a user's first
+  login (never in the demo workspace); the **?** button in the header replays
+  it any time.
+- State per user lives in `user_guide_state` (own row only, RLS). Key pages
+  (Campaigns, People, Data, Compliance, Lead inbox) show a short empty state
+  with a next-action button until there is data.
 
 ### Demo workspace
 
@@ -162,6 +184,7 @@ The same settings page carries the Zoom Phone calling checklist.
 | `npm run test:zoomcalls` | Zoom call tracking: startCall rows, the event state machine, illegal transitions, cross-agent isolation |
 | `npm run test:ops` | Shifts, leave, suppression, data sources, promotion |
 | `npm run test:zoommeetings` | Zoom credential storage (Vault), token caching, meeting flows against a mock Zoom, RLS, audit |
+| `npm run test:guide` | Guided setup: `setup_progress()` counts and access, `user_guide_state` RLS, new workspaces start active |
 | `npm run test:e2e` | Browser sign-in as every role and every nav screen (needs the app running; `npx playwright install chromium` once) |
 
 ## Known limitations

@@ -28,7 +28,7 @@ export async function requireProfile(): Promise<Profile> {
 }
 
 // Same as requireProfile() but without the forced-password-change redirect
-// (the change-password page itself and the onboarding wizard use it).
+// (the change-password page itself uses it).
 export async function requireRealProfile(): Promise<Profile> {
   const supabase = await createRealClient();
   const {

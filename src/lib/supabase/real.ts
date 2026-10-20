@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RealDatabase } from "@/lib/supabase/real-types";
 
 // The real, RLS-governed Supabase client — for Phase 1's new surfaces
-// only: identity/auth (requireProfile, requirePlatformAdmin), onboarding,
+// only: identity/auth (requireProfile, requirePlatformAdmin),
 // branding, and the platform admin pages. Everything else in the app
 // (the pre-existing CRM pages and actions) uses the shared createClient()
 // in ./server.ts instead, which is intentionally still backed by the

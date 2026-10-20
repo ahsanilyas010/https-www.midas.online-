@@ -38,7 +38,9 @@ const nextConfig: NextConfig = {
       { source: "/qa", destination: "/quality", permanent: false },
       { source: "/client", destination: "/portal", permanent: false },
       { source: "/workspace", destination: "/dial", permanent: false },
-      { source: "/meetings", destination: "/live", permanent: false },
+      // The old setup wizard was replaced by the dashboard checklist and tour.
+      { source: "/onboarding", destination: "/start", permanent: true },
+      { source: "/onboarding/:path*", destination: "/start", permanent: true },
     ];
   },
 };

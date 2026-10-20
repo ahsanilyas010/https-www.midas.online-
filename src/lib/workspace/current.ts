@@ -8,7 +8,7 @@ import type { RealTables } from "@/lib/supabase/real-types";
 export type Workspace = RealTables<"workspaces">;
 
 // The signed-in real customer's real-Postgres workspace row. Used only by
-// Phase 1's new surfaces (onboarding, branding settings) — never by the
+// Phase 1's new surfaces (branding settings, setup guide) — never by the
 // pre-existing CRM pages, which keep reading workspace data out of the
 // in-memory store via src/lib/accounts/session.ts's getWorkspaceContext().
 export const getCurrentWorkspace = cache(async (): Promise<Workspace> => {

@@ -9,7 +9,7 @@ import { SiteFooter, SiteHeader } from "@/components/landing/site-chrome";
 
 export const metadata: Metadata = {
   title: "Contact us",
-  description: `Talk to the ${BRAND.productName} team at ${COMPANY.legalName}, ${companyAddressLine()}. Message us on WhatsApp about plans, onboarding or setting up Zoom Phone calling.`,
+  description: `Talk to the ${BRAND.productName} team at ${COMPANY.legalName}, ${companyAddressLine()}. Message us on WhatsApp about plans, getting your team set up or Zoom Phone calling.`,
   alternates: { canonical: "/contact" },
   openGraph: {
     type: "website",
@@ -83,7 +83,7 @@ export default function ContactPage() {
               Let&apos;s <span className="text-gold-gradient">talk.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/75">
-              Questions about plans, onboarding your team or setting up Zoom Phone calling? Message us on WhatsApp and a real person will reply.
+              Questions about plans, getting your team set up or Zoom Phone calling? Message us on WhatsApp and a real person will reply.
             </p>
             <div className="mt-8 flex justify-center">
               <WhatsAppButton />

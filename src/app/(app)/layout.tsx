@@ -7,6 +7,9 @@ import { AppChrome } from "@/components/shell/app-chrome";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { activeAgentCount } from "@/lib/workspace/limits";
 import { createRealClient } from "@/lib/supabase/real";
+import { fetchGuideState, fetchSetupProgress } from "@/lib/guide/server";
+import { isManagerRole } from "@/lib/guide/tours";
+import type { GuideInit } from "@/components/guide/guide-provider";
 
 // The signed-in app is not for search engines.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -23,11 +26,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // and let Header hide that chrome entirely for this role.
   const isStaff = profile.role !== "client" && profile.role !== "lead_gen";
   const supabase = await createRealClient();
-  const [workspace, event, callbacks, agentsUsed] = await Promise.all([
+  const manager = isManagerRole(profile.role);
+  const [workspace, event, callbacks, agentsUsed, guideState, setupProgress] = await Promise.all([
     getCurrentWorkspace(),
     isStaff ? getMyLatestEvent() : Promise.resolve(null),
     isStaff ? getMyCallbacks() : Promise.resolve([]),
     activeAgentCount(supabase, profile.workspace_id),
+    fetchGuideState(profile.id),
+    // One RPC per request, managers only (it refuses everyone else).
+    manager ? fetchSetupProgress() : Promise.resolve(null),
   ]);
 
   const planInfo = {
@@ -41,14 +48,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const branding = { logoUrl: workspace.brand_logo_url ?? null, productName: workspace.brand_product_name ?? null };
 
+  const guide: GuideInit = {
+    role: profile.role,
+    firstName: profile.full_name.trim().split(" ")[0] || "there",
+    isDemo: workspace.is_demo,
+    tourSeen: guideState.tourSeenAt !== null,
+    checklistHidden: guideState.checklistDismissedAt !== null,
+    progress: setupProgress,
+  };
+
   return (
     <AppChrome
+      guide={guide}
       profile={profile}
       initialEvent={event}
       initialCallbacks={callbacks}
       items={items}
       planInfo={planInfo}
       branding={branding}
+      brandColor={workspace.brand_primary_color}
       enablePhone={DIAL_ROLES.includes(profile.role)}
     >
       {children}

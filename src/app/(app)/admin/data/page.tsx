@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Upload } from "lucide-react";
+import { EmptyState } from "@/components/guide/empty-state";
 import { requireProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +54,7 @@ export default async function DataPage() {
   const sourceName = new Map((sources ?? []).map((s) => [s.id, s.name]));
   const campaignName = new Map((campaigns ?? []).map((c) => [c.id, c.name]));
   const activeSources = (sources ?? []).filter((s) => s.is_active);
+  const noDataYet = (sources ?? []).length === 0 && (runs ?? []).length === 0;
 
   return (
     <div className="p-4">
@@ -70,6 +74,25 @@ export default async function DataPage() {
         </TabsList>
 
         <TabsContent value="sources">
+          {noDataYet && canManage && (
+            <div className="mb-4">
+              <EmptyState
+                testId="data-empty"
+                icon={Upload}
+                title="Add your first leads"
+                action={
+                  <Link
+                    href="/admin/settings/leads"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-brand-blue px-4 text-sm font-medium text-white hover:brightness-110"
+                  >
+                    <Upload className="h-4 w-4" /> Upload a CSV
+                  </Link>
+                }
+              >
+                Upload a CSV or Excel file with one lead per row. It needs a phone column; name and email are optional. Then screen the batch under Compliance so agents can dial it.
+              </EmptyState>
+            </div>
+          )}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted">
               {(sources ?? []).length} sources. Every imported lead traces back to one, with a lawful basis on file.

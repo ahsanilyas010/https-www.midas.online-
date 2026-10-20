@@ -29,10 +29,25 @@ function SubmitButton() {
 
 export function CreateCampaignDialog({
   clients,
+  label = "New campaign",
+  hideTrigger = false,
+  openEvent,
 }: {
   clients: { id: string; name: string }[];
+  label?: string;
+  // The empty state on the Campaigns page shows its own button and opens this
+  // dialog through a window event, so the dialog stays mounted.
+  hideTrigger?: boolean;
+  openEvent?: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!openEvent) return;
+    const onOpen = () => setOpen(true);
+    window.addEventListener(openEvent, onOpen);
+    return () => window.removeEventListener(openEvent, onOpen);
+  }, [openEvent]);
   const [state, formAction] = useActionState(createCampaign, initialState);
   const router = useRouter();
 
@@ -45,9 +60,11 @@ export function CreateCampaignDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)}>
-        <Megaphone className="h-4 w-4" /> New campaign
-      </Button>
+      {!hideTrigger && (
+        <Button onClick={() => setOpen(true)}>
+          <Megaphone className="h-4 w-4" /> {label}
+        </Button>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>New campaign</DialogTitle>

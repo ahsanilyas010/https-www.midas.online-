@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, User, CalendarPlus, Menu, Search } from "lucide-react";
+import { LogOut, User, CalendarPlus, Menu, Search, CircleHelp, ListChecks } from "lucide-react";
+import { useGuide } from "@/components/guide/guide-provider";
 import { signOut } from "@/lib/actions/auth";
 import { BRAND } from "@/lib/brand";
 import { RequestLeaveDialog } from "@/components/shell/request-leave-dialog";
@@ -108,6 +109,7 @@ export function Header({
   onMenuClick?: () => void;
 }) {
   const title = useTitle();
+  const guide = useGuide();
   const [now, setNow] = useState<Date | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   // Clock-in, callbacks and leave are for people on a shift; clients and the
@@ -133,6 +135,7 @@ export function Header({
         <h1 className="truncate font-display text-base font-semibold text-ink">{title}</h1>
         <button
           onClick={() => window.dispatchEvent(new Event("leadcallient:open-palette"))}
+          data-tour="search"
           className="ml-2 hidden cursor-pointer items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-1 text-xs text-muted transition-colors hover:border-brand-blue-tint-2 hover:text-ink lg:flex"
         >
           <Search className="h-3.5 w-3.5" /> Jump to…
@@ -141,11 +144,44 @@ export function Header({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+        {guide?.steps && (
+          <button
+            type="button"
+            onClick={guide.openChecklist}
+            data-tour="setup-guide"
+            data-testid="setup-guide-button"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-white px-2 text-xs font-medium text-ink shadow-sm transition-colors hover:border-brand-blue-tint-2 hover:bg-canvas sm:px-2.5"
+            aria-label={`Setup guide, ${guide.done} of ${guide.total} done`}
+          >
+            <ListChecks className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Setup guide</span>
+            <span className="tabular rounded-full bg-brand-blue px-1.5 py-px text-[10px] font-semibold text-white" data-testid="setup-guide-count">
+              {guide.done}/{guide.total}
+            </span>
+          </button>
+        )}
+        {guide?.hasTour && (
+          <button
+            type="button"
+            onClick={guide.startTour}
+            data-tour="help"
+            data-testid="take-tour-button"
+            title="Take the tour"
+            aria-label="Take the tour"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-canvas hover:text-ink"
+          >
+            <CircleHelp className="h-4.5 w-4.5" />
+          </button>
+        )}
         {isStaff && (
           <>
-            <AttendanceControl initialEvent={initialEvent} />
+            <div data-tour="clock-in" className="flex items-center">
+              <AttendanceControl initialEvent={initialEvent} />
+            </div>
             <Separator orientation="vertical" className="hidden h-5 sm:block" />
-            <FollowupTray userId={profile.id} initial={initialCallbacks} />
+            <div data-tour="callbacks" className="flex items-center">
+              <FollowupTray userId={profile.id} initial={initialCallbacks} />
+            </div>
             <Separator orientation="vertical" className="hidden h-5 md:block" />
           </>
         )}
@@ -158,7 +194,7 @@ export function Header({
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-canvas cursor-pointer">
+          <DropdownMenuTrigger data-tour="profile" className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-canvas cursor-pointer">
             <Avatar className="h-8 w-8 ring-2 ring-gold/60 ring-offset-1 ring-offset-surface">
               <AvatarFallback className="bg-brand-gradient text-xs font-semibold text-white">
                 {initials(profile.full_name)}
