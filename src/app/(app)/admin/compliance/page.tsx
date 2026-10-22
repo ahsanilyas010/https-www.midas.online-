@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddSuppressionDialog } from "./add-suppression-dialog";
 import { RunScreeningDialog } from "./run-screening-dialog";
 import { RemoveSuppressionButton } from "./remove-suppression-button";
+import { fmtDate, fmtDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Compliance" };
 
@@ -138,7 +139,7 @@ export default async function CompliancePage() {
                   <td className="px-4 py-1.5 text-xs text-muted">{b.campaign_id ? campaignName.get(b.campaign_id) ?? "—" : "—"}</td>
                   <td className="px-4 py-1.5 tabular text-muted">{b.row_count}</td>
                   <td className="px-4 py-1.5 text-xs text-muted">
-                    {b.screened_at ? new Date(b.screened_at).toLocaleString() : <Badge variant="warning">Not screened</Badge>}
+                    {b.screened_at ? fmtDateTime(b.screened_at, profile.timezone) : <Badge variant="warning">Not screened</Badge>}
                   </td>
                   <td className="px-4 py-1.5 text-xs text-muted">{b.evidence_url ? "On file" : "None"}</td>
                   <td className="px-4 py-1.5 text-right">
@@ -186,7 +187,7 @@ export default async function CompliancePage() {
                   </td>
                   <td className="px-4 py-1.5 text-muted">{e.added_by ? adderName.get(e.added_by) ?? "—" : "System"}</td>
                   <td className="px-4 py-1.5 text-muted">{e.note ?? "—"}</td>
-                  <td className="px-4 py-1.5 tabular text-xs text-muted">{new Date(e.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-1.5 tabular text-xs text-muted">{fmtDate(e.created_at, profile.timezone)}</td>
                   {canManage && (
                     <td className="px-4 py-1.5 text-right">
                       <RemoveSuppressionButton id={e.id} />

@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acknowledgeQaScore } from "@/lib/actions/qa-v2";
 import type { RealTables } from "@/lib/supabase/real-types";
+import { fmtDate } from "@/lib/format";
 
 export function MyScoresClient({ scores }: { scores: RealTables<"qa_scores">[] }) {
   const [pending, startTransition] = useTransition();
@@ -17,11 +18,11 @@ export function MyScoresClient({ scores }: { scores: RealTables<"qa_scores">[] }
             <span className={`font-semibold ${s.passed ? "text-brand-green-text" : "text-danger"}`}>
               {s.total_score}% {s.passed ? "Passed" : "Failed"} {s.fatal_breach && "(fatal)"}
             </span>
-            <span className="text-xs text-muted">{new Date(s.created_at).toLocaleDateString()}</span>
+            <span className="text-xs text-muted">{fmtDate(s.created_at)}</span>
           </div>
           {s.coaching_notes && <p className="mt-2 text-muted">{s.coaching_notes}</p>}
           {s.acknowledged_at ? (
-            <p className="mt-2 text-xs text-muted">Acknowledged {new Date(s.acknowledged_at).toLocaleDateString()}</p>
+            <p className="mt-2 text-xs text-muted">Acknowledged {fmtDate(s.acknowledged_at)}</p>
           ) : (
             <button
               disabled={pending}

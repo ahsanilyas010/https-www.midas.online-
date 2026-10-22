@@ -12,6 +12,8 @@ import { countryLabel } from "@/lib/campaign-options";
 import { CreateCampaignDialog } from "./create-campaign-dialog";
 import { CreateClientDialog, EditClientDialog } from "./client-dialogs";
 import { InboundWebhookPanel } from "./inbound-webhook-panel";
+import { EMPTY, plural } from "@/lib/format";
+import { TableWrap } from "@/components/ui/data-table";
 
 export const metadata: Metadata = { title: "Campaigns" };
 
@@ -110,9 +112,9 @@ export default async function CampaignsPage() {
                       {c.recording_enabled && <Badge variant="warning">Recording</Badge>}
                     </div>
                     <div className="space-y-1 text-xs text-muted">
-                      <div>Client: {c.client_id ? (clientName.get(c.client_id) ?? "-") : "-"}</div>
+                      <div>Client: {c.client_id ? (clientName.get(c.client_id) ?? EMPTY) : EMPTY}</div>
                       <div>
-                        {leadCounts.get(c.id) ?? 0} leads · {rosterCount.get(c.id) ?? 0} agents
+                        {plural(leadCounts.get(c.id) ?? 0, "lead")} · {plural(rosterCount.get(c.id) ?? 0, "agent")}
                       </div>
                     </div>
                   </Link>
@@ -128,7 +130,7 @@ export default async function CampaignsPage() {
             <CreateClientDialog />
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Campaigns">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -144,7 +146,7 @@ export default async function CampaignsPage() {
                 {(clients ?? []).map((c) => (
                   <tr key={c.id} className="h-[38px] border-b border-line last:border-0">
                     <td className="px-3 py-1.5 font-medium text-ink">{c.name}</td>
-                    <td className="px-3 py-1.5 text-muted">{c.country ?? "-"}</td>
+                    <td className="px-3 py-1.5 text-muted">{c.country ?? EMPTY}</td>
                     <td className="px-3 py-1.5 text-muted">
                       {c.contact_email ? (
                         <>
@@ -179,7 +181,7 @@ export default async function CampaignsPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </TabsContent>
 
         <TabsContent value="webhook">

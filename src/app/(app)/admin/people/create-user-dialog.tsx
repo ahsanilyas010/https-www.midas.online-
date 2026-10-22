@@ -3,21 +3,18 @@
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Check, Loader2, UserPlus, ShieldAlert } from "lucide-react";
 import { createUser, type CreateUserResult } from "@/lib/actions/users";
 import { BRAND } from "@/lib/brand";
+import { isValidTimezone } from "@/lib/timezones";
+import { Req, RoleField, TeamField, TimezoneField } from "./user-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -29,33 +26,10 @@ import {
 
 const initialState: CreateUserResult = {};
 
-const ROLES = [
-  { value: "agent", label: "Sales agent" },
-  { value: "lead_gen", label: "Lead gen" },
-  { value: "team_lead", label: "Team lead" },
-  { value: "qa_analyst", label: "QA analyst" },
-  { value: "ops_manager", label: "Ops manager" },
-  { value: "super_admin", label: "Super admin" },
-  { value: "client", label: "Client viewer" },
-];
-
-// A free-text timezone field once let someone type "UK" instead of
-// "Europe/London" — an invalid IANA zone that crashes the header's clock
-// (and therefore every page) for that account. Constrained to this app's
-// actual operating markets (PK/UK/US) so a typo can't get through again.
-const TIMEZONES = [
-  { value: "Asia/Karachi", label: "Asia/Karachi (PK)" },
-  { value: "Europe/London", label: "Europe/London (UK)" },
-  { value: "America/New_York", label: "America/New_York (US, Eastern)" },
-  { value: "America/Chicago", label: "America/Chicago (US, Central)" },
-  { value: "America/Denver", label: "America/Denver (US, Mountain)" },
-  { value: "America/Los_Angeles", label: "America/Los_Angeles (US, Pacific)" },
-];
-
-function SubmitButton() {
+function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending || disabled}>
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
     </Button>
   );
@@ -64,6 +38,11 @@ function SubmitButton() {
 type DialogProps = {
   teams: { id: string; name: string }[];
   clients: { id: string; name: string }[];
+  // Agent seats still free, emails already in this workspace, and whether the
+  // signed-in admin may mint another super admin / open billing.
+  seatsLeft: number;
+  existingEmails: string[];
+  isSuperAdmin: boolean;
   label?: string;
   hideTrigger?: boolean;
   openEvent?: string;
@@ -73,22 +52,43 @@ type DialogProps = {
 // blank form (useActionState can't be reset in place).
 export function CreateUserDialog(props: DialogProps) {
   const [round, setRound] = useState(0);
-  return <CreateUserDialogRound key={round} {...props} onFinished={() => setRound((r) => r + 1)} />;
+  const [reopen, setReopen] = useState(false);
+  return (
+    <CreateUserDialogRound
+      key={round}
+      {...props}
+      startOpen={reopen}
+      onFinished={(again) => {
+        setReopen(again);
+        setRound((r) => r + 1);
+      }}
+    />
+  );
 }
 
 function CreateUserDialogRound({
   teams,
   clients,
+  seatsLeft,
+  existingEmails,
+  isSuperAdmin,
   label = "Create user",
   hideTrigger = false,
   openEvent,
+  startOpen,
   onFinished,
-}: DialogProps & { onFinished: () => void }) {
-  const [open, setOpen] = useState(false);
+}: DialogProps & { onFinished: (again: boolean) => void; startOpen: boolean }) {
+  const [open, setOpen] = useState(startOpen);
   const [state, formAction] = useActionState(createUser, initialState);
   const [role, setRole] = useState("agent");
-  const [timezone, setTimezone] = useState("Asia/Karachi");
+  const [timezone, setTimezone] = useState(() => {
+    const guess = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return guess && isValidTimezone(guess) ? guess : "Europe/London";
+  });
+  const [teamList, setTeamList] = useState(teams);
   const [teamId, setTeamId] = useState("");
+  const [email, setEmail] = useState("");
+  const [confirmAdmin, setConfirmAdmin] = useState(false);
   const [clientId, setClientId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -108,14 +108,18 @@ function CreateUserDialogRound({
     }
   }, [state.tempPassword]);
 
-  function handleClose(next: boolean) {
+  function handleClose(next: boolean, again = false) {
     if (!next && state.tempPassword && !confirmed) return; // can't dismiss without confirming
     setOpen(next);
     if (!next) {
       router.refresh();
-      if (state.tempPassword) onFinished();
+      if (state.tempPassword) onFinished(again);
     }
   }
+
+  const emailTaken = email.trim() !== "" && existingEmails.includes(email.trim().toLowerCase());
+  const noSeat = role === "agent" && seatsLeft <= 0;
+  const blocked = emailTaken || (role === "super_admin" && !confirmAdmin) || !isValidTimezone(timezone) || (role === "client" && !clientId);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -140,77 +144,67 @@ function CreateUserDialogRound({
                 </DialogDescription>
               </DialogHeader>
               <form action={formAction} className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
+                <p className="text-xs text-muted">
+                  Fields marked <span aria-hidden>*</span> are required.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="full_name">Full name</Label>
-                    <Input id="full_name" name="full_name" required />
+                    <Label htmlFor="full_name">
+                      Full name
+                      <Req />
+                    </Label>
+                    <Input id="full_name" name="full_name" required aria-required="true" autoComplete="off" />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="agent_code">Agent code</Label>
-                    <Input id="agent_code" name="agent_code" placeholder={BRAND.agentCodePlaceholder} mono />
+                    <Input id="agent_code" name="agent_code" placeholder={`e.g. ${BRAND.agentCodePlaceholder}`} mono autoComplete="off" />
+                    <p className="text-xs text-muted">{role === "agent" ? "Leave blank to generate the next one." : "Optional."}</p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" required />
+                  <Label htmlFor="email">
+                    Email
+                    <Req />
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    aria-required="true"
+                    autoComplete="off"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => setEmail(e.target.value.trim().toLowerCase())}
+                    aria-invalid={emailTaken}
+                    aria-describedby={emailTaken ? "email-taken" : undefined}
+                  />
+                  {emailTaken && (
+                    <p id="email-taken" role="alert" className="text-xs text-danger">
+                      Someone in this workspace already uses that email.
+                    </p>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="role">Role</Label>
-                    <Select name="role" value={role} onValueChange={setRole}>
-                      <SelectTrigger id="role">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((r) => (
-                          <SelectItem key={r.value} value={r.value}>
-                            {r.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <input type="hidden" name="role" value={role} />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="timezone">Timezone</Label>
-                    <Select value={timezone} onValueChange={setTimezone}>
-                      <SelectTrigger id="timezone">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIMEZONES.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <input type="hidden" name="timezone" value={timezone} />
-                  </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <RoleField
+                    value={role}
+                    onChange={setRole}
+                    seatsLeft={seatsLeft}
+                    confirmAdmin={confirmAdmin}
+                    onConfirmAdmin={setConfirmAdmin}
+                    canMakeSuperAdmin={isSuperAdmin}
+                  />
+                  <TimezoneField value={timezone} onChange={setTimezone} />
                 </div>
-                {role !== "client" && (
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="team_id">Team</Label>
-                    <Select value={teamId} onValueChange={setTeamId}>
-                      <SelectTrigger id="team_id">
-                        <SelectValue placeholder="No team" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teams.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <input type="hidden" name="team_id" value={teamId} />
-                  </div>
-                )}
+                {role !== "client" && <TeamField teams={teamList} onTeams={setTeamList} value={teamId} onChange={setTeamId} />}
                 {role === "client" && (
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="client_id">Client</Label>
+                    <Label id="client-label" htmlFor="client_id">
+                      Client
+                      <Req />
+                    </Label>
                     <Select value={clientId} onValueChange={setClientId}>
-                      <SelectTrigger id="client_id">
+                      <SelectTrigger id="client_id" aria-labelledby="client-label" aria-required="true">
                         <SelectValue placeholder="Select client" />
                       </SelectTrigger>
                       <SelectContent>
@@ -241,7 +235,19 @@ function CreateUserDialogRound({
                   <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                     Cancel
                   </Button>
-                  <SubmitButton />
+                  {noSeat ? (
+                    isSuperAdmin ? (
+                      <Button asChild>
+                        <Link href="/admin/billing">Upgrade to add</Link>
+                      </Button>
+                    ) : (
+                      <Button type="button" disabled>
+                        No seats left: ask a super admin
+                      </Button>
+                    )
+                  ) : (
+                    <SubmitButton disabled={blocked} />
+                  )}
                 </DialogFooter>
               </form>
             </motion.div>
@@ -257,8 +263,8 @@ function CreateUserDialogRound({
                   <ShieldAlert className="h-4 w-4 text-warning" /> Temporary password
                 </DialogTitle>
                 <DialogDescription>
-                  Shown once, for {state.fullName}. Hand it to them in person — it cannot be
-                  retrieved again.
+                  Shown once, for {state.fullName}. No email is sent with it: give them this password and the
+                  address you sign in at. It cannot be retrieved again.
                 </DialogDescription>
               </DialogHeader>
 
@@ -290,6 +296,9 @@ function CreateUserDialogRound({
               </label>
 
               <DialogFooter>
+                <Button variant="secondary" disabled={!confirmed} onClick={() => handleClose(false, true)}>
+                  Add another
+                </Button>
                 <Button disabled={!confirmed} onClick={() => handleClose(false)}>
                   Done
                 </Button>

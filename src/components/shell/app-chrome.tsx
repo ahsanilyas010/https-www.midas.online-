@@ -4,6 +4,8 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar, type SidebarBranding } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
+import { Suspense } from "react";
+import { NavProgress } from "@/components/shell/nav-progress";
 import { PageTransition } from "@/components/shell/page-transition";
 import { PlanBar, type PlanInfo } from "@/components/shell/plan-bar";
 import { brandStyle } from "@/lib/branding";
@@ -50,7 +52,7 @@ export function AppChrome({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const shell = (
-      <div className="flex h-screen w-full overflow-hidden" style={brandStyle(brandColor)}>
+      <div className="flex h-screen w-full overflow-clip" style={brandStyle(brandColor)}>
         <AnimatePresence>
           {mobileNavOpen && (
             <motion.div
@@ -71,7 +73,7 @@ export function AppChrome({
           <Sidebar items={items} onNavigate={() => setMobileNavOpen(false)} branding={branding} />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-clip">
           <PlanBar info={planInfo} />
           <Header
             profile={profile}
@@ -81,6 +83,9 @@ export function AppChrome({
           />
           <PageTransition>{children}</PageTransition>
         </div>
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         <CommandPalette items={items} />
       </div>
   );

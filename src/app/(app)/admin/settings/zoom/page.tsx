@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { createRealClient } from "@/lib/supabase/real";
 import { CopyField, ZoomActions, ZoomSettingsForm } from "./zoom-settings-form";
+import { fmtDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Zoom", robots: { index: false, follow: false } };
 
@@ -55,7 +56,7 @@ export default async function ZoomSettingsPage() {
             <>
               <CheckCircle2 className="h-4 w-4 text-brand-green-text" />
               <span className="font-medium text-ink">Connected</span>
-              {cred?.verified_at && <span className="text-muted">Last verified {new Date(cred.verified_at).toLocaleString()}</span>}
+              {cred?.verified_at && <span className="text-muted">Last verified {fmtDateTime(cred.verified_at, profile.timezone)}</span>}
             </>
           ) : (
             <>

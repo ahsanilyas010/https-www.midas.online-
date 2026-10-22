@@ -10,6 +10,7 @@ import { createRealClient } from "@/lib/supabase/real";
 import { fetchGuideState, fetchSetupProgress } from "@/lib/guide/server";
 import { isManagerRole } from "@/lib/guide/tours";
 import type { GuideInit } from "@/components/guide/guide-provider";
+import { stripeConfigured } from "@/lib/billing/stripe";
 
 // The signed-in app is not for search engines.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -44,6 +45,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     agentSeats: workspace.seat_limit,
     canManageBilling: profile.role === "super_admin",
     isRealDemo: workspace.is_demo,
+    // Without a payment provider an upgrade would dead-end, so the bar offers "Contact sales" instead.
+    billingReady: stripeConfigured(),
   };
 
   const branding = { logoUrl: workspace.brand_logo_url ?? null, productName: workspace.brand_product_name ?? null };

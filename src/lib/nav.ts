@@ -42,7 +42,7 @@ const MANAGERS_AND_LEADS: AppRole[] = ["super_admin", "ops_manager", "team_lead"
 // Every route here is a real, Postgres-backed screen. team_lead sees a
 // scoped subset (live floor, performance, people, attendance).
 export const NAV: NavItem[] = [
-  { href: "/dial", label: "Dial workspace", icon: "Headset", roles: ["agent", ...MANAGERS] },
+  { href: "/dial", label: "Dial workspace", icon: "Headset", roles: ["agent", "team_lead", "qa_analyst", ...MANAGERS] },
   { href: "/callsheet", label: "Call sheet", icon: "ClipboardList", roles: ["agent", "team_lead", ...MANAGERS] },
   { href: "/portal", label: "Reports", icon: "Building2", roles: ["client"] },
   { href: "/leadgen", label: "Lead gen", icon: "Radar", roles: ["lead_gen"] },

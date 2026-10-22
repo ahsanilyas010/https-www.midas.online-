@@ -32,6 +32,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { fmtDateTime } from "@/lib/format";
+import { TableWrap } from "@/components/ui/data-table";
 
 interface CampaignOption {
   id: string;
@@ -545,7 +547,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
 
           <div>
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">First rows of your file</p>
-            <div className="overflow-x-auto rounded-lg border border-line bg-white">
+            <TableWrap label="Rows to import">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line bg-canvas text-left text-muted">
@@ -568,7 +570,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableWrap>
           </div>
 
           <div className="flex gap-2">
@@ -650,7 +652,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
           {preview.sample.length > 0 && (
             <div>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">How the first leads will look</p>
-              <div className="overflow-x-auto rounded-lg border border-line bg-white">
+              <TableWrap label="Sample rows">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-line bg-canvas text-left text-muted">
@@ -675,7 +677,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
                         {sampleExtras.map((k) => (
                           <td key={k} className="px-3 py-1.5 text-ink">
                             {s[k] ? (
-                              k === "appointment" || k === "lastContact" ? new Date(s[k] as string).toLocaleString("en-GB") : s[k]
+                              k === "appointment" || k === "lastContact" ? fmtDateTime(s[k] as string) : s[k]
                             ) : (
                               <em className="text-muted">empty</em>
                             )}
@@ -685,7 +687,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableWrap>
             </div>
           )}
 

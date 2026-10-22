@@ -125,7 +125,7 @@ const MANAGER_STEPS: TourStep[] = [
     id: "setup-guide",
     target: "setup-guide",
     title: "Your setup guide",
-    body: "A short checklist: connect Zoom, add your team, create a campaign, add leads and make your first call. Come back to it any time, and replay this tour from here.",
+    body: "A short checklist: connect Zoom, add your agents, create a campaign, add leads and make your first call. Come back to it any time, and replay this tour from here.",
   },
   {
     id: "profile",

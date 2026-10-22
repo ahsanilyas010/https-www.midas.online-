@@ -13,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { fmtDateTime } from "@/lib/format";
 
 export function FollowupTray({ userId, initial }: { userId: string; initial: CallbackRow[] }) {
   const [followups, setFollowups] = useState(initial);
@@ -74,7 +75,7 @@ export function FollowupTray({ userId, initial }: { userId: string; initial: Cal
                   </span>
                   <Badge variant={due ? "accent" : "neutral"}>
                     <Clock className="h-2.5 w-2.5" />
-                    {new Date(f.due_at).toLocaleString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}
+                    {fmtDateTime(f.due_at)}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1.5">

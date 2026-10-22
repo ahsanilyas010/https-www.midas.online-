@@ -402,3 +402,19 @@ h6 {
     }
   }
 }
+
+/* Zoom Phone dock (src/components/zoom-phone): reserve room for it so it never
+   covers page content. Open and wide: a column on the right. Otherwise: space
+   at the bottom for the collapsed bar / the panel. */
+html[data-zp-dock] .app-main {
+  padding-bottom: 3.5rem;
+}
+html[data-zp-dock="open"] .app-main {
+  padding-bottom: 38rem;
+}
+@media (min-width: 1100px) {
+  html[data-zp-dock="open"] .app-main {
+    padding-bottom: 0;
+    padding-right: 22.5rem;
+  }
+}

@@ -4,6 +4,8 @@ import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { LeadImporter } from "@/components/leads/lead-importer";
 import { ScreenButton } from "@/components/leads/screen-button";
+import { EMPTY, fmtDate } from "@/lib/format";
+import { TableWrap } from "@/components/ui/data-table";
 
 export const metadata: Metadata = { title: "Upload leads", robots: { index: false, follow: false } };
 
@@ -54,7 +56,7 @@ export default async function ImportLeadsPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-sm">
+      <TableWrap label="Recent uploads">
         <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">Recent uploads</div>
         <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-canvas text-left text-xs font-semibold uppercase tracking-wide text-muted">
@@ -69,10 +71,10 @@ export default async function ImportLeadsPage() {
           <tbody className="divide-y divide-line">
             {(batches ?? []).map((b) => (
               <tr key={b.id}>
-                <td className="px-4 py-2 font-medium text-ink">{b.source ?? "-"}</td>
+                <td className="px-4 py-2 font-medium text-ink">{b.source ?? EMPTY}</td>
                 <td className="px-4 py-2">{b.row_count}</td>
-                <td className="px-4 py-2 text-muted">{b.screened_at ? new Date(b.screened_at).toLocaleDateString("en-GB") : "Not yet"}</td>
-                <td className="px-4 py-2 text-muted">{new Date(b.created_at).toLocaleDateString("en-GB")}</td>
+                <td className="px-4 py-2 text-muted">{b.screened_at ? fmtDate(b.screened_at, profile.timezone) : "Not yet"}</td>
+                <td className="px-4 py-2 text-muted">{fmtDate(b.created_at, profile.timezone)}</td>
                 <td className="px-4 py-2">{!b.screened_at && <ScreenButton batchId={b.id} />}</td>
               </tr>
             ))}
@@ -85,7 +87,7 @@ export default async function ImportLeadsPage() {
             )}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
     </div>
   );
 }

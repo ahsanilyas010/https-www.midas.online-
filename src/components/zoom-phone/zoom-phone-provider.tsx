@@ -18,7 +18,10 @@ const IFRAME_SRC = `${ZOOM_ORIGIN}/integration/phone/embeddablephone/home`;
 const IFRAME_ID = "zoom-embeddable-phone-iframe";
 const READY_TIMEOUT_MS = 15_000;
 
-export type PhoneStatus = "idle" | "loading" | "ready" | "on-call" | "unavailable";
+// "sign-in": the Zoom panel has loaded but has not reported ready, which in
+// practice means Zoom is showing its own sign-in screen (or an admin step is
+// missing; see setupHint).
+export type PhoneStatus = "idle" | "loading" | "sign-in" | "ready" | "on-call" | "unavailable";
 
 export type ActiveCallState = "dialing" | "ringing" | "connected" | "ended";
 
@@ -57,6 +60,15 @@ export function usePhone(): PhoneApi {
 }
 
 type ZoomMessage = { id?: string; type?: string; data?: Record<string, unknown> };
+
+export const PHONE_LABEL: Record<PhoneStatus, string> = {
+  idle: "Starting...",
+  loading: "Starting...",
+  "sign-in": "Sign in required",
+  ready: "Ready",
+  "on-call": "On a call",
+  unavailable: "Unavailable",
+};
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
@@ -291,6 +303,16 @@ export function ZoomPhoneProvider({ children }: { children: React.ReactNode }) {
     setActiveCall(null);
   }, []);
 
+  // Tell the page shell the dock is there, so it reserves room beside / below
+  // the content instead of letting the panel sit on top of it (see globals.css).
+  useEffect(() => {
+    if (!mounted) return;
+    document.documentElement.dataset.zpDock = minimized ? "min" : "open";
+    return () => {
+      delete document.documentElement.dataset.zpDock;
+    };
+  }, [mounted, minimized]);
+
   const callLive = activeCall !== null && activeCall.state !== "ended";
   const status: PhoneStatus = !mounted
     ? "idle"
@@ -298,9 +320,11 @@ export function ZoomPhoneProvider({ children }: { children: React.ReactNode }) {
       ? "on-call"
       : ready
         ? "ready"
-        : timedOut
-          ? "unavailable"
-          : "loading";
+        : loaded
+          ? "sign-in"
+          : timedOut
+            ? "unavailable"
+            : "loading";
 
   const value = useMemo<PhoneApi>(
     () => ({ ready, status, setupHint: mounted && !ready && timedOut, activeCall, makeCall, clearCall }),
@@ -326,7 +350,7 @@ export function ZoomPhoneProvider({ children }: { children: React.ReactNode }) {
             <span
               className={`ml-1 h-2 w-2 rounded-full ${status === "on-call" ? "bg-emerald-400" : ready ? "bg-emerald-400/70" : "bg-white/40"}`}
             />
-            <span className="ml-auto text-white/70">{status === "on-call" ? "On a call" : ready ? "Ready" : "Starting..."}</span>
+            <span className="ml-auto text-white/70">{PHONE_LABEL[status]}</span>
             {minimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           <iframe

@@ -7,22 +7,10 @@ import { createRealClient } from "@/lib/supabase/real";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { activeAgentCount } from "@/lib/workspace/limits";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CreateUserDialog } from "./create-user-dialog";
-import { PeopleRowActions } from "./row-actions";
+import { PeopleTable } from "./people-table";
 
 export const metadata: Metadata = { title: "People" };
-
-const ROLE_LABEL: Record<string, string> = {
-  super_admin: "Super admin",
-  ops_manager: "Ops manager",
-  team_lead: "Team lead",
-  qa_analyst: "QA analyst",
-  agent: "Sales agent",
-  lead_gen: "Lead gen",
-  client: "Client",
-};
 
 // Last sign-in lives in Supabase Auth, not in profiles. Only admins see it.
 async function lastSignIns(canSee: boolean): Promise<Map<string, string | null>> {
@@ -47,15 +35,26 @@ export default async function PeoplePage() {
     lastSignIns(canCreate),
   ]);
   const agentsUsed = await activeAgentCount(supabase, workspace.id);
+  const { data: zoomCred } = canCreate
+    ? await supabase.from("zoom_credentials").select("status").eq("workspace_id", workspace.id).maybeSingle()
+    : { data: null };
+  const zoomConnected = zoomCred?.status === "connected";
   // Just the account that signed up: nudge them to add their first agent.
   const onlyOwner = (people ?? []).length <= 1;
-  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   return (
     <div className="p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs text-muted">{people?.length ?? 0} people · one login per human, no exceptions</p>
-        {canCreate && <CreateUserDialog teams={teams ?? []} clients={clients ?? []} hideTrigger={onlyOwner} openEvent="guide:new-user" />}
+        <p className="text-xs text-muted">One login per human, no exceptions.</p>
+        {canCreate && <CreateUserDialog
+            teams={teams ?? []}
+            clients={clients ?? []}
+            seatsLeft={Math.max(0, workspace.seat_limit - agentsUsed)}
+            existingEmails={(people ?? []).map((p) => p.email.toLowerCase())}
+            isSuperAdmin={profile.role === "super_admin"}
+            hideTrigger={onlyOwner}
+            openEvent="guide:new-user"
+          />}
       </div>
 
       {canCreate && onlyOwner && (
@@ -81,76 +80,30 @@ export default async function PeoplePage() {
         managers, team leads, lead gen, QA and client logins don&apos;t use a seat.
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead>
-            <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Login</th>
-              <th className="px-3 py-2 font-medium">Role</th>
-              <th className="px-3 py-2 font-medium">Team</th>
-              <th className="px-3 py-2 font-medium">Agent code</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Last sign-in</th>
-              {canCreate && <th className="px-3 py-2 font-medium" />}
-            </tr>
-          </thead>
-          <tbody>
-            {(people ?? []).map((p) => {
-              const last = signIns.get(p.id);
-              return (
-                <tr key={p.id} className="h-[38px] border-b border-line last:border-0 hover:bg-canvas/60">
-                  <td className="px-3 py-1.5">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-[10px]">
-                          {p.full_name
-                            .split(" ")
-                            .map((s: string) => s[0])
-                            .slice(0, 2)
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium text-ink">{p.full_name}</span>
-                      {p.must_change_password && <Badge variant="warning">Must set password</Badge>}
-                    </div>
-                  </td>
-                  <td className="px-3 py-1.5 font-mono text-xs text-muted">{p.email}</td>
-                  <td className="px-3 py-1.5">
-                    <Badge variant="blue">{ROLE_LABEL[p.role]}</Badge>
-                  </td>
-                  <td className="px-3 py-1.5 text-muted">{(p.team_id && teamName.get(p.team_id)) || "—"}</td>
-                  <td className="px-3 py-1.5 tabular text-muted">{p.agent_code ?? "—"}</td>
-                  <td className="px-3 py-1.5">
-                    {p.is_active ? <Badge variant="confirm">Active</Badge> : <Badge variant="danger">Deactivated</Badge>}
-                  </td>
-                  <td className="px-3 py-1.5 tabular text-xs text-muted">
-                    {canCreate ? (last ? new Date(last).toLocaleString() : "Never") : "—"}
-                  </td>
-                  {canCreate && (
-                    <td className="px-3 py-1.5 text-right">
-                      <PeopleRowActions
-                        userId={p.id}
-                        userName={p.full_name}
-                        isActive={p.is_active}
-                        canDeactivate={p.id !== profile.id && p.id !== workspace.created_by}
-                        campaigns={p.role === "agent" ? (campaigns ?? []) : []}
-                      />
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-            {(people ?? []).length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted">
-                  No one here yet. Create the first account above.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <PeopleTable
+        rows={(people ?? []).map((p) => ({
+          id: p.id,
+          full_name: p.full_name,
+          email: p.email,
+          role: p.role,
+          team_id: p.team_id,
+          agent_code: p.agent_code,
+          is_active: p.is_active,
+          must_change_password: p.must_change_password,
+          timezone: p.timezone,
+          created_at: p.created_at,
+          last_sign_in: canCreate ? (signIns.get(p.id) ?? null) : undefined,
+          isSelf: p.id === profile.id,
+          isOwner: p.id === workspace.created_by,
+        }))}
+        teams={teams ?? []}
+        campaigns={campaigns ?? []}
+        canManage={canCreate}
+        seatsLeft={Math.max(0, workspace.seat_limit - agentsUsed)}
+        isSuperAdmin={profile.role === "super_admin"}
+        viewerTimezone={profile.timezone}
+        zoomConnected={zoomConnected}
+      />
     </div>
   );
 }

@@ -27,6 +27,16 @@ async function setActive(userId: string, isActive: boolean): Promise<{ error?: s
   if (target.role === "super_admin" && caller.role !== "super_admin") {
     return { error: "Only a super admin can change another super admin." };
   }
+  if (!isActive && target.role === "super_admin") {
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspace.id)
+      .eq("role", "super_admin")
+      .eq("is_active", true)
+      .neq("id", target.id);
+    if (!count) return { error: "That is the last active super admin. Make someone else a super admin first." };
+  }
   if (isActive && target.role === "agent" && (await activeAgentCount(admin, workspace.id)) >= workspace.seat_limit) {
     return { error: seatLimitMessage(workspace.seat_limit) };
   }

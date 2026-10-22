@@ -59,7 +59,7 @@ export function CommandPalette({ items }: { items: NavItem[] }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-start justify-center bg-ink/40 px-4 pt-[12vh] backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex items-start justify-center bg-ink/60 px-4 pt-[12vh] backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
           <motion.div
@@ -67,7 +67,7 @@ export function CommandPalette({ items }: { items: NavItem[] }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.16 }}
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl shadow-violet/20"
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-line bg-white shadow-2xl shadow-violet/20"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 border-b border-line px-4">

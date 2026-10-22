@@ -8,6 +8,8 @@ import { cancelMeeting, getStartUrl } from "@/lib/actions/zoom-meetings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EMPTY, fmtDateTime } from "@/lib/format";
+import { TableWrap } from "@/components/ui/data-table";
 
 export interface MeetingItem {
   id: string;
@@ -63,10 +65,10 @@ function Row({ m, meId, isManager, past }: { m: MeetingItem; meId: string; isMan
   return (
     <tr className="border-b border-line last:border-0">
       <td className="px-3 py-2 font-medium text-ink">{m.topic}</td>
-      <td className="px-3 py-2 text-muted">{m.leadName ?? "-"}</td>
-      <td className="px-3 py-2 text-muted">{m.hostName ?? "-"}</td>
+      <td className="px-3 py-2 text-muted">{m.leadName ?? EMPTY}</td>
+      <td className="px-3 py-2 text-muted">{m.hostName ?? EMPTY}</td>
       <td className="px-3 py-2 tabular text-muted">
-        {new Date(m.startTime).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+        {fmtDateTime(m.startTime)}
         <span className="ml-1 text-xs">({m.durationMinutes} min)</span>
       </td>
       <td className="px-3 py-2">
@@ -138,7 +140,7 @@ export function MeetingsList({
       </TabsList>
       {tabs.map((t) => (
         <TabsContent key={t.key} value={t.key} className="mt-3">
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Meetings">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -167,7 +169,7 @@ export function MeetingsList({
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </TabsContent>
       ))}
     </Tabs>

@@ -3,10 +3,11 @@
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MoreHorizontal, KeyRound, UserX, UserCheck, Copy, Check, Megaphone } from "lucide-react";
+import { MoreHorizontal, KeyRound, UserX, UserCheck, Copy, Check, Megaphone, Pencil } from "lucide-react";
 import { resetPassword, type ResetPasswordResult } from "@/lib/actions/users";
 import { deactivateUser, reactivateUser } from "@/lib/actions/deactivate";
 import { AssignToCampaignDialog } from "./assign-campaign-dialog";
+import { EditUserDialog, type EditableUser } from "./edit-user-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,10 @@ export function PeopleRowActions({
   isActive,
   canDeactivate,
   campaigns,
+  teams,
+  seatsLeft,
+  isSuperAdmin,
+  editable,
 }: {
   userId: string;
   userName: string;
@@ -39,7 +44,12 @@ export function PeopleRowActions({
   // False for yourself and the workspace owner: the server refuses those too.
   canDeactivate: boolean;
   campaigns: { id: string; name: string; code?: string | null }[];
+  teams: { id: string; name: string }[];
+  seatsLeft: number;
+  isSuperAdmin: boolean;
+  editable: EditableUser;
 }) {
+  const [editOpen, setEditOpen] = useState(false);
   const router = useRouter();
   const [resetOpen, setResetOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -56,6 +66,9 @@ export function PeopleRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+            <Pencil className="mr-2 h-3.5 w-3.5" /> Edit user
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setResetOpen(true)}>
             <KeyRound className="mr-2 h-3.5 w-3.5" /> Reset password
           </DropdownMenuItem>
@@ -67,6 +80,7 @@ export function PeopleRowActions({
               <DropdownMenuItem
                 variant="danger"
                 onSelect={async () => {
+                  if (!window.confirm(`Deactivate ${userName}? They will be signed out and unable to sign in until reactivated.`)) return;
                   const res = await deactivateUser(userId);
                   if (res.error) toast.error(res.error);
                   else toast.success(`${userName} deactivated.`);
@@ -90,6 +104,17 @@ export function PeopleRowActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {editOpen && (
+        <EditUserDialog
+          user={editable}
+          teams={teams}
+          seatsLeft={seatsLeft}
+          isSuperAdmin={isSuperAdmin}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
 
       <AssignToCampaignDialog
         open={assignOpen}
@@ -134,7 +159,7 @@ export function PeopleRowActions({
             <>
               <DialogHeader>
                 <DialogTitle>New temporary password</DialogTitle>
-                <DialogDescription>Shown once. Hand it to them in person.</DialogDescription>
+                <DialogDescription>Shown once. No email is sent with it: give it to them yourself.</DialogDescription>
               </DialogHeader>
               <div className="flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-2.5">
                 <code className="tabular flex-1 text-base font-medium tracking-wide">

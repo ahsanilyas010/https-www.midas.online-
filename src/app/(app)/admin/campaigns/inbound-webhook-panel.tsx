@@ -7,6 +7,7 @@ import { Copy, KeyRound, Loader2 } from "lucide-react";
 import { revokeIntakeToken, rotateIntakeToken } from "@/lib/actions/intake";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { fmtDateTime } from "@/lib/format";
 
 export function InboundWebhookPanel({
   tokenPrefix,
@@ -79,7 +80,7 @@ export function InboundWebhookPanel({
         {tokenPrefix && (
           <p className="mb-3 text-xs text-muted">
             Current token <code className="tabular">{tokenPrefix}…</code> · last used{" "}
-            {lastUsedAt ? new Date(lastUsedAt).toLocaleString() : "never"}
+            {lastUsedAt ? fmtDateTime(lastUsedAt) : "never"}
           </p>
         )}
 

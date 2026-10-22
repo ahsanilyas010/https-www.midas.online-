@@ -16,6 +16,8 @@ import { ManageAgentsDialog } from "./manage-agents-dialog";
 import { ActivateToggle } from "./activate-toggle";
 import { LeadDetailsDialog } from "./lead-details-dialog";
 import { EditCampaignDialog } from "./edit-campaign-dialog";
+import { EMPTY, plural } from "@/lib/format";
+import { TableWrap } from "@/components/ui/data-table";
 
 const LEAD_LIMIT = 200;
 
@@ -70,7 +72,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const nameById = new Map((people ?? []).map((p) => [p.id, p.full_name]));
   const assignedAgents = (roster ?? []).map((a) => ({
     id: a.user_id,
-    name: nameById.get(a.user_id) ?? "-",
+    name: nameById.get(a.user_id) ?? EMPTY,
     dailyTarget: a.daily_target,
   }));
   const rosterOptions = (people ?? []).filter((p) => p.is_active).map((p) => ({ id: p.id, full_name: p.full_name }));
@@ -98,7 +100,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             )}
           </h2>
           <p className="tabular text-xs text-muted">
-            {campaign.code ?? "No code"} · {clientName ?? "No client"} · {assignedAgents.length} agents assigned ·{" "}
+            {campaign.code ?? "No code"} · {clientName ?? "No client"} · {plural(assignedAgents.length, "agent")} assigned ·{" "}
             {leadTotal ?? 0} leads
           </p>
           <p className="mt-1 text-xs text-muted">
@@ -160,7 +162,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Campaign leads">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -184,13 +186,13 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   if (l.source) custom.source_sheet = l.source;
                   return (
                     <tr key={l.id} className="h-[38px] border-b border-line last:border-0">
-                      <td className="px-3 py-1.5 font-medium text-ink">{name || "-"}</td>
+                      <td className="px-3 py-1.5 font-medium text-ink">{name || EMPTY}</td>
                       <td className="px-3 py-1.5 tabular">{l.phone_e164}</td>
-                      <td className="max-w-[160px] truncate px-3 py-1.5 text-muted">{l.company_name ?? "-"}</td>
-                      <td className="max-w-[180px] truncate px-3 py-1.5 text-muted">{l.email ?? "-"}</td>
-                      <td className="px-3 py-1.5 text-muted">{l.city ?? "-"}</td>
+                      <td className="max-w-[160px] truncate px-3 py-1.5 text-muted">{l.company_name ?? EMPTY}</td>
+                      <td className="max-w-[180px] truncate px-3 py-1.5 text-muted">{l.email ?? EMPTY}</td>
+                      <td className="px-3 py-1.5 text-muted">{l.city ?? EMPTY}</td>
                       <td className="px-3 py-1.5 text-muted">
-                        {l.assigned_to ? (nameById.get(l.assigned_to) ?? "-") : <span className="text-warning">Unassigned</span>}
+                        {l.assigned_to ? (nameById.get(l.assigned_to) ?? EMPTY) : <span className="text-warning">Unassigned</span>}
                       </td>
                       <td className="px-3 py-1.5">
                         <Badge variant="neutral">{l.status.replace(/_/g, " ")}</Badge>
@@ -237,7 +239,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
 
           <p className="mt-3 text-[11px] text-muted">
             A lead becomes dialable once it has passed screening and the campaign is live. Assigned leads are served only
@@ -246,7 +248,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         </TabsContent>
 
         <TabsContent value="contacts">
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Phone-less contacts">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -259,11 +261,11 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               <tbody>
                 {(contacts ?? []).map((c) => (
                   <tr key={c.id} className="h-[38px] border-b border-line last:border-0">
-                    <td className="px-3 py-1.5 font-medium text-ink">{c.full_name ?? "-"}</td>
-                    <td className="px-3 py-1.5 text-muted">{c.company_name ?? "-"}</td>
-                    <td className="px-3 py-1.5 text-muted">{c.email ?? "-"}</td>
+                    <td className="px-3 py-1.5 font-medium text-ink">{c.full_name ?? EMPTY}</td>
+                    <td className="px-3 py-1.5 text-muted">{c.company_name ?? EMPTY}</td>
+                    <td className="px-3 py-1.5 text-muted">{c.email ?? EMPTY}</td>
                     <td className="px-3 py-1.5 text-muted">
-                      {c.assigned_to ? (nameById.get(c.assigned_to) ?? "-") : <span className="text-warning">Unassigned</span>}
+                      {c.assigned_to ? (nameById.get(c.assigned_to) ?? EMPTY) : <span className="text-warning">Unassigned</span>}
                     </td>
                   </tr>
                 ))}
@@ -276,7 +278,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
           <p className="mt-3 text-[11px] text-muted">
             The assigned agent adds a number from the Call sheet; it is then checked against suppression and enters the lead
             list as unscreened.

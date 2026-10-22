@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadStatusBadge, ScreeningBadge, fmtDateTime } from "../ui";
+import { TableWrap } from "@/components/ui/data-table";
 
 export interface InboxRow {
   id: string;
@@ -137,7 +138,7 @@ export function LeadInbox({ rows, campaigns }: { rows: InboxRow[]; campaigns: { 
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-line bg-white">
+      <TableWrap label="Lead inbox">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -190,7 +191,7 @@ export function LeadInbox({ rows, campaigns }: { rows: InboxRow[]; campaigns: { 
             )}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
     </div>
   );
 }

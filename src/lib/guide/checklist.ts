@@ -44,7 +44,7 @@ export function buildSetupSteps(p: SetupProgress): SetupStep[] {
     },
     {
       id: "team",
-      title: "Add your team",
+      title: "Add your first agent",
       why: "Create a login for each agent. They get a one-time password and can start straight away.",
       href: "/admin/people",
       cta: "Add people",

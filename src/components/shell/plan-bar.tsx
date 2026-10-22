@@ -16,6 +16,8 @@ export interface PlanInfo {
   // real customer, and never the legacy sales-demo (which renders DemoBar
   // instead of this component entirely).
   isRealDemo?: boolean;
+  // False when no payment provider is configured: show "Contact sales", not a dead-end Upgrade.
+  billingReady?: boolean;
 }
 
 // Strip above the header for customer workspaces (the sales demo shows
@@ -48,10 +50,11 @@ export function PlanBar({ info }: { info: PlanInfo }) {
         )}
         {info.canManageBilling && (
           <Link
-            href="/admin/billing"
+            href={info.billingReady === false && info.plan === "free" ? "/contact" : "/admin/billing"}
             className="inline-flex items-center gap-1 rounded-md bg-gold-gradient px-2 py-0.5 font-semibold text-ink hover:brightness-105"
           >
-            <Sparkles className="h-3 w-3" /> {info.plan === "free" ? "Upgrade" : "Billing"}
+            <Sparkles className="h-3 w-3" />{" "}
+            {info.plan !== "free" ? "Billing" : info.billingReady === false ? "Contact sales" : "Upgrade"}
           </Link>
         )}
       </div>

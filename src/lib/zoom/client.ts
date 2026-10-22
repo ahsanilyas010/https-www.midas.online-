@@ -162,3 +162,22 @@ export async function verifyZoomCredentials(creds: ZoomCredentials): Promise<Zoo
   const me = await zoomFetch<{ email?: string; account_id?: string }>(creds, "GET", "/users/me");
   return { email: me.email ?? null, accountId: me.account_id ?? null };
 }
+
+export interface ZoomUserLookup {
+  found: boolean;
+  // Presence and account status only; whether they hold a Zoom Phone licence
+  // is not visible from this call.
+  status?: string;
+}
+
+// GET /users/{email}: does a Zoom user with this email exist on the account?
+// (Zoom matches meeting hosts and Zoom Phone sign-ins by that email.)
+export async function lookupZoomUser(creds: ZoomCredentials, email: string): Promise<ZoomUserLookup> {
+  try {
+    const u = await zoomFetch<{ status?: string }>(creds, "GET", `/users/${encodeURIComponent(email)}`);
+    return { found: true, status: u.status };
+  } catch (e) {
+    if (e instanceof ZoomError && e.code === "user_not_found") return { found: false };
+    throw e;
+  }
+}

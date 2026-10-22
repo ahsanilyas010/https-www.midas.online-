@@ -11,6 +11,8 @@ import { RegisterSourceDialog } from "@/components/leads/register-source-dialog"
 import { LeadImporterDialog } from "@/components/leads/lead-importer";
 import { EditSourceDialog } from "@/components/leads/edit-source-dialog";
 import { UnphonedContacts } from "./unphoned-contacts";
+import { fmtDate } from "@/lib/format";
+import { TableWrap } from "@/components/ui/data-table";
 
 export const metadata: Metadata = { title: "Data" };
 
@@ -113,7 +115,7 @@ export default async function DataPage() {
               </div>
             )}
           </div>
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Data sources">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -157,12 +159,12 @@ export default async function DataPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </TabsContent>
 
         <TabsContent value="history">
           <p className="mb-3 text-xs text-muted">Last 30 imports, across every source.</p>
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Import history">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -208,7 +210,7 @@ export default async function DataPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </TabsContent>
 
         <TabsContent value="performance">
@@ -216,7 +218,7 @@ export default async function DataPage() {
             Per source, from first import to conversion. A source with many leads loaded but few passing screening is
             worth revisiting before the next import.
           </p>
-          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <TableWrap label="Source performance">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -241,7 +243,7 @@ export default async function DataPage() {
                     <td className="px-3 py-1.5 tabular text-muted">{p.contacted}</td>
                     <td className="px-3 py-1.5 tabular text-muted">{p.converted}</td>
                     <td className="px-3 py-1.5 tabular text-xs text-muted">
-                      {p.last_import_at ? new Date(p.last_import_at).toLocaleDateString() : "—"}
+                      {fmtDate(p.last_import_at, profile.timezone)}
                     </td>
                   </tr>
                 ))}
@@ -254,7 +256,7 @@ export default async function DataPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </TabsContent>
 
         <TabsContent value="unphoned">

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { fmtDateTime } from "@/lib/format";
 
 function useOrigin() {
   const [origin, setOrigin] = useState("https://your-app.example.com");
@@ -115,7 +116,7 @@ export function TokenCard({ tokenPrefix, lastUsedAt }: { tokenPrefix: string | n
           <p className="text-xs text-muted">
             <KeyRound className="mr-1 inline h-3.5 w-3.5" />
             Current token <code className="tabular">{tokenPrefix}…</code> · last lead received{" "}
-            {lastUsedAt ? new Date(lastUsedAt).toLocaleString("en-GB", { timeZone: "UTC" }) + " UTC" : "never"}
+            {lastUsedAt ? fmtDateTime(lastUsedAt) : "never"}
           </p>
         )}
 

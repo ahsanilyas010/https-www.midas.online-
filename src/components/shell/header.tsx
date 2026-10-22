@@ -155,7 +155,7 @@ export function Header({
             aria-label={`Setup guide, ${guide.done} of ${guide.total} done`}
           >
             <ListChecks className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Setup guide</span>
+            <span className="hidden lg:inline">Setup guide</span>
             <span className="tabular rounded-full bg-brand-blue px-1.5 py-px text-[10px] font-semibold text-white" data-testid="setup-guide-count">
               {guide.done}/{guide.total}
             </span>

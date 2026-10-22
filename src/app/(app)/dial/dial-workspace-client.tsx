@@ -10,7 +10,7 @@ import {
   type DialWorkspaceLead,
 } from "@/lib/actions/dial-workspace";
 import { startCall } from "@/lib/actions/zoom-calls";
-import { usePhone } from "@/components/zoom-phone/zoom-phone-provider";
+import { PHONE_LABEL, usePhone } from "@/components/zoom-phone/zoom-phone-provider";
 import { BookMeetingDialog } from "@/components/zoom/book-meeting-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import type { RealTables } from "@/lib/supabase/real-types";
 import type { QueueReason } from "@/lib/dial/queue-diagnosis";
+import { fmtTime } from "@/lib/format";
 
 type Disposition = RealTables<"dispositions">;
 type Callback = RealTables<"callbacks">;
@@ -155,9 +156,9 @@ export function DialWorkspaceClient({
         <h1 className="font-display text-2xl font-semibold text-ink">Dial workspace</h1>
         <div className="flex items-center gap-2 text-xs text-muted">
           <span
-            className={`h-2 w-2 rounded-full ${status === "ready" || status === "on-call" ? "bg-brand-green" : status === "unavailable" ? "bg-danger" : "bg-line"}`}
+            className={`h-2 w-2 rounded-full ${status === "ready" || status === "on-call" ? "bg-brand-green" : status === "unavailable" ? "bg-danger" : status === "sign-in" ? "bg-gold" : "bg-line"}`}
           />
-          Zoom Phone: {status === "idle" ? "starting" : status}
+          Zoom Phone: {PHONE_LABEL[status].toLowerCase()}
         </div>
       </div>
 
@@ -168,7 +169,7 @@ export function DialWorkspaceClient({
           </div>
           {dueCallbacks.map((cb) => (
             <div key={cb.id} className="flex items-center justify-between text-xs text-ink">
-              <span>Due {new Date(cb.due_at).toLocaleTimeString()}</span>
+              <span>Due {fmtTime(cb.due_at)}</span>
               <button onClick={() => handleSnooze(cb.id)} className="font-medium text-brand-blue hover:underline">
                 Snooze 15m {cb.snooze_count >= 2 ? "(last chance — then escalates)" : ""}
               </button>
@@ -180,9 +181,9 @@ export function DialWorkspaceClient({
       {setupHint && (
         <div className="flex flex-col gap-1.5 rounded-xl border border-gold/40 bg-gold-tint p-3 text-xs text-ink" role="status">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-gold-text">
-            <Info className="h-4 w-4" /> The Zoom Phone panel hasn&apos;t reported ready yet
+            <Info className="h-4 w-4" /> Sign in to Zoom Phone to start calling
           </div>
-          <p>First-time setup needs three things from your Zoom admin. Agents then sign in to Zoom inside the panel at the bottom right.</p>
+          <p>If the panel on the right shows a Zoom sign-in, sign in there. If it never gets past that, first-time setup needs three things from your Zoom admin:</p>
           <ul className="list-disc pl-5">
             <li>Install the Zoom Phone Smart Embed app from the Zoom Marketplace.</li>
             <li>Enable &quot;Automatically Call From Third Party Apps&quot; and approve this site&apos;s domain.</li>

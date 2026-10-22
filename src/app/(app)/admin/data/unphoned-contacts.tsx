@@ -7,6 +7,7 @@ import { assignUnphonedContact, promoteContact, type ActionResult } from "@/lib/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TableWrap } from "@/components/ui/data-table";
 
 export interface UnphonedRow {
   id: string;
@@ -63,7 +64,7 @@ export function UnphonedContacts({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-white">
+    <TableWrap label="Phone-less contacts">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
           <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
@@ -113,6 +114,6 @@ export function UnphonedContacts({
           )}
         </tbody>
       </table>
-    </div>
+    </TableWrap>
   );
 }

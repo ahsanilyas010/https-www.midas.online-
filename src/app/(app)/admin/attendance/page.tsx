@@ -17,6 +17,7 @@ import { LeaveDecisionButtons } from "./leave-decision-buttons";
 import { CreateShiftDialog } from "./create-shift-dialog";
 import { ShiftCard, type ShiftView } from "./shifts-panel";
 import { CampaignRosterPanel } from "./campaign-roster-panel";
+import { EMPTY, fmtTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Attendance" };
 
@@ -153,8 +154,8 @@ export default async function AttendancePage() {
                           <Badge variant="neutral">clocked out</Badge>
                         )}
                       </td>
-                      <td className="px-3 py-1.5 tabular text-muted">{s.clockIn.toLocaleTimeString()}</td>
-                      <td className="px-3 py-1.5 tabular text-muted">{s.clockOut ? s.clockOut.toLocaleTimeString() : "—"}</td>
+                      <td className="px-3 py-1.5 tabular text-muted">{fmtTime(s.clockIn, profile.timezone)}</td>
+                      <td className="px-3 py-1.5 tabular text-muted">{s.clockOut ? fmtTime(s.clockOut, profile.timezone) : EMPTY}</td>
                       <td className="px-3 py-1.5 tabular text-muted">{late > 0 ? `${late}m` : "—"}</td>
                       <td className="px-3 py-1.5 tabular text-muted">{fmtDuration(workedMs(s))}</td>
                     </tr>

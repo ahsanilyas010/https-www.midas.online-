@@ -163,6 +163,11 @@ export function CallSheetBoard({
             {error}
           </p>
         )}
+        {status === "sign-in" && (
+          <p className="cs-msg err" role="status">
+            Sign in to Zoom in the Zoom Phone panel before dialing. Open the panel from the bar at the bottom right.
+          </p>
+        )}
         {status === "unavailable" && (
           <p className="cs-msg err" role="status">
             The Zoom Phone panel is unavailable, so calls cannot start yet. Open Integrations &gt; Zoom for the setup checklist.
