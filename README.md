@@ -13,7 +13,8 @@ Product of **Assorted Business LLC** (name, address and contact details live in
 
 | Area | Route | Notes |
 |---|---|---|
-| Upload leads | `/admin/import` | Mapped CSV/Excel importer (super admin, ops manager); also embedded in the Lead inbox and Data |
+| Upload leads | `/admin/import` | CSV/Excel importer of any shape: the admin says what each column is (super admin, ops manager); also embedded in the Lead inbox and Data |
+| Leads | `/admin/leads` | Every uploaded lead and phone-less contact with every column from the file; filter by upload, campaign, owner, screening; tick rows to assign to an agent (auto-rosters them), screen, or move to a campaign |
 | Dial workspace | `/dial` | Compliance-gated next-lead queue, Zoom Phone Smart Embed dial pad, dispositions, callbacks. Agents and, since migration 99, admins/ops managers |
 | Call sheet | `/callsheet` | Board of leads, a column per campaign (overdue and upcoming first); dial from a card, log the outcome, edit notes and next step, promote phone-less contacts |
 | Live floor | `/live` | Agent states, today's calls/connects/conversions (Realtime) |
@@ -164,11 +165,18 @@ metered seat (only active `agent`s count). Demo login:
 One importer (`src/lib/leads/mapped-import.ts`, UI `src/components/leads/lead-importer.tsx`) serves
 `/admin/import`, the Lead inbox import button and the Data page's vendor import (which also requires a
 data source with a lawful basis). Steps: **1** pick a .csv/.xlsx (max 10 MB, 20,000 rows) and the campaign;
-**2** match columns; **3** review (a dry run, nothing is saved); **4** import.
+**2** say what each column is; **3** review (a dry run, nothing is saved); **4** import.
 
-- **Required mapping.** Name, Phone number, Company and Email each need a column, or an explicit
-  "This file has no ..." (phone can never be skipped). Headers are auto-suggested; "Combine first and
-  last name" is offered for the name. Numbers are normalised to E.164 using the campaign's country.
+- **Column by column.** Step 2 lists every column in the file with its first values and a role: Name
+  (full), First name, Last name, Phone number, Company, Email, the optional fields below, "Extra
+  information" (kept under a label you choose, default the header) or "Don't import". Headers are
+  auto-suggested. Nothing in the file is lost unless you skip it. Numbers are normalised to E.164 using
+  the campaign's country. The browser builds the `ColumnMapping` with `mappingFromRoles()` and the server
+  re-validates it (`validateMapping`).
+- **No phone column?** Allowed. Every row is then kept as a contact without a number
+  (`unphoned_contacts`, with company and all extra columns in `custom`), as are rows whose number is blank.
+  Assign them under Leads; the agent sees them on the call sheet, adds the number they find, and
+  `promote_unphoned_contact` (migration 112) turns the contact into a `pending` lead carrying its data.
 - **Optional mapping.** Campaign (a column of campaign names that must match your campaigns, case and
   spacing ignored; unmatched rows are listed and skipped, unless you tick "use the step-1 campaign"),
   Contact person, Website, Notes, Next step, Appointment / follow-up date-time and Last contact date
@@ -181,7 +189,12 @@ data source with a lawful basis). Steps: **1** pick a .csv/.xlsx (max 10 MB, 20,
   Suppressed numbers are never imported; leads always arrive `pending`.
 - **Screening** is a deliberate, manager-only step, off by default. "Run screening now" runs the manual
   check (`screen_lead_batch`): numbers are checked against the workspace suppression list only; it is not a
-  live TPS/DNC lookup. Lead gen cannot screen or roster.
+  live TPS/DNC lookup. Lead gen cannot screen or roster. Compliance always offers a Screen button per batch
+  (with its pending count) plus "Screen N pending leads" for everything still waiting, including leads
+  added outside a batch (`screen_leads`).
+- **Assigning.** Under Leads (or a campaign's lead table) an admin can assign any lead or contact to an
+  agent, screened or not; assignment also puts the agent on that campaign's roster, which the dial queue,
+  call sheet and lead RLS all require. The lead still becomes dialable only once screened.
 - **Dialing your own data.** Tick "I will call these myself": the leads are assigned to you and you are put
   on that campaign's roster (migration 99 lets super admins and ops managers be rostered). With screening
   done, **Start dialing** opens `/dial`, which behaves exactly as for an agent. A lead is dialable only if it

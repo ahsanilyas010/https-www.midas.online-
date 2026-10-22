@@ -154,6 +154,10 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               <Link href="/admin/import" className="text-brand-blue hover:underline">
                 Upload leads
               </Link>
+              , or see every column and assign in bulk under{" "}
+              <Link href={`/admin/leads?campaign=${campaign.id}`} className="text-brand-blue hover:underline">
+                Leads
+              </Link>
               .
             </p>
             <div className="flex gap-2">

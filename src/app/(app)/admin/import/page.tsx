@@ -30,7 +30,12 @@ export default async function ImportLeadsPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold text-ink">Upload leads</h1>
         <p className="mt-1 text-sm text-muted">
-          Bring in a CSV or Excel file of people to call. You choose which column is the name, phone number, company and email, check the result, then import. After that you can call them yourself from the{" "}
+          Bring in a CSV or Excel file of any shape. You say what each column is (name, phone number, company, email, or anything else
+          you want kept as extra information), check the result, then import. Everything you bring in is listed under{" "}
+          <Link href="/admin/leads" className="font-medium text-brand-blue hover:underline">
+            Leads
+          </Link>
+          , where you assign it to agents, or you can call it yourself from the{" "}
           <Link href="/dial" className="font-medium text-brand-blue hover:underline">
             Dial workspace
           </Link>
@@ -71,7 +76,11 @@ export default async function ImportLeadsPage() {
           <tbody className="divide-y divide-line">
             {(batches ?? []).map((b) => (
               <tr key={b.id}>
-                <td className="px-4 py-2 font-medium text-ink">{b.source ?? EMPTY}</td>
+                <td className="px-4 py-2 font-medium text-ink">
+                  <Link href={`/admin/leads?batch=${b.id}`} className="hover:underline" title="View and assign these leads">
+                    {b.source ?? EMPTY}
+                  </Link>
+                </td>
                 <td className="px-4 py-2">{b.row_count}</td>
                 <td className="px-4 py-2 text-muted">{b.screened_at ? fmtDate(b.screened_at, profile.timezone) : "Not yet"}</td>
                 <td className="px-4 py-2 text-muted">{fmtDate(b.created_at, profile.timezone)}</td>

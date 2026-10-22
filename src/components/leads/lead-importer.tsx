@@ -9,20 +9,22 @@ import { previewLeadImport, runLeadImport, type ImportResponse } from "@/lib/act
 import { screenLeadBatch } from "@/lib/actions/lead-upload";
 import { RegisterSourceDialog } from "@/components/leads/register-source-dialog";
 import {
-  FIELD_LABELS,
+  EXTRA_LABEL_MAX,
   IMPORT_LIMITS,
-  OPTIONAL_FIELDS,
   OPTIONAL_HINTS,
-  OPTIONAL_LABELS,
-  TARGET_FIELDS,
+  ROLE_LABELS,
+  ROLE_ORDER,
+  duplicateRoles,
+  mappingFromRoles,
   normalizeHeaders,
+  rolesFromMapping,
   suggestMapping,
   validateMapping,
+  type ColumnChoice,
   type ColumnMapping,
+  type ColumnRole,
   type FirstRowsPreview,
   type ImportPreview,
-  type OptionalField,
-  type TargetField,
 } from "@/lib/leads/mapped-import-shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,25 +55,26 @@ interface Props {
   onFinished?: () => void;
 }
 
-// One field's selection in the mapping step. "" = not chosen yet.
-type Pick = string; // "" | "col:<header>" | "none" | "combine"
-const emptyOpt = (): Record<OptionalField, Pick> => ({
-  contact: "",
-  website: "",
-  campaign: "",
-  notes: "",
-  nextStep: "",
-  appointment: "",
-  lastContact: "",
-});
 const selectCls =
   "h-9 w-full rounded-md border border-line bg-white px-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue";
 
-const HINTS: Record<TargetField, string> = {
-  name: "Who you are calling. If the file has first and last name in separate columns, combine them.",
-  phone: "Required. Numbers are cleaned to international format using the campaign's country.",
+// What each role means, shown under the chosen role.
+const ROLE_HINTS: Partial<Record<ColumnRole, string>> = {
+  name: "Who you are calling.",
+  first: "Combined with the last-name column into the lead's name.",
+  last: "Combined with the first-name column into the lead's name.",
+  phone: "Numbers are cleaned to international format using the campaign's country.",
   company: "The company or organisation the person works for.",
-  email: "Used for follow-up emails. Rows with an email that doesn't look right keep the lead but leave the email empty.",
+  email: "Used for follow-up emails. Values that don't look like an email are left empty.",
+  contact: OPTIONAL_HINTS.contact,
+  website: OPTIONAL_HINTS.website,
+  campaign: OPTIONAL_HINTS.campaign,
+  notes: OPTIONAL_HINTS.notes,
+  nextStep: OPTIONAL_HINTS.nextStep,
+  appointment: OPTIONAL_HINTS.appointment,
+  lastContact: OPTIONAL_HINTS.lastContact,
+  extra: "Kept on the lead exactly as it is in the file, under the label you give it. Agents see it on the call sheet.",
+  skip: "Left out of the import.",
 };
 
 async function readHead(file: File): Promise<FirstRowsPreview> {
@@ -91,13 +94,6 @@ async function readHead(file: File): Promise<FirstRowsPreview> {
   return { headers, rows };
 }
 
-function toPick(p: { column: string } | { none: true } | { first: string; last: string } | undefined): Pick {
-  if (!p) return "";
-  if ("column" in p) return `col:${p.column}`;
-  if ("none" in p) return "none";
-  return "combine";
-}
-
 export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -107,13 +103,10 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
   const [head, setHead] = useState<FirstRowsPreview | null>(null);
   const [campaignId, setCampaignId] = useState("");
   const [dataSourceId, setDataSourceId] = useState("");
-  const [picks, setPicks] = useState<Record<TargetField, Pick>>({ name: "", phone: "", company: "", email: "" });
-  const [suggested, setSuggested] = useState<Record<TargetField, Pick>>({ name: "", phone: "", company: "", email: "" });
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
-  const [opt, setOpt] = useState<Record<OptionalField, Pick>>(emptyOpt());
-  const [optSuggested, setOptSuggested] = useState<Record<OptionalField, Pick>>(emptyOpt());
-  const [keepExtra, setKeepExtra] = useState(true);
+  // One role per column of the file (the mapping step), plus the first
+  // guess, so a column can say "suggested, please check".
+  const [roles, setRoles] = useState<Record<string, ColumnChoice>>({});
+  const [suggestedRoles, setSuggestedRoles] = useState<Record<string, ColumnChoice>>({});
   const [fallback, setFallback] = useState(false);
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,29 +120,19 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
   const campaign = campaigns.find((c) => c.id === campaignId);
 
   const mapping: ColumnMapping = useMemo(() => {
-    const m: ColumnMapping = {};
-    const colOf = (p: Pick) => (p.startsWith("col:") ? p.slice(4) : "");
-    if (picks.phone.startsWith("col:")) m.phone = { column: colOf(picks.phone) };
-    if (picks.name === "none") m.name = { none: true };
-    else if (picks.name === "combine") m.name = first && last ? { first, last } : undefined;
-    else if (picks.name.startsWith("col:")) m.name = { column: colOf(picks.name) };
-    for (const f of ["company", "email"] as const) {
-      if (picks[f] === "none") m[f] = { none: true };
-      else if (picks[f].startsWith("col:")) m[f] = { column: colOf(picks[f]) };
-    }
-    for (const f of OPTIONAL_FIELDS) {
-      if (opt[f].startsWith("col:")) m[f] = { column: colOf(opt[f]) };
-    }
-    m.keepExtra = keepExtra;
+    if (!head) return {};
+    const m = mappingFromRoles(head.headers, roles);
     m.fallbackToDefault = fallback;
     return m;
-  }, [picks, first, last, opt, keepExtra, fallback]);
+  }, [head, roles, fallback]);
 
   const check = useMemo(() => (head ? validateMapping(head.headers, mapping) : null), [head, mapping]);
-  // "combine" with a column still missing is reported by validateMapping as an
-  // unset name; make the message specific.
-  const errors = { ...(check?.errors ?? {}) };
-  if (picks.name === "combine" && (!first || !last)) errors.name = "Choose both the first-name and the last-name column.";
+  const dupes = useMemo(() => duplicateRoles(roles), [roles]);
+  const errors: Record<string, string> = { ...(check?.errors ?? {}) };
+  for (const d of dupes) errors[d] = `Two columns are set as "${ROLE_LABELS[d]}". Only one column can be the ${ROLE_LABELS[d].toLowerCase()}.`;
+  const hasPhone = Object.values(roles).some((r) => r.role === "phone");
+  const hasCampaignCol = Object.values(roles).some((r) => r.role === "campaign");
+  const keptCount = Object.values(roles).filter((r) => r.role === "extra").length;
 
   const sampleLabels = {
     contact: "Contact person",
@@ -161,7 +144,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
     lastContact: "Last contact",
   } as const;
   const sampleExtras = (Object.keys(sampleLabels) as (keyof typeof sampleLabels)[]).filter((k) =>
-    k === "campaign" ? opt.campaign !== "" : (preview?.sample ?? []).some((r) => r[k]),
+    k === "campaign" ? hasCampaignCol : (preview?.sample ?? []).some((r) => r[k]),
   );
 
   function makeForm() {
@@ -207,28 +190,10 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
       }
       setFile(f);
       setHead(h);
-      const s = suggestMapping(h.headers);
-      const sp: Record<TargetField, Pick> = {
-        name: toPick(s.name),
-        phone: toPick(s.phone),
-        company: toPick(s.company),
-        email: toPick(s.email),
-      };
-      setPicks(sp);
-      setSuggested(sp);
-      const so = emptyOpt();
-      for (const f of OPTIONAL_FIELDS) so[f] = toPick(s[f] as { column: string } | undefined);
-      setOpt(so);
-      setOptSuggested(so);
-      setKeepExtra(true);
+      const initial = rolesFromMapping(h.headers, suggestMapping(h.headers));
+      setRoles(initial);
+      setSuggestedRoles(initial);
       setFallback(false);
-      if (s.name && "first" in s.name) {
-        setFirst(s.name.first);
-        setLast(s.name.last);
-      } else {
-        setFirst("");
-        setLast("");
-      }
       setTouched(false);
     } catch {
       setError("Couldn't read that file. Check it is a real .csv or .xlsx file.");
@@ -301,10 +266,9 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
     setCallMyself(false);
     setScreenNow(false);
     setError(null);
-    setPicks({ name: "", phone: "", company: "", email: "" });
-    setSuggested({ name: "", phone: "", company: "", email: "" });
-    setOpt(emptyOpt());
-    setOptSuggested(emptyOpt());
+    setRoles({});
+    setSuggestedRoles({});
+    setFallback(false);
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -432,152 +396,125 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
       {step === 2 && head && (
         <section className="flex flex-col gap-4">
           <p className="text-sm text-muted">
-            Tell us which column in your file holds each of the four things we store about a lead. We made a first guess from the
-            column names: please check each one. If the file doesn&apos;t have a field, say so.
+            Every column in your file is listed below. Tell us what each one is. We made a first guess from the column names:
+            please check each row. Anything you don&apos;t match to a field is kept as extra information under the label you
+            give it, so whatever is in your file comes through and is shown to you and to the agent you assign it to.
           </p>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {TARGET_FIELDS.map((f) => {
-              const err = touched ? errors[f] : undefined;
-              const isSuggested = picks[f] !== "" && picks[f] === suggested[f] && picks[f] !== "none";
-              return (
-                <div key={f} className="flex flex-col gap-1.5 rounded-lg border border-line bg-white p-3">
-                  <label htmlFor={`li-map-${f}`} className="text-sm font-semibold text-ink">
-                    {FIELD_LABELS[f]}
-                    <span className="ml-1 text-xs font-normal text-muted">{f === "phone" ? "(required)" : ""}</span>
-                  </label>
-                  <select
-                    id={`li-map-${f}`}
-                    value={picks[f]}
-                    onChange={(e) => setPicks((p) => ({ ...p, [f]: e.target.value }))}
-                    className={selectCls}
-                    aria-invalid={Boolean(err)}
-                  >
-                    <option value="">Choose a column...</option>
-                    {head.headers.map((h) => (
-                      <option key={h} value={`col:${h}`}>
-                        {h}
-                      </option>
-                    ))}
-                    {f === "name" && <option value="combine">Combine first and last name (two columns)</option>}
-                    {f !== "phone" && <option value="none">This file has no {FIELD_LABELS[f].toLowerCase()}</option>}
-                  </select>
-                  {f === "name" && picks.name === "combine" && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <select aria-label="First name column" value={first} onChange={(e) => setFirst(e.target.value)} className={selectCls}>
-                        <option value="">First name column...</option>
-                        {head.headers.map((h) => (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        ))}
-                      </select>
-                      <select aria-label="Last name column" value={last} onChange={(e) => setLast(e.target.value)} className={selectCls}>
-                        <option value="">Last name column...</option>
-                        {head.headers.map((h) => (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  <p className="text-xs text-muted">
-                    {isSuggested ? "Suggested from the column name: check it's right. " : ""}
-                    {HINTS[f]}
-                  </p>
-                  {err && <p className="text-xs font-medium text-danger">{err}</p>}
-                </div>
-              );
-            })}
-          </div>
-
-          <details className="rounded-lg border border-line bg-white p-3" open={OPTIONAL_FIELDS.some((f) => opt[f] !== "")}>
-            <summary className="cursor-pointer text-sm font-semibold text-ink">More details you can bring in (optional)</summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {OPTIONAL_FIELDS.map((f) => {
-                const err = touched ? (errors as Record<string, string | undefined>)[f] : undefined;
-                return (
-                  <div key={f} className="flex flex-col gap-1.5">
-                    <label htmlFor={`li-opt-${f}`} className="text-sm font-medium text-ink">
-                      {OPTIONAL_LABELS[f]}
-                    </label>
-                    <select
-                      id={`li-opt-${f}`}
-                      value={opt[f]}
-                      onChange={(e) => setOpt((o) => ({ ...o, [f]: e.target.value }))}
-                      className={selectCls}
-                    >
-                      <option value="">Not in this file</option>
-                      {head.headers.map((h) => (
-                        <option key={h} value={`col:${h}`}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-muted">
-                      {opt[f] !== "" && opt[f] === optSuggested[f] ? "Suggested from the column name: check it's right. " : ""}
-                      {OPTIONAL_HINTS[f]}
-                    </p>
-                    {err && <p className="text-xs font-medium text-danger">{err}</p>}
-                  </div>
-                );
-              })}
-            </div>
-            {opt.campaign !== "" && (
-              <label className="mt-3 flex items-start gap-2 text-sm text-ink">
-                <input type="checkbox" className="mt-1" checked={fallback} onChange={(e) => setFallback(e.target.checked)} />
-                <span>
-                  If a campaign name in the file doesn&apos;t match one of your campaigns, put that row in{" "}
-                  <strong>{campaign?.name ?? "the campaign from step 1"}</strong> instead of skipping it.
-                </span>
-              </label>
-            )}
-          </details>
-
-          <label className="flex items-start gap-2 text-sm text-ink">
-            <input type="checkbox" className="mt-1" checked={keepExtra} onChange={(e) => setKeepExtra(e.target.checked)} />
-            <span>
-              <span className="font-medium">Keep my other columns as extra information</span>
-              <span className="block text-xs text-muted">
-                Every column you haven&apos;t matched above is saved on the lead, so nothing in your file is lost.
-              </span>
-            </span>
-          </label>
-
-          <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">First rows of your file</p>
-            <TableWrap label="Rows to import">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-line bg-canvas text-left text-muted">
-                    {head.headers.map((h) => (
-                      <th key={h} className="whitespace-nowrap px-3 py-1.5 font-medium">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {head.rows.map((r, i) => (
-                    <tr key={i} className="border-b border-line last:border-0">
-                      {r.map((c, j) => (
-                        <td key={j} className="whitespace-nowrap px-3 py-1.5 text-ink">
-                          {c || <span className="text-muted">-</span>}
-                        </td>
-                      ))}
+          <TableWrap label="Columns in your file">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
+                  <th className="px-3 py-2 font-medium">Column in your file</th>
+                  <th className="px-3 py-2 font-medium">First values</th>
+                  <th className="w-[260px] px-3 py-2 font-medium">Import as</th>
+                  <th className="w-[220px] px-3 py-2 font-medium">Label on the lead</th>
+                </tr>
+              </thead>
+              <tbody>
+                {head.headers.map((h, idx) => {
+                  const choice = roles[h] ?? { role: "extra", label: h };
+                  const isSuggested = suggestedRoles[h]?.role === choice.role && choice.role !== "extra" && choice.role !== "skip";
+                  const dup = dupes.includes(choice.role);
+                  const samples = head.rows.map((r) => r[idx]).filter(Boolean).slice(0, 3);
+                  return (
+                    <tr key={h} className={`border-b border-line align-top last:border-0 ${choice.role === "skip" ? "opacity-60" : ""}`}>
+                      <td className="px-3 py-2 font-medium text-ink">{h}</td>
+                      <td className="max-w-[260px] px-3 py-2 text-xs text-muted">
+                        {samples.length > 0 ? (
+                          samples.map((v, i) => (
+                            <div key={i} className="truncate" title={v}>
+                              {v}
+                            </div>
+                          ))
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          aria-label={`Import "${h}" as`}
+                          value={choice.role}
+                          onChange={(e) => {
+                            const role = e.target.value as ColumnRole;
+                            setRoles((r) => ({ ...r, [h]: role === "extra" ? { role, label: r[h]?.label || h.slice(0, EXTRA_LABEL_MAX) } : { role } }));
+                          }}
+                          className={selectCls}
+                          aria-invalid={dup || (touched && choice.role === "phone" && Boolean(errors.phone)) ? true : undefined}
+                        >
+                          {ROLE_ORDER.map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABELS[r]}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[11px] text-muted">
+                          {isSuggested ? "Suggested from the column name: check it's right. " : ""}
+                          {ROLE_HINTS[choice.role]}
+                        </p>
+                        {dup && <p className="mt-1 text-xs font-medium text-danger">{errors[choice.role]}</p>}
+                      </td>
+                      <td className="px-3 py-2">
+                        {choice.role === "extra" ? (
+                          <input
+                            type="text"
+                            aria-label={`Label for "${h}"`}
+                            value={choice.label ?? ""}
+                            maxLength={EXTRA_LABEL_MAX}
+                            onChange={(e) => setRoles((r) => ({ ...r, [h]: { role: "extra", label: e.target.value } }))}
+                            placeholder={h}
+                            className="h-9 w-full rounded-md border border-line bg-white px-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted">{choice.role === "skip" ? "Not imported" : ROLE_LABELS[choice.role]}</span>
+                        )}
+                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableWrap>
-          </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </TableWrap>
+
+          {touched && errors.phone && (
+            <p className="text-xs font-medium text-danger" role="alert">
+              {errors.phone}
+            </p>
+          )}
+          {touched && errors.name && (
+            <p className="text-xs font-medium text-danger" role="alert">
+              {errors.name}
+            </p>
+          )}
+          {!hasPhone && (
+            <div className="rounded-lg border border-gold/40 bg-gold-tint px-3 py-2 text-sm text-ink" data-testid="no-phone-notice">
+              <strong>No column is set as the phone number.</strong> That&apos;s fine: every row will be kept as a contact without a
+              number, with all its other details, so you can assign it to an agent who finds and adds the number. Nothing can be dialled
+              until a number is added and screened. If the file does have phone numbers, set that column to{" "}
+              <em>Phone number</em> above.
+            </div>
+          )}
+          <p className="text-xs text-muted">
+            {keptCount > 0
+              ? `${keptCount} column${keptCount === 1 ? "" : "s"} will be kept as extra information.`
+              : "No columns are kept as extra information."}
+          </p>
+
+          {hasCampaignCol && (
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input type="checkbox" className="mt-1" checked={fallback} onChange={(e) => setFallback(e.target.checked)} />
+              <span>
+                If a campaign name in the file doesn&apos;t match one of your campaigns, put that row in{" "}
+                <strong>{campaign?.name ?? "the campaign from step 1"}</strong> instead of skipping it.
+              </span>
+            </label>
+          )}
 
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setStep(1)} disabled={pending}>
               Back
             </Button>
-            <Button onClick={toReview} disabled={pending}>
+            <Button onClick={toReview} disabled={pending || dupes.length > 0}>
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Next: review
             </Button>
           </div>
@@ -603,9 +540,23 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
             </p>
           )}
           {preview.phonelessHeld > 0 && (
-            <p className="text-xs text-muted">
-              {preview.phonelessHeld} row{preview.phonelessHeld === 1 ? "" : "s"} with a name or email but no phone number will be held as contacts to add a number to later.
-            </p>
+            <div className="rounded-lg border border-gold/40 bg-gold-tint px-3 py-2 text-sm text-ink" data-testid="held-contacts">
+              <strong>
+                {preview.phonelessHeld} row{preview.phonelessHeld === 1 ? "" : "s"} will be kept as contacts without a number
+              </strong>
+              {preview.noPhoneColumn ? " (this file has no phone column)." : " (no phone number in the row)."} They keep every other
+              detail, show up under Leads and on the call sheet of the agent you assign them to, and become dialable leads once a
+              number is added and screened.
+              {preview.heldSample.length > 0 && (
+                <ul className="mt-1 list-disc pl-5 text-xs text-muted">
+                  {preview.heldSample.map((r) => (
+                    <li key={r.row}>
+                      Row {r.row}: {[r.name, r.company, r.email].filter(Boolean).join(" · ") || "extra information only"}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
 
           {preview.campaignBreakdown.length > 1 || preview.unmatchedCampaignCount > 0 ? (
@@ -742,7 +693,9 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
         <section className="flex flex-col gap-4" data-testid="import-result">
           <div className="flex items-center gap-2 text-base font-semibold text-ink">
             <CheckCircle2 className="h-5 w-5 text-brand-green-text" />
-            Imported {done.result.imported} lead{done.result.imported === 1 ? "" : "s"} into {done.campaignName}
+            {done.result.imported > 0
+              ? `Imported ${done.result.imported} lead${done.result.imported === 1 ? "" : "s"} into ${done.campaignName}`
+              : `Kept ${done.result.phonelessHeld} contact${done.result.phonelessHeld === 1 ? "" : "s"} in ${done.campaignName}`}
           </div>
           <ul className="list-disc space-y-0.5 pl-5 text-sm text-muted">
             <li>{done.result.skippedInvalid} skipped: invalid or missing phone number</li>
@@ -756,7 +709,9 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
                   {c.count} into {c.name}
                 </li>
               ))}
-            {done.result.phonelessHeld > 0 && <li>{done.result.phonelessHeld} held as contacts without a number</li>}
+            {done.result.phonelessHeld > 0 && (
+              <li>{done.result.phonelessHeld} kept as contacts without a number (assign them under Leads; the agent adds the number)</li>
+            )}
             {done.result.assignedToMe > 0 && <li>{done.result.assignedToMe} assigned to you, and you are on this campaign&apos;s roster</li>}
             {done.result.screened + screenedLater > 0 && (
               <li>{done.result.screened + screenedLater} screened (manual check against your suppression list): ready to dial</li>
@@ -783,6 +738,13 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
               <Button asChild>
                 <Link href="/dial">
                   <Headset className="h-4 w-4" /> Start dialing
+                </Link>
+              </Button>
+            )}
+            {isManager && (
+              <Button asChild variant="secondary">
+                <Link href={done.result.batchId ? `/admin/leads?batch=${done.result.batchId}` : `/admin/leads?campaign=${done.result.campaignId}&kind=contact`}>
+                  View and assign this data
                 </Link>
               </Button>
             )}
@@ -863,7 +825,7 @@ export function LeadImporterDialog(props: Props & { label?: string }) {
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Import leads</DialogTitle>
-          <DialogDescription>Upload a CSV or Excel file and match its columns to Name, Phone number, Company and Email.</DialogDescription>
+          <DialogDescription>Upload a CSV or Excel file and say what each of its columns is. Everything in the file comes through.</DialogDescription>
         </DialogHeader>
         <LeadImporter {...rest} onFinished={() => setOpen(false)} />
       </DialogContent>

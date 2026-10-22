@@ -61,7 +61,7 @@ export function buildSetupSteps(p: SetupProgress): SetupStep[] {
     {
       id: "leads",
       title: "Add leads",
-      why: "Upload a CSV or Excel file and match its columns to name, phone number, company and email. You can even call them yourself.",
+      why: "Upload a CSV or Excel file of any shape and say what each column is. Everything in the file comes through, and you can even call them yourself.",
       href: "/admin/import",
       cta: "Upload leads",
       done: p.leads >= 1,

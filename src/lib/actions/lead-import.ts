@@ -161,7 +161,11 @@ export async function runLeadImport(formData: FormData): Promise<ImportResponse>
             run_id: run?.id ?? null,
             full_name: p.name,
             email: p.email,
+            company_name: p.company,
+            custom: p.custom,
             country_hint: p.region,
+            // "I will call these myself" covers the phone-less rows too.
+            assigned_to: callMyself ? profile.id : null,
           })),
         );
       }

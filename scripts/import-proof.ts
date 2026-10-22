@@ -71,7 +71,7 @@ async function main() {
   const lib = await import("@/lib/leads/mapped-import");
   const shared = await import("@/lib/leads/mapped-import-shared");
   const { buildPlan, runMappedImport, parseTabular, parseDateTime, loadCampaigns, ImportError } = lib;
-  const { suggestMapping, validateMapping } = shared;
+  const { suggestMapping, validateMapping, mappingFromRoles, rolesFromMapping, extraColumnsOf, duplicateRoles } = shared;
 
   // ------------------------------------------------------------- 1. pure
   console.log("\n1. Header auto-suggest");
@@ -96,8 +96,25 @@ async function main() {
   check(!validateMapping(H, {}).ok, "empty mapping rejected");
   const noPhone = validateMapping(H, { name: { column: "a" }, company: { none: true }, email: { none: true } });
   check(!noPhone.ok && !!noPhone.errors.phone, "phone must be chosen", noPhone.errors);
-  const phoneNone = validateMapping(H, { name: { column: "a" }, phone: { none: true } as never, company: { none: true }, email: { none: true } });
-  check(!phoneNone.ok && !!phoneNone.errors.phone, "phone can never be skipped (explicit 'none' rejected)");
+  // A file with no phone column is accepted (rows become contacts) as long as
+  // something else is kept; a mapping that keeps nothing at all is refused.
+  const phoneNone = validateMapping(H, { name: { column: "a" }, phone: { none: true }, company: { none: true }, email: { none: true } });
+  check(phoneNone.ok, "explicit 'no phone column' accepted when a name is mapped", phoneNone.errors);
+  const nothingKept = validateMapping(H, { name: { none: true }, phone: { none: true }, company: { none: true }, email: { none: true }, keepExtra: false });
+  check(!nothingKept.ok && !!nothingKept.errors.phone, "'no phone column' with nothing else kept is rejected", nothingKept.errors);
+  check(validateMapping(H, { name: { none: true }, phone: { none: true }, company: { none: true }, email: { none: true }, keepExtra: true }).ok, "'no phone column' with extra columns kept is accepted");
+
+  console.log("\n2b. Column roles (the mapping step) <-> ColumnMapping");
+  const RH = ["First", "Last", "Mobile", "Org", "Region", "Internal id"];
+  const roles = rolesFromMapping(RH, { name: { first: "First", last: "Last" }, phone: { column: "Mobile" }, company: { column: "Org" }, extra: { "Internal id": { skip: true } } });
+  check(roles.First.role === "first" && roles.Last.role === "last" && roles.Mobile.role === "phone" && roles.Org.role === "company", "mapped columns get their role", roles);
+  check(roles.Region.role === "extra" && roles.Region.label === "Region" && roles["Internal id"].role === "skip", "unmapped columns default to extra; skipped stays skipped", roles);
+  const back = mappingFromRoles(RH, { ...roles, Region: { role: "extra", label: "Sales region" } });
+  check(JSON.stringify(back.name) === JSON.stringify({ first: "First", last: "Last" }) && JSON.stringify(back.phone) === JSON.stringify({ column: "Mobile" }) && JSON.stringify(back.email) === JSON.stringify({ none: true }), "roles build the server mapping (absent fields declared explicitly)", back);
+  check(JSON.stringify(extraColumnsOf(RH, back)) === JSON.stringify([{ column: "Region", label: "Sales region" }]), "extra columns carry the admin's label; skipped columns are left out", extraColumnsOf(RH, back));
+  check(JSON.stringify(mappingFromRoles(RH, { ...roles, Last: { role: "extra", label: "Last" } }).name) === JSON.stringify({ column: "First" }), "a lone first-name column is used as the name");
+  check(JSON.stringify(duplicateRoles({ ...roles, Org: { role: "phone" } })) === JSON.stringify(["phone"]), "a role used by two columns is reported");
+  check(validateMapping(RH, back).ok, "the built mapping validates");
   const undecided = validateMapping(H, { phone: { column: "b" } });
   check(!undecided.ok && !!undecided.errors.name && !!undecided.errors.company && !!undecided.errors.email, "name, company and email must each be chosen or explicitly declined", undecided.errors);
   check(validateMapping(H, { phone: { column: "b" }, name: { none: true }, company: { none: true }, email: { none: true } }).ok, "explicitly declining name/company/email is accepted");
@@ -464,6 +481,15 @@ console.log("\n12. update_my_lead: new fields");
     check(/Campaign not found/.test(crossErr), "importing into another workspace's campaign id is refused", crossErr);
     const seeOurs = await other.c.from("leads").select("id").in("id", created.leads);
     check((seeOurs.data ?? []).length === 0, "another workspace cannot read these leads");
+    const noPhoneFile = parseTabular(csv([["Name", "Org", "Region", "Email"], ["Nina", "Nimbus", "North", "nina@example.com"], ["", "", "", ""], ["Only region", "", "West", ""]]), "nophone.csv");
+    const noPhonePlan = await buildPlan(ctxOwn, {
+      parsed: noPhoneFile,
+      mapping: { name: { column: "Name" }, phone: { none: true }, company: { column: "Org" }, email: { column: "Email" }, extra: { Region: { label: "Sales region" } } },
+      campaigns,
+      defaultCampaignId: campA,
+    });
+    check(noPhonePlan.preview.noPhoneColumn && noPhonePlan.preview.willImport === 0 && noPhonePlan.preview.phonelessHeld === 2, "no phone column: every non-empty row is held as a contact", noPhonePlan.preview);
+    check(noPhonePlan.phoneless[0].company === "Nimbus" && noPhonePlan.phoneless[0].custom["Sales region"] === "North", "held contacts keep company and labelled extra columns", noPhonePlan.phoneless[0]);
     const ourPlanVsOther = await buildPlan(ctxOwn, { parsed: parseTabular(csv([["P"], [gbE164(1)]]), "p.csv"), mapping: { name: { none: true }, phone: { column: "P" }, company: { none: true }, email: { none: true } }, campaigns, defaultCampaignId: campA });
     check(ourPlanVsOther.preview.alreadyInWorkspace === 1, "duplicate check sees this workspace's leads");
     const guardLg = await svc.from("campaign_assignments").insert({ workspace_id: wsId, campaign_id: campB, user_id: lg.id });

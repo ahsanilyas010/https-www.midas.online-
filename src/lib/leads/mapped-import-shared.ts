@@ -43,9 +43,18 @@ export const OPTIONAL_HINTS: Record<OptionalField, string> = {
   lastContact: "When this person was last spoken to.",
 };
 
+// What to do with a column that isn't mapped to a field: keep it as extra
+// information under a label of the admin's choosing (default: the column
+// header), or leave it out of the import.
+export type ExtraPick = { label?: string; skip?: boolean };
+export const EXTRA_LABEL_MAX = 60;
+
 export interface ColumnMapping {
   name?: NamePick;
-  phone?: { column: string };
+  // { none: true } = this file has no phone numbers. Every row is then kept as
+  // a contact (with all its other columns) for an agent to find a number for;
+  // nothing can be dialled until a number is added and screened.
+  phone?: ColumnPick;
   company?: ColumnPick;
   email?: ColumnPick;
   contact?: ColumnPick;
@@ -58,6 +67,9 @@ export interface ColumnMapping {
   // Save every column that isn't mapped above on the lead as extra
   // information (leads.custom). Default true.
   keepExtra?: boolean;
+  // Per-column override for unmapped columns: a display label, or skip.
+  // Columns not listed here follow keepExtra.
+  extra?: Record<string, ExtraPick>;
   // Rows whose campaign name matches no campaign go to the step-1 campaign
   // instead of being skipped. Default false.
   fallbackToDefault?: boolean;
@@ -79,13 +91,20 @@ function colOf(p: unknown): string | null {
 }
 
 // Every field must be consciously given: a column, or an explicit "no such
-// column". Phone cannot be declined.
+// column". A file with no phone column is accepted (its rows become contacts
+// without a number), but the mapping must still say so explicitly.
 export function validateMapping(headers: string[], mapping: ColumnMapping): MappingCheck {
   const errors: MappingCheck["errors"] = {};
   const has = (c: string) => headers.includes(c);
 
   const phone = colOf(mapping.phone);
-  if (!phone) errors.phone = "Choose the column that holds the phone number. A phone number can't be skipped.";
+  if (!mapping.phone) errors.phone = "Choose the column that holds the phone number, or say this file has no phone numbers.";
+  else if (isNone(mapping.phone)) {
+    // Allowed, as long as the file carries something worth keeping.
+    if (!anythingKept(headers, mapping)) {
+      errors.phone = "This file has no phone column and nothing else is being imported. Map at least one column or keep the extra columns.";
+    }
+  } else if (!phone) errors.phone = "Choose the column that holds the phone number, or say this file has no phone numbers.";
   else if (!has(phone)) errors.phone = `The column "${phone}" isn't in this file.`;
 
   const name = mapping.name as unknown;
@@ -116,6 +135,50 @@ export function validateMapping(headers: string[], mapping: ColumnMapping): Mapp
   }
 
   return { ok: Object.keys(errors).length === 0 && Object.keys(optionalErrors(headers, mapping)).length === 0, errors: { ...errors, ...optionalErrors(headers, mapping) } };
+}
+
+// True when the mapping imports at least one thing besides the phone number.
+function anythingKept(headers: string[], mapping: ColumnMapping): boolean {
+  const m = mapping as Record<string, unknown>;
+  for (const f of [...TARGET_FIELDS, ...OPTIONAL_FIELDS]) {
+    if (f === "phone") continue;
+    const p = m[f];
+    if (p && !isNone(p)) return true;
+  }
+  return extraColumnsOf(headers, mapping).length > 0;
+}
+
+// Columns the mapping doesn't use for a field. Each is kept under its label
+// unless skipped (mapping.extra) or keepExtra is off.
+export function mappedColumns(mapping: ColumnMapping): Set<string> {
+  const used = new Set<string>();
+  const m = mapping as Record<string, unknown>;
+  for (const f of [...TARGET_FIELDS, ...OPTIONAL_FIELDS]) {
+    const p = m[f];
+    const c = colOf(p);
+    if (c) used.add(c);
+    if (p && typeof p === "object" && "first" in p && "last" in p) {
+      const { first, last } = p as { first: unknown; last: unknown };
+      if (typeof first === "string" && first) used.add(first);
+      if (typeof last === "string" && last) used.add(last);
+    }
+  }
+  return used;
+}
+
+export function extraColumnsOf(headers: string[], mapping: ColumnMapping): { column: string; label: string }[] {
+  const used = mappedColumns(mapping);
+  const keepExtra = mapping.keepExtra !== false;
+  const out: { column: string; label: string }[] = [];
+  for (const h of headers) {
+    if (used.has(h)) continue;
+    const pick = mapping.extra?.[h];
+    if (pick?.skip) continue;
+    if (!pick && !keepExtra) continue;
+    const label = (pick?.label ?? "").replace(/\s+/g, " ").trim().slice(0, EXTRA_LABEL_MAX) || h.slice(0, EXTRA_LABEL_MAX);
+    out.push({ column: h, label });
+  }
+  return out;
 }
 
 function optionalErrors(headers: string[], mapping: ColumnMapping): Partial<Record<TargetField, string>> {
@@ -251,7 +314,9 @@ export interface ImportPreview {
   campaignBreakdown: { campaignId: string; name: string; count: number }[]; // where the leads will go
   unmatchedCampaigns: PreviewIssue[]; // campaign names matching no campaign
   unmatchedCampaignCount: number;
-  extraColumns: string[]; // columns kept on the lead as extra information
+  extraColumns: string[]; // labels of the columns kept on the lead as extra information
+  noPhoneColumn: boolean; // the mapping declares the file has no phone numbers
+  heldSample: { row: number; name: string | null; company: string | null; email: string | null }[]; // first phone-less rows
   sample: {
     row: number;
     name: string | null;
@@ -284,4 +349,121 @@ export interface ImportResult {
   phonelessHeld: number;
   campaignId: string;
   campaigns: { campaignId: string; name: string; count: number }[];
+}
+
+// ------------------------------------------------------------ column roles
+//
+// The mapping step is column-centric: every column in the file gets one role.
+// These helpers translate between that view and ColumnMapping, so the server
+// contract stays the same while the admin decides, column by column, what the
+// data is.
+
+export type ColumnRole = TargetField | "first" | "last" | OptionalField | "extra" | "skip";
+export interface ColumnChoice {
+  role: ColumnRole;
+  label?: string; // for "extra": how the value is labelled on the lead
+}
+
+// Roles a file may use at most once.
+export const SINGLE_USE_ROLES: ColumnRole[] = ["name", "first", "last", "phone", "company", "email", ...OPTIONAL_FIELDS];
+
+export const ROLE_LABELS: Record<ColumnRole, string> = {
+  name: "Name (full)",
+  first: "First name",
+  last: "Last name",
+  phone: "Phone number",
+  company: "Company",
+  email: "Email",
+  contact: "Contact person",
+  website: "Website",
+  campaign: "Campaign",
+  notes: "Notes",
+  nextStep: "Next step",
+  appointment: "Appointment / follow-up date",
+  lastContact: "Last contact date",
+  extra: "Extra information (keep as is)",
+  skip: "Don't import this column",
+};
+
+export const ROLE_ORDER: ColumnRole[] = [
+  "phone",
+  "name",
+  "first",
+  "last",
+  "company",
+  "email",
+  "contact",
+  "website",
+  "campaign",
+  "notes",
+  "nextStep",
+  "appointment",
+  "lastContact",
+  "extra",
+  "skip",
+];
+
+// Starting point for the mapping step: suggestMapping()'s guesses, every
+// other column kept as extra information.
+export function rolesFromMapping(headers: string[], mapping: ColumnMapping): Record<string, ColumnChoice> {
+  const out: Record<string, ColumnChoice> = {};
+  for (const h of headers) out[h] = { role: "extra", label: h.slice(0, EXTRA_LABEL_MAX) };
+  const m = mapping as Record<string, unknown>;
+  for (const f of [...TARGET_FIELDS, ...OPTIONAL_FIELDS]) {
+    const p = m[f];
+    const c = colOf(p);
+    if (c && headers.includes(c)) out[c] = { role: f };
+    if (f === "name" && p && typeof p === "object" && "first" in p && "last" in p) {
+      const { first, last } = p as { first: string; last: string };
+      if (headers.includes(first)) out[first] = { role: "first" };
+      if (headers.includes(last)) out[last] = { role: "last" };
+    }
+  }
+  for (const [h, pick] of Object.entries(mapping.extra ?? {})) {
+    if (!headers.includes(h) || out[h].role !== "extra") continue;
+    out[h] = pick.skip ? { role: "skip" } : { role: "extra", label: pick.label ?? h };
+  }
+  return out;
+}
+
+// Roles given to more than one column (not allowed for single-use roles).
+export function duplicateRoles(roles: Record<string, ColumnChoice>): ColumnRole[] {
+  const seen = new Map<ColumnRole, number>();
+  for (const c of Object.values(roles)) seen.set(c.role, (seen.get(c.role) ?? 0) + 1);
+  return SINGLE_USE_ROLES.filter((r) => (seen.get(r) ?? 0) > 1);
+}
+
+// Builds the mapping the server expects. Fields with no column are declared
+// absent explicitly; a lone first- or last-name column is used as the name.
+export function mappingFromRoles(headers: string[], roles: Record<string, ColumnChoice>): ColumnMapping {
+  const first = (role: ColumnRole) => headers.find((h) => roles[h]?.role === role);
+  const pick = (role: ColumnRole): ColumnPick => {
+    const c = first(role);
+    return c ? { column: c } : { none: true };
+  };
+  const m: ColumnMapping = {};
+  const nameCol = first("name");
+  const firstCol = first("first");
+  const lastCol = first("last");
+  if (nameCol) m.name = { column: nameCol };
+  else if (firstCol && lastCol) m.name = { first: firstCol, last: lastCol };
+  else if (firstCol || lastCol) m.name = { column: (firstCol ?? lastCol)! };
+  else m.name = { none: true };
+  m.phone = pick("phone");
+  m.company = pick("company");
+  m.email = pick("email");
+  for (const f of OPTIONAL_FIELDS) {
+    const c = first(f);
+    if (c) m[f] = { column: c };
+  }
+  m.keepExtra = true;
+  const extra: Record<string, ExtraPick> = {};
+  for (const h of headers) {
+    const r = roles[h];
+    if (!r) continue;
+    if (r.role === "skip") extra[h] = { skip: true };
+    else if (r.role === "extra") extra[h] = { label: (r.label ?? "").trim() || h };
+  }
+  m.extra = extra;
+  return m;
 }
