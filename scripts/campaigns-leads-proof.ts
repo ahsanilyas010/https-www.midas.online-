@@ -133,10 +133,13 @@ async function main() {
     const { error: ra } = await ops.from("campaign_assignments").insert({ workspace_id: ws.id, campaign_id: campaignId!, user_id: agentAId, daily_target: 2 });
     const { error: rb } = await ops.from("campaign_assignments").insert({ workspace_id: ws.id, campaign_id: campaignId!, user_id: agentBProfile.id, daily_target: 5 });
     check("manager assigns two agents to the roster", !ra && !rb, ra?.message ?? rb?.message);
-    const { error: qaAssign } = await ops
+    // Migration 99: managers may be rostered (they dial their own uploaded data).
+    const opsId = (await ops.auth.getUser()).data.user!.id;
+    const { error: mgrAssign } = await ops
       .from("campaign_assignments")
-      .insert({ workspace_id: ws.id, campaign_id: campaignId!, user_id: (await ops.auth.getUser()).data.user!.id });
-    check("a manager cannot be put on a roster (guard trigger)", Boolean(qaAssign));
+      .insert({ workspace_id: ws.id, campaign_id: campaignId!, user_id: opsId });
+    check("a manager can be put on a roster (migration 99)", !mgrAssign, mgrAssign?.message);
+    await ops.from("campaign_assignments").delete().eq("campaign_id", campaignId!).eq("user_id", opsId);
 
     const { data: ag } = await agentA.from("campaigns").update({ name: "hacked" }).eq("id", campaignId!).select("id");
     check("agent cannot edit a campaign", (ag ?? []).length === 0);

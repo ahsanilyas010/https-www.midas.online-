@@ -22,6 +22,11 @@ export default async function DialWorkspacePage() {
   const [dispositions, dueCallbacks, workspace] = await Promise.all([listDispositions(), getDueCallbacks(), getCurrentWorkspace()]);
 
   return (
-    <DialWorkspaceClient dispositions={dispositions} initialDueCallbacks={dueCallbacks} isDemo={workspace.is_demo} />
+    <DialWorkspaceClient
+      dispositions={dispositions}
+      initialDueCallbacks={dueCallbacks}
+      isDemo={workspace.is_demo}
+      canManage={profile.role === "super_admin" || profile.role === "ops_manager"}
+    />
   );
 }

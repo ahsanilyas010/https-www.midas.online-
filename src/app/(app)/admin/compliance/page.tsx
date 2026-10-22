@@ -77,7 +77,7 @@ export default async function CompliancePage() {
             action={
               canManage && waiting === 0 ? (
                 <Link
-                  href="/admin/settings/leads"
+                  href="/admin/import"
                   className="inline-flex h-9 items-center justify-center rounded-lg bg-brand-blue px-4 text-sm font-medium text-white hover:brightness-110"
                 >
                   Upload leads

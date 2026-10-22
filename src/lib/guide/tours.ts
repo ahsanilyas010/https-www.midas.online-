@@ -54,6 +54,18 @@ const MANAGER_STEPS: TourStep[] = [
     body: "Screen leads against do-not-call lists and your own suppression list before anyone dials them, and keep a record that you did.",
   },
   {
+    id: "import",
+    target: "/admin/import",
+    title: "Upload leads",
+    body: "Bring in a CSV or Excel file, match its columns to name, phone, company and email, and check the result before it is saved. You can also call the leads yourself.",
+  },
+  {
+    id: "dial",
+    target: "/dial",
+    title: "Dial workspace",
+    body: "Managers can dial too: put yourself on a campaign's roster (or tick 'I will call these myself' when you upload) and your screened leads appear here.",
+  },
+  {
     id: "data",
     target: "/admin/data",
     title: "Data",

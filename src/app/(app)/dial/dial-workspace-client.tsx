@@ -24,10 +24,12 @@ export function DialWorkspaceClient({
   dispositions,
   initialDueCallbacks,
   isDemo,
+  canManage = false,
 }: {
   dispositions: Disposition[];
   initialDueCallbacks: Callback[];
   isDemo: boolean;
+  canManage?: boolean;
 }) {
   const [current, setCurrent] = useState<DialWorkspaceLead | null | undefined>(undefined);
   const [pulling, startPull] = useTransition();
@@ -204,7 +206,36 @@ export function DialWorkspaceClient({
                 </p>
               </div>
             ) : (
-              "No dialable leads right now — check back once new leads are uploaded or screened."
+              <div className="mx-auto flex max-w-xl flex-col gap-3 text-left" data-testid="dial-empty">
+                <p className="text-center font-medium text-ink">No dialable leads right now.</p>
+                <p>A lead is only served here when all three of these are true:</p>
+                <ol className="list-decimal space-y-1 pl-5">
+                  <li>
+                    <strong className="text-ink">It has been screened.</strong> Imported leads start as pending until a manager screens them.
+                  </li>
+                  <li>
+                    <strong className="text-ink">It is on a campaign you are on the roster of</strong>, and that campaign is active and inside its calling hours.
+                  </li>
+                  <li>
+                    <strong className="text-ink">It is assigned to you, or to nobody.</strong> Leads given to another agent are only served to them.
+                  </li>
+                </ol>
+                {canManage ? (
+                  <div className="flex flex-wrap justify-center gap-2 pt-1">
+                    <Button asChild>
+                      <Link href="/admin/import">Upload leads</Link>
+                    </Button>
+                    <Button asChild variant="secondary">
+                      <Link href="/admin/compliance">Screen leads</Link>
+                    </Button>
+                    <Button asChild variant="secondary">
+                      <Link href="/admin/campaigns">Campaign rosters</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-center">Ask your manager if leads are waiting to be screened or assigned.</p>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

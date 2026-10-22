@@ -25,7 +25,8 @@ export type NavIconName =
   | "Radar"
   | "Plug"
   | "Inbox"
-  | "Video";
+  | "Video"
+  | "Upload";
 
 export interface NavItem {
   href: string;
@@ -40,7 +41,7 @@ const MANAGERS_AND_LEADS: AppRole[] = ["super_admin", "ops_manager", "team_lead"
 // Every route here is a real, Postgres-backed screen. team_lead sees a
 // scoped subset (live floor, performance, people, attendance).
 export const NAV: NavItem[] = [
-  { href: "/dial", label: "Dial workspace", icon: "Headset", roles: ["agent"] },
+  { href: "/dial", label: "Dial workspace", icon: "Headset", roles: ["agent", ...MANAGERS] },
   { href: "/workspace/leads", label: "My leads", icon: "Users", roles: ["agent"] },
   { href: "/portal", label: "Reports", icon: "Building2", roles: ["client"] },
   { href: "/leadgen", label: "Lead gen", icon: "Radar", roles: ["lead_gen"] },
@@ -54,6 +55,7 @@ export const NAV: NavItem[] = [
   { href: "/admin/campaigns", label: "Campaigns", icon: "Megaphone", roles: MANAGERS },
   { href: "/admin/attendance", label: "Attendance", icon: "CalendarCheck", roles: MANAGERS_AND_LEADS },
   { href: "/admin/compliance", label: "Compliance", icon: "ShieldCheck", roles: MANAGERS },
+  { href: "/admin/import", label: "Upload leads", icon: "Upload", roles: MANAGERS },
   { href: "/admin/data", label: "Data", icon: "Database", roles: MANAGERS },
   { href: "/quality", label: "Quality", icon: "ShieldCheck", roles: MANAGERS },
   { href: "/portal", label: "Client reports", icon: "Building2", roles: MANAGERS },

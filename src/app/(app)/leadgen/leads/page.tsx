@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { LEADGEN_ROLES } from "../ui";
-import { VendorCsvDialog } from "../../admin/data/vendor-csv-dialog";
+import { LeadImporterDialog } from "@/components/leads/lead-importer";
 import { RegisterSourceDialog } from "../../admin/data/register-source-dialog";
 import { AddLeadDialog } from "./add-lead-dialog";
 import { LeadInbox, type InboxRow } from "./lead-inbox";
@@ -107,7 +107,9 @@ export default async function LeadInboxPage({ searchParams }: { searchParams: Pr
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <VendorCsvDialog
+          <LeadImporterDialog
+            label="Import leads"
+            isManager={profile.role !== "lead_gen"}
             campaigns={(campaigns ?? []).map((c) => ({ id: c.id, name: c.name, country: c.country }))}
             dataSources={activeSources}
           />

@@ -80,6 +80,7 @@ const TITLES: Record<string, string> = {
   attendance: "Attendance",
   compliance: "Compliance",
   data: "Data",
+  import: "Upload leads",
   security: "Security & audit",
   integrations: "Integrations",
   leads: "My leads",

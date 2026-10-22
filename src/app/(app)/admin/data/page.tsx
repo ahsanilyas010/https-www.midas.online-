@@ -7,7 +7,7 @@ import { createRealClient } from "@/lib/supabase/real";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RegisterSourceDialog } from "./register-source-dialog";
-import { VendorCsvDialog } from "./vendor-csv-dialog";
+import { LeadImporterDialog } from "@/components/leads/lead-importer";
 import { UnphonedContacts } from "./unphoned-contacts";
 
 const label = (s: string) => s.replace(/_/g, " ");
@@ -82,14 +82,14 @@ export default async function DataPage() {
                 title="Add your first leads"
                 action={
                   <Link
-                    href="/admin/settings/leads"
+                    href="/admin/import"
                     className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-brand-blue px-4 text-sm font-medium text-white hover:brightness-110"
                   >
-                    <Upload className="h-4 w-4" /> Upload a CSV
+                    <Upload className="h-4 w-4" /> Upload leads
                   </Link>
                 }
               >
-                Upload a CSV or Excel file with one lead per row. It needs a phone column; name and email are optional. Then screen the batch under Compliance so agents can dial it.
+                Upload a CSV or Excel file with one lead per row, then match its columns to Name, Phone number, Company and Email. Screen the batch under Compliance so leads can be dialled.
               </EmptyState>
             </div>
           )}
@@ -99,7 +99,10 @@ export default async function DataPage() {
             </p>
             {canManage && (
               <div className="flex gap-2">
-                <VendorCsvDialog
+                <LeadImporterDialog
+                  label="Import vendor file"
+                  isManager
+                  requireSource
                   campaigns={campaigns ?? []}
                   dataSources={activeSources.map((d) => ({ id: d.id, name: d.name }))}
                 />

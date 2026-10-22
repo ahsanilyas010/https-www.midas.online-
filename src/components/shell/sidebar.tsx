@@ -24,6 +24,7 @@ import {
   Plug,
   Inbox,
   Video,
+  Upload,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -53,6 +54,7 @@ const ICON_MAP: Record<NavIconName, LucideIcon> = {
   Plug,
   Inbox,
   Video,
+  Upload,
 };
 
 // Per-icon (not per-position) gradient so a section always keeps the same
@@ -75,6 +77,7 @@ const ICON_GRADIENT: Record<NavIconName, string> = {
   Plug: "from-[#c084fc] to-[var(--magenta)]",
   Inbox: "from-[#fbbf24] to-[#ea580c]",
   Video: "from-[#60a5fa] to-[#2563eb]",
+  Upload: "from-[#2dd4bf] to-[#0ea5e9]",
 };
 
 export interface SidebarBranding {

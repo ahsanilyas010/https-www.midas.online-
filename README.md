@@ -13,7 +13,8 @@ Product of **Assorted Business LLC** (name, address and contact details live in
 
 | Area | Route | Notes |
 |---|---|---|
-| Dial workspace | `/dial` | Compliance-gated next-lead queue, Zoom Phone Smart Embed dial pad, dispositions, callbacks |
+| Upload leads | `/admin/import` | Mapped CSV/Excel importer (super admin, ops manager); also embedded in the Lead inbox and Data |
+| Dial workspace | `/dial` | Compliance-gated next-lead queue, Zoom Phone Smart Embed dial pad, dispositions, callbacks. Agents and, since migration 99, admins/ops managers |
 | My leads | `/workspace/leads` | Agent's assigned leads, status, edit, promote phone-less contacts |
 | Live floor | `/live` | Agent states, today's calls/connects/conversions (Realtime) |
 | Performance | `/performance` | Campaign funnels, agent scorecards |
@@ -158,6 +159,37 @@ metered seat (only active `agent`s count). Demo login:
 - `npm run test:leadgen` proves the seat against the live DB (happy paths, the
   webhook handler, dry run, delivery log, hand-off, and RLS denials).
 
+### Importing leads
+
+One importer (`src/lib/leads/mapped-import.ts`, UI `src/components/leads/lead-importer.tsx`) serves
+`/admin/import`, the Lead inbox import button and the Data page's vendor import (which also requires a
+data source with a lawful basis). Steps: **1** pick a .csv/.xlsx (max 10 MB, 20,000 rows) and the campaign;
+**2** match columns; **3** review (a dry run, nothing is saved); **4** import.
+
+- **Required mapping.** Name, Phone number, Company and Email each need a column, or an explicit
+  "This file has no ..." (phone can never be skipped). Headers are auto-suggested; "Combine first and
+  last name" is offered for the name. Numbers are normalised to E.164 using the campaign's country.
+- **Optional mapping.** Campaign (a column of campaign names that must match your campaigns, case and
+  spacing ignored; unmatched rows are listed and skipped, unless you tick "use the step-1 campaign"),
+  Contact person, Website, Notes, Next step, Appointment / follow-up date-time and Last contact date
+  (common formats are read; a time with no zone is read in the campaign's timezone; unreadable dates are
+  listed in the review, the lead is still imported). "Keep my other columns as extra information"
+  (default on) saves every unmapped column in `leads.custom`. `leads.group_label` exists (migration 101)
+  but is unused: the call sheet groups leads by campaign.
+- **Review** shows counts for rows that will import, invalid numbers (row + reason), repeats in the file,
+  numbers already in the workspace and suppressed numbers (skipped), plus a sample of the cleaned result.
+  Suppressed numbers are never imported; leads always arrive `pending`.
+- **Screening** is a deliberate, manager-only step, off by default. "Run screening now" runs the manual
+  check (`screen_lead_batch`): numbers are checked against the workspace suppression list only; it is not a
+  live TPS/DNC lookup. Lead gen cannot screen or roster.
+- **Dialing your own data.** Tick "I will call these myself": the leads are assigned to you and you are put
+  on that campaign's roster (migration 99 lets super admins and ops managers be rostered). With screening
+  done, **Start dialing** opens `/dial`, which behaves exactly as for an agent. A lead is dialable only if it
+  is screened, on a campaign you are rostered on and assigned to you or to nobody. The demo workspace only
+  dials its allow-listed numbers by design.
+- Agents can edit next step, appointment, website and contact person on their own leads
+  (`update_my_lead`, optional `p_extra`).
+
 ### Zoom meetings
 
 Each workspace connects its own Zoom **Server-to-Server OAuth** app at
@@ -185,6 +217,7 @@ The same settings page carries the Zoom Phone calling checklist.
 | `npm run test:ops` | Shifts, leave, suppression, data sources, promotion |
 | `npm run test:zoommeetings` | Zoom credential storage (Vault), token caching, meeting flows against a mock Zoom, RLS, audit |
 | `npm run test:guide` | Guided setup: `setup_progress()` counts and access, `user_guide_state` RLS, new workspaces start active |
+| `npm run test:import` | Mapped importer: header suggestions, mapping rules, dates, dry run, import, call-myself + screening, role limits, isolation (uses the throwaway "ZZ Signup Test Co" workspace) |
 | `npm run test:e2e` | Browser sign-in as every role and every nav screen (needs the app running; `npx playwright install chromium` once) |
 
 ## Known limitations
@@ -192,8 +225,7 @@ The same settings page carries the Zoom Phone calling checklist.
 - **Screening is a manual stub** (`src/lib/compliance/screening.ts`): it passes a
   lead unless its number is suppressed. A real TPS/CTPS/National DNC provider
   plugs in behind the `ScreeningProvider` interface.
-- Vendor import maps phone, name, email and external reference only.
-- No UI to map CSV columns by hand; no holiday calendar; no QA template editor.
+- No holiday calendar; no QA template editor.
 - Lead status isn't advanced automatically by the dialer; agents set it.
 - No in-app call transfer, call recording or mute/hold controls: those are in
   the Zoom Phone panel. The Zoom iframe flow needs a real Zoom Phone account

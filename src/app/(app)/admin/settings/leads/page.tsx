@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { requireRealProfile } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { createRealClient } from "@/lib/supabase/real";
-import { UploadForm, ScreenButton } from "./upload-form";
+import Link from "next/link";
+import { ScreenButton } from "./screen-button";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -11,13 +12,12 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 // comment.
 export default async function LeadsSettingsPage() {
   const profile = await requireRealProfile();
-  if (!["super_admin", "ops_manager", "team_lead"].includes(profile.role)) redirect("/admin");
+  if (!["super_admin", "ops_manager"].includes(profile.role)) redirect("/start");
 
   const workspace = await getCurrentWorkspace();
   const supabase = await createRealClient();
 
-  const [{ data: campaigns }, { data: batches }] = await Promise.all([
-    supabase.from("campaigns").select("id, name").eq("workspace_id", workspace.id).order("name"),
+  const [{ data: batches }] = await Promise.all([
     supabase
       .from("lead_batches")
       .select("id, source, row_count, status, screened_at, created_at")
@@ -30,11 +30,19 @@ export default async function LeadsSettingsPage() {
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="font-display text-2xl font-semibold text-ink">Data</h1>
       <p className="mt-1 text-sm text-muted">
-        Upload leads, then mark a batch screened once it&apos;s cleared TPS/CTPS or National DNC checks.
+        Every upload batch, and whether it has been screened. Screening here is a manual check against your suppression list; it is not a live TPS/CTPS or National DNC lookup.
       </p>
 
-      <div className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-sm">
-        <UploadForm campaigns={campaigns ?? []} />
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-6 shadow-sm">
+        <p className="max-w-lg text-sm text-ink">
+          Uploading now happens in the new importer: pick a file, match its columns to name, phone number, company and email, review, then import. You can also call the leads yourself from there.
+        </p>
+        <Link
+          href="/admin/import"
+          className="inline-flex h-9 items-center justify-center rounded-lg bg-brand-blue px-4 text-sm font-medium text-white hover:brightness-110"
+        >
+          Upload leads
+        </Link>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">

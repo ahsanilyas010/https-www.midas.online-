@@ -1120,6 +1120,7 @@ export type Database = {
         Row: {
           address_line1: string | null
           agent_notes: string | null
+          appointment_at: string | null
           assigned_at: string | null
           assigned_by: string | null
           assigned_to: string | null
@@ -1130,6 +1131,7 @@ export type Database = {
           claimed_at: string | null
           claimed_by: string | null
           company_name: string | null
+          contact_name: string | null
           country_code: string | null
           created_at: string
           created_by: string | null
@@ -1138,10 +1140,13 @@ export type Database = {
           email: string | null
           first_name: string | null
           full_name: string | null
+          group_label: string | null
           id: string
           job_title: string | null
           last_attempt_at: string | null
+          last_contact_at: string | null
           last_name: string | null
+          next_step: string | null
           phone_e164: string | null
           phone_hash: string | null
           postcode: string | null
@@ -1151,11 +1156,13 @@ export type Database = {
           source: string | null
           status: string
           updated_at: string
+          website: string | null
           workspace_id: string
         }
         Insert: {
           address_line1?: string | null
           agent_notes?: string | null
+          appointment_at?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
           assigned_to?: string | null
@@ -1166,6 +1173,7 @@ export type Database = {
           claimed_at?: string | null
           claimed_by?: string | null
           company_name?: string | null
+          contact_name?: string | null
           country_code?: string | null
           created_at?: string
           created_by?: string | null
@@ -1174,10 +1182,13 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           full_name?: string | null
+          group_label?: string | null
           id?: string
           job_title?: string | null
           last_attempt_at?: string | null
+          last_contact_at?: string | null
           last_name?: string | null
+          next_step?: string | null
           phone_e164?: string | null
           phone_hash?: string | null
           postcode?: string | null
@@ -1187,11 +1198,13 @@ export type Database = {
           source?: string | null
           status?: string
           updated_at?: string
+          website?: string | null
           workspace_id: string
         }
         Update: {
           address_line1?: string | null
           agent_notes?: string | null
+          appointment_at?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
           assigned_to?: string | null
@@ -1202,6 +1215,7 @@ export type Database = {
           claimed_at?: string | null
           claimed_by?: string | null
           company_name?: string | null
+          contact_name?: string | null
           country_code?: string | null
           created_at?: string
           created_by?: string | null
@@ -1210,10 +1224,13 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           full_name?: string | null
+          group_label?: string | null
           id?: string
           job_title?: string | null
           last_attempt_at?: string | null
+          last_contact_at?: string | null
           last_name?: string | null
+          next_step?: string | null
           phone_e164?: string | null
           phone_hash?: string | null
           postcode?: string | null
@@ -1223,6 +1240,7 @@ export type Database = {
           source?: string | null
           status?: string
           updated_at?: string
+          website?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -2790,6 +2808,7 @@ export type Database = {
         Returns: {
           address_line1: string | null
           agent_notes: string | null
+          appointment_at: string | null
           assigned_at: string | null
           assigned_by: string | null
           assigned_to: string | null
@@ -2800,6 +2819,7 @@ export type Database = {
           claimed_at: string | null
           claimed_by: string | null
           company_name: string | null
+          contact_name: string | null
           country_code: string | null
           created_at: string
           created_by: string | null
@@ -2808,10 +2828,13 @@ export type Database = {
           email: string | null
           first_name: string | null
           full_name: string | null
+          group_label: string | null
           id: string
           job_title: string | null
           last_attempt_at: string | null
+          last_contact_at: string | null
           last_name: string | null
+          next_step: string | null
           phone_e164: string | null
           phone_hash: string | null
           postcode: string | null
@@ -2821,6 +2844,7 @@ export type Database = {
           source: string | null
           status: string
           updated_at: string
+          website: string | null
           workspace_id: string
         }
         SetofOptions: {
@@ -2910,6 +2934,7 @@ export type Database = {
         Returns: {
           address_line1: string | null
           agent_notes: string | null
+          appointment_at: string | null
           assigned_at: string | null
           assigned_by: string | null
           assigned_to: string | null
@@ -2920,6 +2945,7 @@ export type Database = {
           claimed_at: string | null
           claimed_by: string | null
           company_name: string | null
+          contact_name: string | null
           country_code: string | null
           created_at: string
           created_by: string | null
@@ -2928,10 +2954,13 @@ export type Database = {
           email: string | null
           first_name: string | null
           full_name: string | null
+          group_label: string | null
           id: string
           job_title: string | null
           last_attempt_at: string | null
+          last_contact_at: string | null
           last_name: string | null
+          next_step: string | null
           phone_e164: string | null
           phone_hash: string | null
           postcode: string | null
@@ -2941,6 +2970,7 @@ export type Database = {
           source: string | null
           status: string
           updated_at: string
+          website: string | null
           workspace_id: string
         }
         SetofOptions: {
@@ -2996,6 +3026,7 @@ export type Database = {
           p_city: string
           p_company_name: string
           p_email: string
+          p_extra?: Json
           p_first_name: string
           p_last_name: string
           p_lead_id: string
@@ -3006,6 +3037,7 @@ export type Database = {
         Returns: {
           address_line1: string | null
           agent_notes: string | null
+          appointment_at: string | null
           assigned_at: string | null
           assigned_by: string | null
           assigned_to: string | null
@@ -3016,6 +3048,7 @@ export type Database = {
           claimed_at: string | null
           claimed_by: string | null
           company_name: string | null
+          contact_name: string | null
           country_code: string | null
           created_at: string
           created_by: string | null
@@ -3024,10 +3057,13 @@ export type Database = {
           email: string | null
           first_name: string | null
           full_name: string | null
+          group_label: string | null
           id: string
           job_title: string | null
           last_attempt_at: string | null
+          last_contact_at: string | null
           last_name: string | null
+          next_step: string | null
           phone_e164: string | null
           phone_hash: string | null
           postcode: string | null
@@ -3037,6 +3073,7 @@ export type Database = {
           source: string | null
           status: string
           updated_at: string
+          website: string | null
           workspace_id: string
         }
         SetofOptions: {

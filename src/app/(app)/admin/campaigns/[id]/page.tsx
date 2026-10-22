@@ -148,9 +148,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         <TabsContent value="leads">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted">
-              Showing {(leads ?? []).length} of {leadTotal ?? 0}. Bulk imports are on{" "}
-              <Link href="/admin/data" className="text-brand-blue hover:underline">
-                Data
+              Showing {(leads ?? []).length} of {leadTotal ?? 0}. Bring in a whole file with{" "}
+              <Link href="/admin/import" className="text-brand-blue hover:underline">
+                Upload leads
               </Link>
               .
             </p>
@@ -231,7 +231,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 {(leads ?? []).length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted">
-                      No leads yet. Add one, import a file under Data, or post to the inbound webhook.
+                      No leads yet. Add one, upload a file under Upload leads, or post to the inbound webhook.
                     </td>
                   </tr>
                 )}
