@@ -48,7 +48,7 @@ export function LeadRowActions({
           Mark screened
         </Button>
       )}
-      {screeningStatus === "passed" && agents.length > 0 && (
+      {agents.length > 0 && (
         <Select
           value={assignedTo ?? undefined}
           onValueChange={(value) =>

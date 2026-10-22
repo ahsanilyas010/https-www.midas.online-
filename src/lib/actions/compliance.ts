@@ -127,3 +127,56 @@ export async function screenBatch(_prev: ActionResult, formData: FormData): Prom
     return { error: e instanceof Error ? e.message : "Could not screen the batch." };
   }
 }
+
+export interface ScreenAllResult {
+  error?: string;
+  ok?: boolean;
+  screened?: number;
+  batches?: number;
+}
+
+// Screens every lead in the workspace that is still pending, wherever it came
+// from: batches are stamped through screen_lead_batch() (so Screening history
+// shows the date), and leads outside any batch (added by hand, by webhook or
+// promoted from a contact) go through screen_leads(). Same manual stub as the
+// per-batch action: numbers on the suppression list fail, everything else
+// passes. Manager-only.
+export async function screenAllPending(): Promise<ScreenAllResult> {
+  const profile = await requireRealProfile();
+  if (!["super_admin", "ops_manager"].includes(profile.role)) return { error: "Only an admin can screen leads." };
+
+  const supabase = await createRealClient();
+  const { data: pending, error } = await supabase
+    .from("leads")
+    .select("id, batch_id")
+    .eq("workspace_id", profile.workspace_id)
+    .eq("screening_status", "pending")
+    .limit(20000);
+  if (error) return { error: error.message };
+  if (!pending || pending.length === 0) return { ok: true, screened: 0, batches: 0 };
+
+  const batchIds = [...new Set(pending.map((l) => l.batch_id).filter((b): b is string => Boolean(b)))];
+  const loose = pending.filter((l) => !l.batch_id).map((l) => l.id);
+
+  let screened = 0;
+  try {
+    for (const batchId of batchIds) {
+      const r = await manualScreeningProvider.screenBatch(supabase, { batchId, evidenceUrl: null });
+      screened += r.screenedCount;
+    }
+    for (let i = 0; i < loose.length; i += 500) {
+      const { data, error: sErr } = await supabase.rpc("screen_leads", { p_lead_ids: loose.slice(i, i + 500) });
+      if (sErr) throw sErr;
+      screened += data ?? 0;
+    }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not screen the pending leads." };
+  }
+
+  revalidatePath("/admin/compliance");
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/campaigns", "layout");
+  revalidatePath("/callsheet");
+  revalidatePath("/dial");
+  return { ok: true, screened, batches: batchIds.length };
+}

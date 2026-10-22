@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddSuppressionDialog } from "./add-suppression-dialog";
 import { RunScreeningDialog } from "./run-screening-dialog";
+import { ScreenAllButton } from "./screen-all-button";
 import { RemoveSuppressionButton } from "./remove-suppression-button";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 
@@ -25,7 +26,7 @@ export default async function CompliancePage() {
   const supabase = await createRealClient();
   const ws = profile.workspace_id;
 
-  const [{ data: stats }, { data: entries }, { data: batches }, { data: campaigns }] = await Promise.all([
+  const [{ data: stats }, { data: entries }, { data: batches }, { data: campaigns }, { data: pendingLeads }] = await Promise.all([
     supabase.from("v_compliance_stats").select("*").eq("workspace_id", ws).maybeSingle(),
     supabase
       .from("suppression_list")
@@ -40,7 +41,16 @@ export default async function CompliancePage() {
       .order("created_at", { ascending: false })
       .limit(30),
     supabase.from("campaigns").select("id, name").eq("workspace_id", ws),
+    // Which batches still have unscreened leads (a re-screen is only useful
+    // there), plus leads that came in outside any batch.
+    supabase.from("leads").select("batch_id").eq("workspace_id", ws).eq("screening_status", "pending").limit(20000),
   ]);
+  const pendingByBatch = new Map<string, number>();
+  let pendingLoose = 0;
+  for (const l of pendingLeads ?? []) {
+    if (l.batch_id) pendingByBatch.set(l.batch_id, (pendingByBatch.get(l.batch_id) ?? 0) + 1);
+    else pendingLoose += 1;
+  }
 
   // Resolve a readable number for entries that came from a lead (e.g. a DNC
   // disposition on a call); manual entries carry a masked hint instead.
@@ -90,7 +100,7 @@ export default async function CompliancePage() {
             }
           >
             Screening checks each lead&apos;s number against do-not-call rules and your suppression list. Only leads that pass can be dialled.
-            {waiting > 0 ? " Find the batch below and choose Screen." : " Upload some leads, then screen them here."}
+            {waiting > 0 ? " Use the Screen button in Screening history below." : " Upload some leads, then screen them here."}
           </EmptyState>
         </div>
       )}
@@ -117,8 +127,9 @@ export default async function CompliancePage() {
       )}
 
       <Card className="mb-4 animate-slide-up">
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Screening history</CardTitle>
+          {canManage && <ScreenAllButton pending={waiting} />}
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
@@ -127,30 +138,65 @@ export default async function CompliancePage() {
                 <th className="px-4 py-2 font-medium">Batch</th>
                 <th className="px-4 py-2 font-medium">Campaign</th>
                 <th className="px-4 py-2 font-medium">Rows</th>
+                <th className="px-4 py-2 font-medium">Pending</th>
                 <th className="px-4 py-2 font-medium">Screened</th>
                 <th className="px-4 py-2 font-medium">Evidence</th>
                 <th className="px-4 py-2 font-medium" />
               </tr>
             </thead>
             <tbody>
-              {(batches ?? []).map((b) => (
-                <tr key={b.id} className="h-[38px] border-b border-line last:border-0">
-                  <td className="px-4 py-1.5 font-medium text-ink">{b.source ?? "Batch"}</td>
-                  <td className="px-4 py-1.5 text-xs text-muted">{b.campaign_id ? campaignName.get(b.campaign_id) ?? "—" : "—"}</td>
-                  <td className="px-4 py-1.5 tabular text-muted">{b.row_count}</td>
+              {(batches ?? []).map((b) => {
+                const pendingHere = pendingByBatch.get(b.id) ?? 0;
+                return (
+                  <tr key={b.id} className="h-[38px] border-b border-line last:border-0">
+                    <td className="px-4 py-1.5 font-medium text-ink">
+                      <Link href={`/admin/leads?batch=${b.id}`} className="hover:underline" title="View the leads in this batch">
+                        {b.source ?? "Batch"}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-1.5 text-xs text-muted">
+                      {b.campaign_id ? (campaignName.get(b.campaign_id) ?? "—") : <Badge variant="warning">No campaign</Badge>}
+                    </td>
+                    <td className="px-4 py-1.5 tabular text-muted">{b.row_count}</td>
+                    <td className="px-4 py-1.5 tabular text-xs">
+                      {pendingHere > 0 ? <Badge variant="warning">{pendingHere}</Badge> : <span className="text-muted">0</span>}
+                    </td>
+                    <td className="px-4 py-1.5 text-xs text-muted">
+                      {b.screened_at ? fmtDateTime(b.screened_at, profile.timezone) : <Badge variant="warning">Not screened</Badge>}
+                    </td>
+                    <td className="px-4 py-1.5 text-xs text-muted">{b.evidence_url ? "On file" : "None"}</td>
+                    <td className="px-4 py-1.5 text-right">
+                      {canManage && (
+                        <RunScreeningDialog
+                          batchId={b.id}
+                          label={b.source ?? "Batch"}
+                          pending={pendingHere}
+                          screenedBefore={Boolean(b.screened_at)}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {pendingLoose > 0 && (
+                <tr className="h-[38px] border-b border-line last:border-0">
+                  <td className="px-4 py-1.5 font-medium text-ink">Leads added outside a batch</td>
+                  <td className="px-4 py-1.5 text-xs text-muted">—</td>
+                  <td className="px-4 py-1.5 tabular text-muted">{pendingLoose}</td>
+                  <td className="px-4 py-1.5 tabular text-xs">
+                    <Badge variant="warning">{pendingLoose}</Badge>
+                  </td>
                   <td className="px-4 py-1.5 text-xs text-muted">
-                    {b.screened_at ? fmtDateTime(b.screened_at, profile.timezone) : <Badge variant="warning">Not screened</Badge>}
+                    <Badge variant="warning">Not screened</Badge>
                   </td>
-                  <td className="px-4 py-1.5 text-xs text-muted">{b.evidence_url ? "On file" : "None"}</td>
-                  <td className="px-4 py-1.5 text-right">
-                    {canManage && !b.screened_at && <RunScreeningDialog batchId={b.id} label={b.source ?? "Batch"} />}
-                  </td>
+                  <td className="px-4 py-1.5 text-xs text-muted">—</td>
+                  <td className="px-4 py-1.5 text-right text-xs text-muted">Use the button above</td>
                 </tr>
-              ))}
-              {(batches ?? []).length === 0 && (
+              )}
+              {(batches ?? []).length === 0 && pendingLoose === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
-                    No lead batches yet. Upload leads under Settings, then screen them here.
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
+                    No lead batches yet. Upload leads under Upload leads, then screen them here.
                   </td>
                 </tr>
               )}

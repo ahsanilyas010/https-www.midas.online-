@@ -54,6 +54,7 @@ export const NAV: NavItem[] = [
   { href: "/performance", label: "Performance", icon: "BarChart3", roles: MANAGERS_AND_LEADS },
   { href: "/admin/people", label: "People", icon: "Users", roles: MANAGERS_AND_LEADS },
   { href: "/admin/campaigns", label: "Campaigns", icon: "Megaphone", roles: MANAGERS },
+  { href: "/admin/leads", label: "Leads", icon: "Inbox", roles: MANAGERS },
   { href: "/admin/attendance", label: "Attendance", icon: "CalendarCheck", roles: MANAGERS_AND_LEADS },
   { href: "/admin/compliance", label: "Compliance", icon: "ShieldCheck", roles: MANAGERS },
   { href: "/admin/import", label: "Upload leads", icon: "Upload", roles: MANAGERS },

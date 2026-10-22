@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
+import { ensureOnRosters } from "@/lib/leads/roster";
 
 export interface ActionResult {
   error?: string;
@@ -97,15 +98,27 @@ export async function assignLead(leadId: string, userId: string | null): Promise
   const supabase = await createRealClient();
   const { data, error } = await supabase
     .from("leads")
-    .update({ assigned_to: userId })
+    .update({ assigned_to: userId, ...(userId ? { assigned_by: profile.id } : {}) })
     .eq("id", leadId)
     .eq("workspace_id", profile.workspace_id)
-    .select("id");
+    .select("id, campaign_id");
   if (error) return { error: error.message };
   if (!data || data.length === 0) {
     return { error: "That lead couldn't be assigned. It may not exist, or you may not have access to it." };
   }
+  // The agent must be on the campaign roster to be served (or even shown) the
+  // lead, so assigning puts them on it.
+  if (userId) {
+    try {
+      await ensureOnRosters(supabase, profile.workspace_id, userId, data.map((l) => l.campaign_id));
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Assigned, but couldn't update the campaign roster." };
+    }
+  }
   revalidatePath("/admin/campaigns", "layout");
+  revalidatePath("/admin/leads");
+  revalidatePath("/callsheet");
+  revalidatePath("/dial");
   return { ok: true };
 }
 

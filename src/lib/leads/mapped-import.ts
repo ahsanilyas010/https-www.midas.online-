@@ -7,6 +7,7 @@ import { countryToRegion } from "@/lib/campaign-options";
 import { manualScreeningProvider } from "@/lib/compliance/screening";
 import {
   IMPORT_LIMITS,
+  extraColumnsOf,
   normalizeHeaders,
   validateMapping,
   type ColumnMapping,
@@ -249,6 +250,8 @@ export interface PhonelessRow {
   row: number;
   name: string | null;
   email: string | null;
+  company: string | null;
+  custom: Record<string, string>; // every other column, so nothing is lost
   campaignId: string;
   region: string;
 }
@@ -290,8 +293,10 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
   const m = input.mapping;
   const nameCols = m.name && "first" in m.name ? { first: m.name.first, last: m.name.last } : null;
   const nameCol = m.name && "column" in m.name ? m.name.column : undefined;
-  const phoneCol = m.phone!.column;
   const optCol = (p: ColumnPick | undefined) => (p && "column" in p ? p.column : undefined);
+  // No phone column at all: every row is held as a contact without a number.
+  const phoneCol = optCol(m.phone);
+  const noPhoneColumn = phoneCol === undefined;
   const companyCol = optCol(m.company);
   const emailCol = optCol(m.email);
   const contactCol = optCol(m.contact);
@@ -305,14 +310,11 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
   const byName = new Map<string, CampaignInfo>();
   for (const c of input.campaigns) if (!byName.has(normCampaign(c.name))) byName.set(normCampaign(c.name), c);
 
-  // Columns not used by any mapping: kept on the lead as extra information.
-  const used = new Set<string>(
-    [phoneCol, nameCol, nameCols?.first, nameCols?.last, companyCol, emailCol, contactCol, websiteCol, notesCol, nextStepCol, apptCol, lastCol, campaignCol].filter(
-      (c): c is string => Boolean(c),
-    ),
-  );
+  // Columns not used by any mapping: kept on the lead as extra information
+  // under the label the admin chose (default: the column header).
   const keepExtra = m.keepExtra !== false;
-  const extraCols = keepExtra ? input.parsed.headers.filter((h) => !used.has(h)).slice(0, CUSTOM_MAX_KEYS) : [];
+  const extraCols = extraColumnsOf(input.parsed.headers, m).slice(0, CUSTOM_MAX_KEYS);
+  const extraLabels = extraCols.map((e) => e.label);
 
   const invalid: PreviewIssue[] = [];
   let invalidCount = 0;
@@ -358,11 +360,32 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
       ignoredEmails += 1;
       email = null;
     }
+    const custom: Record<string, string> = {};
+    for (const e of extraCols) {
+      const v = at(r, e.column).trim();
+      if (v) custom[e.label.slice(0, CUSTOM_KEY_MAX)] = v.slice(0, CUSTOM_VALUE_MAX);
+    }
+
     const rawPhone = at(r, phoneCol);
-    const parsed = toE164(rawPhone, region);
+    const parsed = noPhoneColumn ? { reason: "No phone column in this file" } : toE164(rawPhone, region);
     if ("reason" in parsed) {
-      if (!rawPhone.trim() && input.holdPhoneless && (name || email)) {
-        phoneless.push({ row: rowNo, name, email, campaignId: campaign.id, region });
+      // A row with no number but something else worth keeping (a name, email,
+      // company or any extra column) is held as a contact; its other mapped
+      // details ride along in custom so nothing in the file is lost.
+      const hasContent = Boolean(name || email || company || Object.keys(custom).length > 0);
+      if ((noPhoneColumn || !rawPhone.trim()) && (input.holdPhoneless || noPhoneColumn) && hasContent) {
+        const held = { ...custom };
+        const keep = (label: string, col: string | undefined, max: number) => {
+          const v = text(r, col, max);
+          if (v) held[label] = v;
+        };
+        keep("Contact person", contactCol, 200);
+        keep("Website", websiteCol, 300);
+        keep("Notes", notesCol, 500);
+        keep("Next step", nextStepCol, 500);
+        keep("Appointment / follow-up", apptCol, 100);
+        keep("Last contact", lastCol, 100);
+        phoneless.push({ row: rowNo, name, email, company, custom: held, campaignId: campaign.id, region });
         return;
       }
       invalidCount += 1;
@@ -378,11 +401,6 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
     }
     firstSeenRow.set(hash, rowNo);
 
-    const custom: Record<string, string> = {};
-    for (const h of extraCols) {
-      const v = at(r, h).trim();
-      if (v) custom[h.slice(0, CUSTOM_KEY_MAX)] = v.slice(0, CUSTOM_VALUE_MAX);
-    }
     const date = (col: string | undefined, label: string): Date | null => {
       const raw = at(r, col).trim();
       if (!raw) return null;
@@ -464,7 +482,9 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
       campaignBreakdown: [...perCampaign.values()].sort((a, b) => b.count - a.count),
       unmatchedCampaigns: unmatched,
       unmatchedCampaignCount: unmatchedCount,
-      extraColumns: extraCols,
+      extraColumns: extraLabels,
+      noPhoneColumn,
+      heldSample: phoneless.slice(0, 6).map((p) => ({ row: p.row, name: p.name, company: p.company, email: p.email })),
       sample: toImport.slice(0, 6).map((c) => ({
         row: c.row,
         name: c.name,

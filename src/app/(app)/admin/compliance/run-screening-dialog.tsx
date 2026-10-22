@@ -22,7 +22,17 @@ function SubmitButton() {
   );
 }
 
-export function RunScreeningDialog({ batchId, label }: { batchId: string; label: string }) {
+export function RunScreeningDialog({
+  batchId,
+  label,
+  pending = 0,
+  screenedBefore = false,
+}: {
+  batchId: string;
+  label: string;
+  pending?: number; // leads in this batch still waiting
+  screenedBefore?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(screenBatch, initialState);
   const router = useRouter();
@@ -37,14 +47,21 @@ export function RunScreeningDialog({ batchId, label }: { batchId: string; label:
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-        <ShieldCheck className="h-3.5 w-3.5" /> Screen
+      <Button size="sm" variant={pending > 0 ? "primary" : "secondary"} onClick={() => setOpen(true)} data-testid="screen-batch">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        {!screenedBefore ? "Screen" : pending > 0 ? `Screen ${pending} pending` : "Screen again"}
       </Button>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Screen batch</DialogTitle>
           <DialogDescription>
-            {label}. This records the screening and stamps the batch&rsquo;s pending leads as passed. It does not
+            {label}.{" "}
+            {pending > 0
+              ? `${pending} lead${pending === 1 ? "" : "s"} in this batch ${pending === 1 ? "is" : "are"} waiting to be screened. `
+              : screenedBefore
+                ? "Every lead in this batch has already been screened; running it again only updates the screening date and lets you attach evidence. "
+                : ""}
+            This records the screening and stamps the batch&rsquo;s pending leads as passed. It does not
             query TPS, CTPS or the National DNC registry: run that check with your bureau first and attach its
             response as evidence. Numbers on the suppression list stay undialable regardless.
           </DialogDescription>
