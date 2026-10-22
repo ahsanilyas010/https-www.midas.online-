@@ -84,7 +84,7 @@ export function UnphonedContacts({
               <td className="px-3 py-1.5 text-xs">
                 {canManage && !r.promoted ? (
                   <select
-                    className="h-8 rounded-md border border-line bg-white px-2 text-xs"
+                    className="h-8 rounded-md border border-line bg-white pl-2 text-xs"
                     disabled={pending}
                     value={r.assigned_to ?? ""}
                     onChange={(e) => assign(r.id, e.target.value)}
