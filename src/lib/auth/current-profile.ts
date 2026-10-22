@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createRealClient } from "@/lib/supabase/real";
 import type { RealTables } from "@/lib/supabase/real-types";
@@ -8,7 +9,11 @@ export type RealProfile = Profile;
 // The signed-in user's profile from the real, RLS-governed Postgres
 // (Supabase Auth session cookie -> profiles row). Every signed-in page and
 // action goes through this; there is no other identity source.
-export async function requireProfile(): Promise<Profile> {
+//
+// Wrapped in React's cache(): the layout, the page and every helper each call
+// this during one request, and each uncached call is two round trips to the
+// auth server and the database. Cached, it runs once per request.
+export const requireProfile = cache(async (): Promise<Profile> => {
   const supabase = await createRealClient();
   const {
     data: { user },
@@ -25,11 +30,11 @@ export async function requireProfile(): Promise<Profile> {
   if (profile.must_change_password) redirect("/change-password");
 
   return profile;
-}
+});
 
 // Same as requireProfile() but without the forced-password-change redirect
 // (the change-password page itself uses it).
-export async function requireRealProfile(): Promise<Profile> {
+export const requireRealProfile = cache(async (): Promise<Profile> => {
   const supabase = await createRealClient();
   const {
     data: { user },
@@ -40,7 +45,7 @@ export async function requireRealProfile(): Promise<Profile> {
 
   if (!profile) redirect("/login?signed_out=1");
   return profile;
-}
+});
 
 // Role gate: redirects to the user's own home when the role isn't allowed.
 export async function requireRole(roles: Profile["role"][]): Promise<Profile> {
