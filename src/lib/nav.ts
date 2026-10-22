@@ -26,7 +26,8 @@ export type NavIconName =
   | "Plug"
   | "Inbox"
   | "Video"
-  | "Upload";
+  | "Upload"
+  | "ClipboardList";
 
 export interface NavItem {
   href: string;
@@ -42,7 +43,7 @@ const MANAGERS_AND_LEADS: AppRole[] = ["super_admin", "ops_manager", "team_lead"
 // scoped subset (live floor, performance, people, attendance).
 export const NAV: NavItem[] = [
   { href: "/dial", label: "Dial workspace", icon: "Headset", roles: ["agent", ...MANAGERS] },
-  { href: "/workspace/leads", label: "My leads", icon: "Users", roles: ["agent"] },
+  { href: "/callsheet", label: "Call sheet", icon: "ClipboardList", roles: ["agent", "team_lead", ...MANAGERS] },
   { href: "/portal", label: "Reports", icon: "Building2", roles: ["client"] },
   { href: "/leadgen", label: "Lead gen", icon: "Radar", roles: ["lead_gen"] },
   { href: "/leadgen/leads", label: "Lead inbox", icon: "Inbox", roles: ["lead_gen"] },

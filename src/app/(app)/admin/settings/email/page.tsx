@@ -4,7 +4,7 @@ import { requireRealProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { EmailTemplatesClient } from "./email-templates-client";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Email settings", robots: { index: false, follow: false } };
 
 export default async function EmailSettingsPage() {
   const profile = await requireRealProfile();

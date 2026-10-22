@@ -189,9 +189,9 @@ const AGENT_STEPS: TourStep[] = [
   },
   {
     id: "leads",
-    target: "/workspace/leads",
-    title: "My leads",
-    body: "All the leads assigned to you, with their status. Open one to read its history or update it.",
+    target: "/callsheet",
+    title: "Call sheet",
+    body: "Every lead you can call, in one board with a column per campaign. Overdue and upcoming ones sit at the top; press a green bar to dial it.",
   },
   {
     id: "meetings",

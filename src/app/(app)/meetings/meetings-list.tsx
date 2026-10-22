@@ -160,7 +160,7 @@ export function MeetingsList({
                       {t.empty}{" "}
                       {meetings.length === 0 &&
                         (connected
-                          ? "Book one from a lead on My leads or the dial screen."
+                          ? "Book one from a lead on the Call sheet or the dial screen."
                           : "Zoom needs to be connected first (Settings > Zoom).")}
                     </td>
                   </tr>

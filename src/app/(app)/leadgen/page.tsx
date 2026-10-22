@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, CalendarRange, CheckCircle2, Clock, Inbox, ShieldAlert, UserCheck, Users } from "lucide-react";
 import { requireRole } from "@/lib/auth/current-profile";
@@ -7,6 +8,8 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import { EMPTY_STATS, LEADGEN_ROLES, OutcomeBadge, fmtDateTime, type LeadGenStats } from "./ui";
 import { SourceTrendChart } from "./source-trend-chart";
+
+export const metadata: Metadata = { title: "Lead gen" };
 
 const DAYS = 14;
 

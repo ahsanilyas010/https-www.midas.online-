@@ -54,7 +54,7 @@ const leadSchema = z.object({
 // in as screening_status = 'pending' (phone_hash is computed by the
 // database trigger) and is only dialable once screened. Without a phone
 // number it is stored as a contact that still needs a number, which the
-// assigned agent can promote from "My leads".
+// assigned agent can promote from the Call sheet.
 export async function createManualLead(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const profile = await requireProfile();
   if (!MANAGER_ROLES.includes(profile.role)) return { error: "Only an admin can add leads." };
@@ -106,7 +106,7 @@ export async function createManualLead(_prev: ActionResult, formData: FormData):
     });
     if (error) return { error: error.message };
     revalidatePath("/admin/campaigns", "layout");
-    revalidatePath("/workspace/leads");
+    revalidatePath("/callsheet");
     return { ok: true, note: "Saved as a contact that still needs a phone number." };
   }
 

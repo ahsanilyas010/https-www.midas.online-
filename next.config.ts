@@ -11,6 +11,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Lets parallel builds/servers use separate output folders (NEXT_DIST_DIR=.next-a).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   // The lead importer posts a whole CSV/Excel file (10 MB max) to a server action.
   experimental: { serverActions: { bodySizeLimit: "11mb" } },
@@ -40,6 +42,7 @@ const nextConfig: NextConfig = {
       { source: "/qa", destination: "/quality", permanent: false },
       { source: "/client", destination: "/portal", permanent: false },
       { source: "/workspace", destination: "/dial", permanent: false },
+      { source: "/workspace/leads", destination: "/callsheet", permanent: false },
       // The old setup wizard was replaced by the dashboard checklist and tour.
       { source: "/onboarding", destination: "/start", permanent: true },
       { source: "/onboarding/:path*", destination: "/start", permanent: true },

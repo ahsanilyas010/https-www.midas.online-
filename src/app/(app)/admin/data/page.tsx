@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Upload } from "lucide-react";
@@ -6,9 +7,12 @@ import { requireProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RegisterSourceDialog } from "./register-source-dialog";
+import { RegisterSourceDialog } from "@/components/leads/register-source-dialog";
 import { LeadImporterDialog } from "@/components/leads/lead-importer";
+import { EditSourceDialog } from "@/components/leads/edit-source-dialog";
 import { UnphonedContacts } from "./unphoned-contacts";
+
+export const metadata: Metadata = { title: "Data" };
 
 const label = (s: string) => s.replace(/_/g, " ");
 
@@ -102,16 +106,15 @@ export default async function DataPage() {
                 <LeadImporterDialog
                   label="Import vendor file"
                   isManager
-                  requireSource
                   campaigns={campaigns ?? []}
-                  dataSources={activeSources.map((d) => ({ id: d.id, name: d.name }))}
+                  dataSources={activeSources.map((d) => ({ id: d.id, name: d.name, needsReview: d.lawful_basis === "unspecified" }))}
                 />
                 <RegisterSourceDialog />
               </div>
             )}
           </div>
-          <div className="overflow-hidden rounded-lg border border-line bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
                   <th className="px-3 py-2 font-medium">Name</th>
@@ -119,6 +122,11 @@ export default async function DataPage() {
                   <th className="px-3 py-2 font-medium">Market</th>
                   <th className="px-3 py-2 font-medium">Lawful basis</th>
                   <th className="px-3 py-2 font-medium">Status</th>
+                  {canManage && (
+                    <th className="px-3 py-2 text-right font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -127,15 +135,22 @@ export default async function DataPage() {
                     <td className="px-3 py-1.5 font-medium text-ink">{d.name}</td>
                     <td className="px-3 py-1.5 text-xs text-muted">{label(d.source_type)}</td>
                     <td className="px-3 py-1.5 text-xs text-muted">{d.market ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-xs text-muted">{label(d.lawful_basis)}</td>
+                    <td className="px-3 py-1.5 text-xs text-muted">
+                      {d.lawful_basis === "unspecified" ? <Badge variant="warning">Needs review</Badge> : label(d.lawful_basis)}
+                    </td>
                     <td className="px-3 py-1.5">
                       {d.is_active ? <Badge variant="confirm">Active</Badge> : <Badge variant="neutral">Inactive</Badge>}
                     </td>
+                    {canManage && (
+                      <td className="px-3 py-1.5 text-right">
+                        <EditSourceDialog source={d} />
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {(sources ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-sm text-muted">
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-muted">
                       No sources registered yet.
                     </td>
                   </tr>
@@ -147,8 +162,8 @@ export default async function DataPage() {
 
         <TabsContent value="history">
           <p className="mb-3 text-xs text-muted">Last 30 imports, across every source.</p>
-          <div className="overflow-hidden rounded-lg border border-line bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
                   <th className="px-3 py-2 font-medium">Source</th>
@@ -201,8 +216,8 @@ export default async function DataPage() {
             Per source, from first import to conversion. A source with many leads loaded but few passing screening is
             worth revisiting before the next import.
           </p>
-          <div className="overflow-hidden rounded-lg border border-line bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
                   <th className="px-3 py-2 font-medium">Source</th>

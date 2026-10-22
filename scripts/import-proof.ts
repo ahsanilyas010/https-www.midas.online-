@@ -163,6 +163,7 @@ async function main() {
     leads: [] as string[],
     clients: [] as string[],
     supp: [] as string[],
+    sources: [] as string[],
     paths: [] as string[],
   };
 
@@ -209,6 +210,16 @@ async function main() {
     };
     const countLeads = async () => (await svc.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", wsId)).count ?? 0;
     const countBatches = async () => (await svc.from("lead_batches").select("id", { count: "exact", head: true }).eq("workspace_id", wsId)).count ?? 0;
+
+    // Every import must name a data source (and so a recorded lawful basis).
+    const { data: srcRow, error: srcErr } = await svc
+      .from("data_sources")
+      .insert({ workspace_id: wsId, name: `Import proof ${stamp}`, source_type: "client_supplied", lawful_basis: "legitimate_interest" })
+      .select("id")
+      .single();
+    if (srcErr || !srcRow) throw new Error(`data source: ${srcErr?.message}`);
+    const srcId = srcRow.id;
+    created.sources.push(srcId);
 
     // fixtures the importer must respect
     const existingPhone = gbE164(50);
@@ -277,7 +288,7 @@ async function main() {
     check((await countLeads()) === beforeLeads && (await countBatches()) === beforeBatches, "dry run saved nothing (no leads, no batch)");
 
     console.log("\n6. Real import (no options)");
-    const res1 = await runMappedImport(ctxOwn, { parsed: parsed1, mapping: fullMap, campaigns, defaultCampaignId: campA, timezone: "Europe/London", filename: "leads.csv", fileBytes: file1, contentType: "text/csv", plan: plan1 });
+    const res1 = await runMappedImport(ctxOwn, { parsed: parsed1, mapping: fullMap, campaigns, defaultCampaignId: campA, timezone: "Europe/London", dataSourceId: srcId, filename: "leads.csv", fileBytes: file1, contentType: "text/csv", plan: plan1 });
     trackBatch(res1.batchId);
     const l1 = await leadsOf(res1.batchId);
     check(res1.imported === 3 && l1.length === 3, "batch created with 3 leads", l1.length);
@@ -331,7 +342,7 @@ async function main() {
     check(planC.toImport.find((t) => t.name === "C Four")?.campaignId === campA, "blank campaign cell uses the step-1 campaign");
     const planCfb = await buildPlan(ctxOwn, { parsed: parseTabular(fileC, "c.csv"), mapping: { ...mapC, fallbackToDefault: true }, campaigns, defaultCampaignId: campA });
     check(planCfb.preview.willImport === 4 && planCfb.preview.unmatchedCampaignCount === 0, "with the fallback ticked the unknown name goes to the step-1 campaign");
-    const resC = await runMappedImport(ctxOwn, { parsed: parseTabular(fileC, "c.csv"), mapping: mapC, campaigns, defaultCampaignId: campA, filename: "c.csv", fileBytes: fileC });
+    const resC = await runMappedImport(ctxOwn, { parsed: parseTabular(fileC, "c.csv"), mapping: mapC, campaigns, defaultCampaignId: campA, dataSourceId: srcId, filename: "c.csv", fileBytes: fileC });
     trackBatch(resC.batchId);
     const lC = await leadsOf(resC.batchId);
     const [nA, nB] = [lC.filter((l) => l.campaign_id === campA).length, lC.filter((l) => l.campaign_id === campB).length];
@@ -345,7 +356,7 @@ async function main() {
     // agent on the same campaign, to prove they are never served the admin's leads
     const { error: agRoster } = await svc.from("campaign_assignments").insert({ workspace_id: wsId, campaign_id: campA, user_id: ag.id });
     check(!agRoster, "agent put on campaign A's roster", agRoster?.message);
-    const resM = await runMappedImport(ctxOwn, { parsed: parseTabular(fileM, "m.csv"), mapping: mapM, campaigns, defaultCampaignId: campA, filename: "m.csv", fileBytes: fileM, callMyself: true });
+    const resM = await runMappedImport(ctxOwn, { parsed: parseTabular(fileM, "m.csv"), mapping: mapM, campaigns, defaultCampaignId: campA, dataSourceId: srcId, filename: "m.csv", fileBytes: fileM, callMyself: true });
     trackBatch(resM.batchId);
     const lM = await leadsOf(resM.batchId);
     const { data: b3 } = await svc.from("lead_batches").select("storage_path").eq("id", resM.batchId).single();
@@ -366,7 +377,7 @@ async function main() {
 
     console.log("\n10. 'Run screening now' at import time");
     const fileS = csv([["Name", "Phone"], ["Screen One", gb(31)], ["Screen Two", gb(32)]]);
-    const resS = await runMappedImport(ctxOwn, { parsed: parseTabular(fileS, "s.csv"), mapping: mapM, campaigns, defaultCampaignId: campA, filename: "s.csv", fileBytes: fileS, callMyself: true, screenNow: true });
+    const resS = await runMappedImport(ctxOwn, { parsed: parseTabular(fileS, "s.csv"), mapping: mapM, campaigns, defaultCampaignId: campA, dataSourceId: srcId, filename: "s.csv", fileBytes: fileS, callMyself: true, screenNow: true });
     trackBatch(resS.batchId);
     const lS = await leadsOf(resS.batchId);
     const { data: b4 } = await svc.from("lead_batches").select("storage_path, screened_at").eq("id", resS.batchId).single();
@@ -389,7 +400,7 @@ async function main() {
     console.log("\n11. Role limits");
     const noOpts = async (ctx: typeof ctxLg, o: { callMyself?: boolean; screenNow?: boolean }) => {
       try {
-        await runMappedImport(ctx, { parsed: parseTabular(fileM, "m.csv"), mapping: mapM, campaigns, defaultCampaignId: campA, filename: "m.csv", fileBytes: fileM, ...o });
+        await runMappedImport(ctx, { parsed: parseTabular(fileM, "m.csv"), mapping: mapM, campaigns, defaultCampaignId: campA, dataSourceId: srcId, filename: "m.csv", fileBytes: fileM, ...o });
         return null;
       } catch (e) {
         return e instanceof Error ? e.message : String(e);
@@ -408,7 +419,7 @@ async function main() {
     const fileL = csv([["Name", "Phone"], ["LG One", gb(41)], ["LG Dupe Existing", existingPhone], ["LG Suppressed", suppressedPhone]]);
     const planL = await buildPlan(ctxLg, { parsed: parseTabular(fileL, "l.csv"), mapping: mapM, campaigns: lgCamps, defaultCampaignId: campA });
     check(planL.preview.willImport === 1 && planL.preview.alreadyInWorkspace === 1 && planL.preview.suppressed === 1, "lead_gen still gets existing/suppressed counts (hashes only)", planL.preview);
-    const resL = await runMappedImport(ctxLg, { parsed: parseTabular(fileL, "l.csv"), mapping: mapM, campaigns: lgCamps, defaultCampaignId: campA, filename: "l.csv", fileBytes: fileL, plan: planL });
+    const resL = await runMappedImport(ctxLg, { parsed: parseTabular(fileL, "l.csv"), mapping: mapM, campaigns: lgCamps, defaultCampaignId: campA, dataSourceId: srcId, filename: "l.csv", fileBytes: fileL, plan: planL });
     trackBatch(resL.batchId);
     const lL = await leadsOf(resL.batchId);
     const { data: b5 } = await svc.from("lead_batches").select("storage_path").eq("id", resL.batchId).single();
@@ -470,6 +481,10 @@ console.log("\n12. update_my_lead: new fields");
         await svc.from("leads").delete().in("campaign_id", created.campaigns);
         await svc.from("lead_batches").delete().in("campaign_id", created.campaigns);
         await svc.from("campaigns").delete().in("id", created.campaigns);
+      }
+      if (created.sources.length) {
+        await svc.from("source_fetch_runs").delete().in("data_source_id", created.sources);
+        await svc.from("data_sources").delete().in("id", created.sources);
       }
       if (created.clients.length) await svc.from("clients").delete().in("id", created.clients);
       if (created.supp.length) await svc.from("suppression_list").delete().in("id", created.supp);

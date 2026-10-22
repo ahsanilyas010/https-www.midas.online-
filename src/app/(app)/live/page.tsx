@@ -6,7 +6,7 @@ import { getLiveFloorData } from "@/lib/actions/live-floor";
 import { getMyLatestEvent } from "@/lib/actions/attendance-v2";
 import { LiveFloorClient } from "./live-floor-client";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Live floor", robots: { index: false, follow: false } };
 
 const STAFF_ROLES = ["super_admin", "ops_manager", "team_lead", "agent", "qa_analyst"];
 

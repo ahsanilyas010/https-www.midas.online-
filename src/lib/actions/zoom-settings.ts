@@ -25,12 +25,12 @@ async function verifyAndStore(workspaceId: string): Promise<ZoomSettingsState> {
   if (!creds) return { error: "No Zoom credentials saved." };
   clearZoomTokenCache(workspaceId);
   try {
-    const me = await verifyZoomCredentials(creds);
+    await verifyZoomCredentials(creds);
     await admin
       .from("zoom_credentials")
       .update({ status: "connected", verified_at: new Date().toISOString(), last_error: null })
       .eq("workspace_id", workspaceId);
-    return { ok: true, message: me.email ? `Connected (app owner ${me.email}).` : "Connected." };
+    return { ok: true, message: "Connected to Zoom." };
   } catch (e) {
     const msg = e instanceof ZoomError ? e.message : "Verification failed.";
     await admin.from("zoom_credentials").update({ status: "error", verified_at: null, last_error: msg }).eq("workspace_id", workspaceId);

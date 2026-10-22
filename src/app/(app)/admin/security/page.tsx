@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { createServiceClient } from "@/lib/supabase/service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "Security & audit" };
 
 export default async function SecurityPage() {
   const profile = await requireRole(["super_admin"]);

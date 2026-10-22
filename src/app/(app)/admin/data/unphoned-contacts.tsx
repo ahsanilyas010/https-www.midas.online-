@@ -63,8 +63,8 @@ export function UnphonedContacts({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-white">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-lg border border-line bg-white">
+      <table className="w-full min-w-[640px] text-sm">
         <thead>
           <tr className="border-b border-line bg-canvas text-left text-xs text-muted">
             <th className="px-3 py-2 font-medium">Contact</th>

@@ -6,6 +6,7 @@ import {
   pullNextLead,
   submitDisposition,
   snoozeCallback,
+  getQueueReason,
   type DialWorkspaceLead,
 } from "@/lib/actions/dial-workspace";
 import { startCall } from "@/lib/actions/zoom-calls";
@@ -16,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import type { RealTables } from "@/lib/supabase/real-types";
+import type { QueueReason } from "@/lib/dial/queue-diagnosis";
 
 type Disposition = RealTables<"dispositions">;
 type Callback = RealTables<"callbacks">;
@@ -40,6 +42,7 @@ export function DialWorkspaceClient({
   const [callbackDueAt, setCallbackDueAt] = useState("");
   const [dueCallbacks, setDueCallbacks] = useState(initialDueCallbacks);
   const [calling, setCalling] = useState(false);
+  const [reason, setReason] = useState<QueueReason | null>(null);
 
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const dispositionRef = useRef<HTMLDivElement>(null);
@@ -64,6 +67,15 @@ export function DialWorkspaceClient({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (current !== null || isDemo) return;
+    let live = true;
+    getQueueReason().then((r) => live && setReason(r.reason ?? null));
+    return () => {
+      live = false;
+    };
+  }, [current, isDemo]);
 
   useEffect(() => {
     pull();
@@ -207,22 +219,20 @@ export function DialWorkspaceClient({
               </div>
             ) : (
               <div className="mx-auto flex max-w-xl flex-col gap-3 text-left" data-testid="dial-empty">
-                <p className="text-center font-medium text-ink">No dialable leads right now.</p>
-                <p>A lead is only served here when all three of these are true:</p>
-                <ol className="list-decimal space-y-1 pl-5">
-                  <li>
-                    <strong className="text-ink">It has been screened.</strong> Imported leads start as pending until a manager screens them.
-                  </li>
-                  <li>
-                    <strong className="text-ink">It is on a campaign you are on the roster of</strong>, and that campaign is active and inside its calling hours.
-                  </li>
-                  <li>
-                    <strong className="text-ink">It is assigned to you, or to nobody.</strong> Leads given to another agent are only served to them.
-                  </li>
-                </ol>
+                <p className="text-center font-medium text-ink">{reason ? reason.title : "No dialable leads right now."}</p>
+                <p className="text-center">
+                  {reason
+                    ? reason.detail
+                    : "A lead is served only when it is screened, on an active campaign you are rostered on and inside its calling hours, and assigned to you or to nobody."}
+                </p>
                 {canManage ? (
                   <div className="flex flex-wrap justify-center gap-2 pt-1">
-                    <Button asChild>
+                    {reason?.fix && (
+                      <Button asChild>
+                        <Link href={reason.fix.href}>{reason.fix.label}</Link>
+                      </Button>
+                    )}
+                    <Button asChild variant="secondary">
                       <Link href="/admin/import">Upload leads</Link>
                     </Button>
                     <Button asChild variant="secondary">
@@ -233,7 +243,7 @@ export function DialWorkspaceClient({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-center">Ask your manager if leads are waiting to be screened or assigned.</p>
+                  <p className="text-center">{reason && !reason.askManager ? "Nothing to do but wait." : "Ask your manager to fix this."}</p>
                 )}
               </div>
             )}

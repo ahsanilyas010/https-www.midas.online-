@@ -39,8 +39,9 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       position={position}
+      collisionPadding={8}
       className={cn(
-        "relative z-50 min-w-[8rem] overflow-hidden rounded-md border border-line bg-white text-ink shadow-md",
+        "relative z-50 max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[8rem] overflow-y-auto rounded-md border border-line bg-white text-ink shadow-md",
         "animate-fade-in",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",

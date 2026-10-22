@@ -99,6 +99,12 @@ export function recommendedStep(steps: SetupStep[]): SetupStep | null {
   return steps.find((s) => !s.done && !s.optional) ?? steps.find((s) => !s.done) ?? null;
 }
 
+// Progress counts required steps only: an optional step (branding) is shown
+// but never makes "4 of 8" look unfinished once everything needed is done.
+export function requiredSteps(steps: SetupStep[]): SetupStep[] {
+  return steps.filter((s) => !s.optional);
+}
+
 export function doneCount(steps: SetupStep[]): number {
-  return steps.filter((s) => s.done).length;
+  return requiredSteps(steps).filter((s) => s.done).length;
 }

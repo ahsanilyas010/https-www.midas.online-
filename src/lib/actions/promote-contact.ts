@@ -56,7 +56,7 @@ export async function promoteContact(_prev: ActionResult, formData: FormData): P
     return { error: error.message };
   }
 
-  revalidatePath("/workspace/leads");
+  revalidatePath("/callsheet");
   revalidatePath("/admin/campaigns", "layout");
   return { ok: true };
 }

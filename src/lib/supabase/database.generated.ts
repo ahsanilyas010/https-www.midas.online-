@@ -2654,6 +2654,50 @@ export type Database = {
         Args: { p_campaign_id: string }
         Returns: number
       }
+      call_sheet: {
+        Args: { p_limit?: number }
+        Returns: {
+          address_line1: string
+          agent_notes: string
+          appointment_at: string
+          assigned_to: string
+          attempts: number
+          bucket: string
+          callback_due_at: string
+          callback_id: string
+          campaign_id: string
+          campaign_name: string
+          city: string
+          claimed_by_me: boolean
+          company_name: string
+          contact_name: string
+          country_hint: string
+          custom: Json
+          dial_block_reason: string
+          email: string
+          first_name: string
+          full_name: string
+          id: string
+          imported_last_contact_at: string
+          job_title: string
+          kind: string
+          last_attempt_at: string
+          last_contact: string
+          last_name: string
+          last_outcome_at: string
+          last_outcome_code: string
+          last_outcome_label: string
+          last_outcome_notes: string
+          max_attempts: number
+          next_step: string
+          phone_e164: string
+          postcode: string
+          region: string
+          status: string
+          total_count: number
+          website: string
+        }[]
+      }
       check_rate_limit: {
         Args: {
           p_bucket: string
@@ -2662,6 +2706,57 @@ export type Database = {
           p_window_seconds: number
         }
         Returns: boolean
+      }
+      claim_lead_for_call: {
+        Args: { p_lead_id: string }
+        Returns: {
+          address_line1: string | null
+          agent_notes: string | null
+          appointment_at: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          attempts: number
+          batch_id: string | null
+          campaign_id: string | null
+          city: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          company_name: string | null
+          contact_name: string | null
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          custom: Json
+          data_source_id: string | null
+          email: string | null
+          first_name: string | null
+          full_name: string | null
+          group_label: string | null
+          id: string
+          job_title: string | null
+          last_attempt_at: string | null
+          last_contact_at: string | null
+          last_name: string | null
+          next_step: string | null
+          phone_e164: string | null
+          phone_hash: string | null
+          postcode: string | null
+          region: string | null
+          screened_at: string | null
+          screening_status: string
+          source: string | null
+          status: string
+          updated_at: string
+          website: string | null
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       clear_zoom_credentials: {
         Args: { p_workspace_id: string }
@@ -2736,6 +2831,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      dial_queue_diagnosis: {
+        Args: never
+        Returns: {
+          active_campaigns: number
+          assigned_elsewhere: number
+          attempts_exhausted: number
+          claimed: number
+          cooling_off: number
+          demo_blocked: number
+          dialable: number
+          expired_screening: number
+          failed_screening: number
+          in_window_campaigns: number
+          is_demo: boolean
+          leads_considered: number
+          leads_in_rostered_campaigns: number
+          outside_campaign_name: string
+          outside_timezone: string
+          outside_window_end: string
+          outside_window_start: string
+          paused_campaign_name: string
+          pending_screening: number
+          rostered_campaigns: number
+          suppressed: number
+        }[]
+      }
       get_twilio_api_key_secret: {
         Args: { p_workspace_id: string }
         Returns: string
@@ -2751,6 +2872,10 @@ export type Database = {
       is_lead_gen_or_manager: { Args: never; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_workspace_manager: { Args: never; Returns: boolean }
+      lead_dial_block_reason: {
+        Args: { p_agent_id: string; p_lead_id: string }
+        Returns: string
+      }
       leadgen_assign_leads: {
         Args: {
           p_agent_id: string

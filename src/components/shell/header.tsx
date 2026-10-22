@@ -83,7 +83,7 @@ const TITLES: Record<string, string> = {
   import: "Upload leads",
   security: "Security & audit",
   integrations: "Integrations",
-  leads: "My leads",
+  callsheet: "Call sheet",
   leadgen: "Lead gen",
   connectors: "Connectors",
   meetings: "Meetings",
@@ -183,11 +183,11 @@ export function Header({
             <div data-tour="callbacks" className="flex items-center">
               <FollowupTray userId={profile.id} initial={initialCallbacks} />
             </div>
-            <Separator orientation="vertical" className="hidden h-5 md:block" />
+            <Separator orientation="vertical" className="hidden h-5 lg:block" />
           </>
         )}
 
-        <div className="hidden items-center gap-1.5 text-xs md:flex">
+        <div className="hidden items-center gap-1.5 text-xs lg:flex">
           <span className="tabular text-muted">{profile.timezone}</span>
           <span className="tabular font-medium text-ink">
             {now ? safeTimeString(now, profile.timezone) : "--:--:--"}

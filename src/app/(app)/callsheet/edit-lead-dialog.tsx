@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Pencil } from "lucide-react";
 import { updateAssignedLead, type ActionResult } from "@/lib/actions/my-leads";
+import { isoToLocalInput } from "@/lib/callsheet/derive";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,9 +43,13 @@ interface EditableLead {
   region: string | null;
   postcode: string | null;
   agent_notes: string | null;
+  website: string | null;
+  contact_name: string | null;
+  next_step: string | null;
+  appointment_at: string | null;
 }
 
-export function EditLeadDialog({ lead }: { lead: EditableLead }) {
+export function EditLeadDialog({ lead, timezone, trigger }: { lead: EditableLead; timezone: string; trigger?: "icon" | "link" }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(updateAssignedLead, initialState);
   const router = useRouter();
@@ -60,9 +65,15 @@ export function EditLeadDialog({ lead }: { lead: EditableLead }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Edit lead">
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
+      {trigger === "link" ? (
+        <button type="button" onClick={() => setOpen(true)} className="callsheet-link">
+          Edit details
+        </button>
+      ) : (
+        <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Edit lead">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit lead</DialogTitle>
@@ -119,6 +130,28 @@ export function EditLeadDialog({ lead }: { lead: EditableLead }) {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="postcode">Postcode</Label>
               <Input id="postcode" name="postcode" defaultValue={lead.postcode ?? ""} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="contact_name">Contact person</Label>
+              <Input id="contact_name" name="contact_name" defaultValue={lead.contact_name ?? ""} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="website">Website</Label>
+              <Input id="website" name="website" defaultValue={lead.website ?? ""} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="next_step">Next step</Label>
+              <Input id="next_step" name="next_step" defaultValue={lead.next_step ?? ""} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="appointment_at">Appointment ({timezone})</Label>
+              <Input id="appointment_at" name="appointment_at" type="datetime-local" defaultValue={isoToLocalInput(lead.appointment_at, timezone)} />
             </div>
           </div>
 

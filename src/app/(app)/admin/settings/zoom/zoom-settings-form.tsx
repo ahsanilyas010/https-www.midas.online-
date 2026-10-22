@@ -71,7 +71,7 @@ export function ZoomActions() {
       </Button>
       <Button
         type="button"
-        variant="secondary"
+        variant="danger"
         size="sm"
         disabled={pending}
         onClick={() => run(disconnectZoom, "Disconnect Zoom? Meetings cannot be booked until you reconnect.")}

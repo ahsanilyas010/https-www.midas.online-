@@ -1,11 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { LEADGEN_ROLES } from "../ui";
 import { LeadImporterDialog } from "@/components/leads/lead-importer";
-import { RegisterSourceDialog } from "../../admin/data/register-source-dialog";
+import { RegisterSourceDialog } from "@/components/leads/register-source-dialog";
 import { AddLeadDialog } from "./add-lead-dialog";
 import { LeadInbox, type InboxRow } from "./lead-inbox";
+
+export const metadata: Metadata = { title: "Lead inbox" };
 
 const PAGE_SIZE = 25;
 
@@ -55,7 +58,7 @@ export default async function LeadInboxPage({ searchParams }: { searchParams: Pr
       query,
       supabase.rpc("leadgen_campaigns"),
       supabase.rpc("leadgen_assignable_agents"),
-      supabase.from("data_sources").select("id, name, is_active").eq("workspace_id", ws).order("name"),
+      supabase.from("data_sources").select("id, name, is_active, lawful_basis").eq("workspace_id", ws).order("name"),
       supabase.from("leads").select("source").eq("workspace_id", ws).not("source", "is", null).limit(1000),
     ]);
 
@@ -95,7 +98,9 @@ export default async function LeadInboxPage({ searchParams }: { searchParams: Pr
 
   const selectCls =
     "h-9 rounded-md border border-line bg-white px-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue";
-  const activeSources = (sources ?? []).filter((s) => s.is_active).map((s) => ({ id: s.id, name: s.name }));
+  const activeSources = (sources ?? [])
+    .filter((s) => s.is_active)
+    .map((s) => ({ id: s.id, name: s.name, needsReview: s.lawful_basis === "unspecified" }));
 
   return (
     <div className="space-y-3 p-4">

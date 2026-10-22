@@ -1,0 +1,487 @@
+/* Call sheet. Values come from the design mockup (Main.dc.html): colours, type
+   sizes, spacing and radii are the design's own, scoped under .callsheet so
+   nothing leaks into the rest of the app. */
+.callsheet {
+  --cs-ink: #14202b;
+  --cs-muted: #4a5a68;
+  --cs-line: #c5ced6;
+  --cs-soft: #dde3e8;
+  --cs-bg: #eef1f4;
+  --cs-od-bg: #fbe3da;
+  --cs-od-fg: #8a2a0b;
+  --cs-od-line: #b8441f;
+  --cs-up-bg: #dcebfa;
+  --cs-up-fg: #0b4a8a;
+  --cs-hot-bg: #ddf1e6;
+  --cs-hot-fg: #0d5a33;
+  --cs-dial: #0b6b63;
+  --cs-dial-hover: #085750;
+  --cs-mono: ui-monospace, "IBM Plex Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--cs-bg);
+  color: var(--cs-ink);
+  min-height: 100%;
+  padding: 32px 32px 48px;
+  box-sizing: border-box;
+}
+@media (max-width: 640px) {
+  .callsheet {
+    padding: 20px 16px 40px;
+  }
+}
+.callsheet .cs-wrap {
+  max-width: 1360px;
+  margin: 0 auto;
+}
+.callsheet h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+.callsheet .cs-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--cs-muted);
+}
+.callsheet .cs-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.callsheet .cs-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* filters */
+.callsheet .cs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.callsheet .cs-input,
+.callsheet .cs-select {
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1.5px solid #9fb0bd;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--cs-ink);
+}
+.callsheet .cs-input {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+.callsheet .cs-chip {
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1.5px solid #9fb0bd;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cs-ink);
+  cursor: pointer;
+}
+.callsheet .cs-chip[aria-pressed="true"] {
+  background: var(--cs-ink);
+  border-color: var(--cs-ink);
+  color: #fff;
+}
+.callsheet .cs-clear {
+  background: none;
+  border: 0;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cs-up-fg);
+  cursor: pointer;
+  text-decoration: underline;
+  min-height: 40px;
+}
+
+/* board */
+.callsheet .cs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 440px));
+  justify-content: start;
+  gap: 20px;
+  align-items: start;
+}
+.callsheet .col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.callsheet .colhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 8px;
+  border-bottom: 2px solid var(--cs-ink);
+}
+.callsheet .colhead h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--cs-ink);
+}
+.callsheet .colhead span {
+  font-size: 13px;
+  color: var(--cs-muted);
+}
+.callsheet .sub {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cs-muted);
+}
+.callsheet .more-col {
+  min-height: 40px;
+  border: 1.5px dashed #9fb0bd;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cs-up-fg);
+  cursor: pointer;
+}
+.callsheet .more-col:hover {
+  background: #fff;
+}
+
+/* card */
+.callsheet .card {
+  background: #fff;
+  border: 1.5px solid var(--cs-line);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.callsheet .card.overdue {
+  border-color: var(--cs-od-line);
+}
+.callsheet .card.live {
+  border-color: var(--cs-dial);
+  box-shadow: 0 0 0 2px rgba(11, 107, 99, 0.18);
+}
+.callsheet .top {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.callsheet .num {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--cs-ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.callsheet .name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cs-ink);
+  overflow-wrap: anywhere;
+}
+.callsheet .meta {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--cs-muted);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.callsheet .tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.callsheet .tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e6ebef;
+  color: var(--cs-ink);
+}
+.callsheet .tag.od {
+  background: var(--cs-od-bg);
+  color: var(--cs-od-fg);
+}
+.callsheet .tag.up {
+  background: var(--cs-up-bg);
+  color: var(--cs-up-fg);
+}
+.callsheet .tag.hot {
+  background: var(--cs-hot-bg);
+  color: var(--cs-hot-fg);
+}
+
+.callsheet .dial {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--cs-dial);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.callsheet .dial:hover:not(:disabled) {
+  background: var(--cs-dial-hover);
+}
+.callsheet .dial:disabled {
+  background: #e6ebef;
+  color: var(--cs-muted);
+  cursor: not-allowed;
+}
+.callsheet .dial b {
+  font-family: var(--cs-mono);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+.callsheet .dial i {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: right;
+}
+.callsheet .dial-why {
+  margin: -4px 2px 0;
+  font-size: 12px;
+  color: var(--cs-muted);
+}
+
+.callsheet .links {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.callsheet .lk {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1.5px solid #9fb0bd;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cs-up-fg);
+  text-decoration: none;
+  cursor: pointer;
+}
+.callsheet .lk:hover {
+  background: var(--cs-bg);
+}
+.callsheet details.more {
+  border-top: 1px solid var(--cs-soft);
+  padding-top: 8px;
+}
+.callsheet details.more summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cs-muted);
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+.callsheet .dl {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 4px 8px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.callsheet .dl dt {
+  color: var(--cs-muted);
+}
+.callsheet .dl dd {
+  margin: 0;
+  color: var(--cs-ink);
+  overflow-wrap: anywhere;
+}
+.callsheet .dl dd.ph,
+.callsheet .ph-btn {
+  color: var(--cs-muted);
+  font-style: italic;
+}
+.callsheet .ph-btn,
+.callsheet .val-btn,
+.callsheet .callsheet-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.callsheet .val-btn {
+  color: var(--cs-ink);
+}
+.callsheet .val-btn:hover,
+.callsheet .ph-btn:hover {
+  text-decoration: underline;
+}
+.callsheet .callsheet-link {
+  color: var(--cs-up-fg);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  min-height: 28px;
+}
+.callsheet .field-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.callsheet .field-edit textarea,
+.callsheet .field-edit input,
+.callsheet .outcome textarea,
+.callsheet .outcome input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #9fb0bd;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--cs-ink);
+  background: #fff;
+}
+.callsheet .row-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.callsheet .btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1.5px solid #9fb0bd;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cs-ink);
+  cursor: pointer;
+}
+.callsheet .btn.primary {
+  background: var(--cs-ink);
+  border-color: var(--cs-ink);
+  color: #fff;
+}
+.callsheet .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* outcome panel */
+.callsheet .outcome {
+  border-top: 1px solid var(--cs-soft);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.callsheet .outcome h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cs-muted);
+}
+.callsheet .outcome-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.callsheet .outcome-chips button {
+  min-height: 32px;
+  border-radius: 999px;
+  border: 1.5px solid #9fb0bd;
+  background: #fff;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cs-ink);
+  cursor: pointer;
+}
+.callsheet .outcome-chips button[aria-pressed="true"] {
+  background: var(--cs-ink);
+  border-color: var(--cs-ink);
+  color: #fff;
+}
+.callsheet .outcome label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cs-muted);
+}
+.callsheet .cs-msg {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.callsheet .cs-msg.err {
+  background: var(--cs-od-bg);
+  color: var(--cs-od-fg);
+}
+.callsheet .cs-empty {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--cs-muted);
+  font-size: 14px;
+}
+.callsheet .cs-empty strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--cs-ink);
+  font-size: 16px;
+}
+.callsheet :focus-visible {
+  outline: 3px solid #0b4a8a;
+  outline-offset: 2px;
+}
+.callsheet .sr-only-cs {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

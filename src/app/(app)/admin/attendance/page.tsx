@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
@@ -16,6 +17,8 @@ import { LeaveDecisionButtons } from "./leave-decision-buttons";
 import { CreateShiftDialog } from "./create-shift-dialog";
 import { ShiftCard, type ShiftView } from "./shifts-panel";
 import { CampaignRosterPanel } from "./campaign-roster-panel";
+
+export const metadata: Metadata = { title: "Attendance" };
 
 const HISTORY_DAYS = 14;
 

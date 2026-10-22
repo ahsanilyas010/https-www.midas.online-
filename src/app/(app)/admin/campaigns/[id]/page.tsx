@@ -278,7 +278,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             </table>
           </div>
           <p className="mt-3 text-[11px] text-muted">
-            The assigned agent adds a number from My leads; it is then checked against suppression and enters the lead
+            The assigned agent adds a number from the Call sheet; it is then checked against suppression and enters the lead
             list as unscreened.
           </p>
         </TabsContent>

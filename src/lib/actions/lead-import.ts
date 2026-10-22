@@ -56,23 +56,27 @@ async function prepare(formData: FormData) {
   const { data: tzRow } = await supabase.from("campaigns").select("timezone").eq("id", campaignId).maybeSingle();
   const timezone = tzRow?.timezone ?? null;
 
-  // A data source (vendor / client list) carries a lawful basis, which is
-  // mandatory for it to be used.
+  // EVERY import names a data source, and a data source carries the lawful
+  // basis the list is held under. This is enforced here (and again by the
+  // database: migration 108), never only by the form, so no list can be loaded
+  // without a recorded basis.
   const dataSourceId = String(formData.get("data_source_id") ?? "");
-  let source: { id: string; name: string } | null = null;
-  if (dataSourceId) {
-    if (!uuid.safeParse(dataSourceId).success) throw new ImportError("Pick a data source.");
-    const { data } = await supabase
-      .from("data_sources")
-      .select("id, name, lawful_basis, is_active")
-      .eq("id", dataSourceId)
-      .eq("workspace_id", profile.workspace_id)
-      .maybeSingle();
-    if (!data) throw new ImportError("Data source not found.");
-    if (!data.lawful_basis) throw new ImportError("No lawful basis on file for this data source: refusing to import.");
-    if (!data.is_active) throw new ImportError("This data source is inactive.");
-    source = { id: data.id, name: data.name };
+  if (!dataSourceId) throw new ImportError("Choose the data source for this list.");
+  if (!uuid.safeParse(dataSourceId).success) throw new ImportError("Choose the data source for this list.");
+  const { data: sourceRow } = await supabase
+    .from("data_sources")
+    .select("id, name, lawful_basis, is_active")
+    .eq("id", dataSourceId)
+    .eq("workspace_id", profile.workspace_id)
+    .maybeSingle();
+  if (!sourceRow) throw new ImportError("Data source not found.");
+  if (!sourceRow.is_active) throw new ImportError("This data source is inactive.");
+  // 'unspecified' only labels old uploads from before this rule; a list can't
+  // be imported under it. Open the source and set the real basis first.
+  if (!sourceRow.lawful_basis || sourceRow.lawful_basis === "unspecified") {
+    throw new ImportError("This data source has no lawful basis on file yet. Open it under Data, set the real basis, then import.");
   }
+  const source: { id: string; name: string } = { id: sourceRow.id, name: sourceRow.name };
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const parsed = parseTabular(bytes, file.name);
@@ -87,14 +91,14 @@ function fail(e: unknown, label: string): { error: string } {
 
 export async function previewLeadImport(formData: FormData): Promise<PreviewResponse> {
   try {
-    const { ctx, parsed, mapping, campaign, campaigns, timezone, source } = await prepare(formData);
+    const { ctx, parsed, mapping, campaign, campaigns, timezone } = await prepare(formData);
     const plan = await buildPlan(ctx, {
       parsed,
       mapping,
       campaigns,
       defaultCampaignId: campaign.id,
       timezone,
-      holdPhoneless: Boolean(source),
+      holdPhoneless: true,
     });
     return { ok: true, preview: plan.preview };
   } catch (e) {
@@ -114,59 +118,57 @@ export async function runLeadImport(formData: FormData): Promise<ImportResponse>
       campaigns,
       defaultCampaignId: campaign.id,
       timezone,
-      holdPhoneless: Boolean(source),
+      holdPhoneless: true,
       filename: file.name,
       fileBytes: bytes,
       contentType: file.type,
-      dataSourceId: source?.id ?? null,
-      batchLabel: source ? `${source.name}: ${file.name}` : file.name,
+      dataSourceId: source.id,
+      batchLabel: `${source.name}: ${file.name}`,
       callMyself,
       screenNow,
     });
 
-    // Vendor/client lists keep a provenance run, and rows with a name or
-    // email but no number are held as contacts to be promoted later.
-    if (source) {
-      const supabase = ctx.supabase;
-      const { data: run } = await supabase
-        .from("source_fetch_runs")
-        .insert({
-          workspace_id: profile.workspace_id,
-          data_source_id: source.id,
-          campaign_id: campaign.id,
-          triggered_by: profile.id,
-          params: { filename: file.name, mapping, country: out.preview.country } as never,
-          records_found: out.preview.totalRows,
-          records_imported: out.imported,
-          records_rejected:
-            out.skippedInvalid + out.skippedDuplicates + out.skippedExisting + out.skippedSuppressed + out.skippedUnknownCampaign,
-          records_unphoned: out.phonelessHeld,
-          batch_id: out.batchId || null,
-          finished_at: new Date().toISOString(),
-          status: "complete",
-        })
-        .select("id")
-        .single();
-      if (out.phonelessRows.length > 0) {
-        for (let i = 0; i < out.phonelessRows.length; i += 500) {
-          await supabase.from("unphoned_contacts").insert(
-            out.phonelessRows.slice(i, i + 500).map((p) => ({
-              workspace_id: profile.workspace_id,
-              campaign_id: p.campaignId,
-              data_source_id: source.id,
-              run_id: run?.id ?? null,
-              full_name: p.name,
-              email: p.email,
-              country_hint: p.region,
-            })),
-          );
-        }
+    // Every import keeps a provenance run (shown under Data > Import history),
+    // and rows with a name or email but no number are held as contacts to be
+    // promoted later.
+    const supabase = ctx.supabase;
+    const { data: run } = await supabase
+      .from("source_fetch_runs")
+      .insert({
+        workspace_id: profile.workspace_id,
+        data_source_id: source.id,
+        campaign_id: campaign.id,
+        triggered_by: profile.id,
+        params: { filename: file.name, mapping, country: out.preview.country } as never,
+        records_found: out.preview.totalRows,
+        records_imported: out.imported,
+        records_rejected:
+          out.skippedInvalid + out.skippedDuplicates + out.skippedExisting + out.skippedSuppressed + out.skippedUnknownCampaign,
+        records_unphoned: out.phonelessHeld,
+        batch_id: out.batchId || null,
+        finished_at: new Date().toISOString(),
+        status: "complete",
+      })
+      .select("id")
+      .single();
+    if (out.phonelessRows.length > 0) {
+      for (let i = 0; i < out.phonelessRows.length; i += 500) {
+        await supabase.from("unphoned_contacts").insert(
+          out.phonelessRows.slice(i, i + 500).map((p) => ({
+            workspace_id: profile.workspace_id,
+            campaign_id: p.campaignId,
+            data_source_id: source.id,
+            run_id: run?.id ?? null,
+            full_name: p.name,
+            email: p.email,
+            country_hint: p.region,
+          })),
+        );
       }
     }
 
     revalidatePath("/admin/import");
     revalidatePath("/admin/data");
-    revalidatePath("/admin/settings/leads");
     revalidatePath("/admin/compliance");
     revalidatePath("/admin/campaigns", "layout");
     revalidatePath("/leadgen", "layout");
@@ -176,7 +178,7 @@ export async function runLeadImport(formData: FormData): Promise<ImportResponse>
     const { phonelessRows: _p, preview: _v, ...result } = out;
     void _p;
     void _v;
-    return { ok: true, result, campaignName: campaign.name, sourceName: source?.name ?? null };
+    return { ok: true, result, campaignName: campaign.name, sourceName: source.name };
   } catch (e) {
     return fail(e, "runLeadImport");
   }

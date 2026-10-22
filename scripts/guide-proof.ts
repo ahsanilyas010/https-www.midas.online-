@@ -77,8 +77,10 @@ async function main() {
   const expected = {
     agents: await count("profiles", (q) => q.eq("role", "agent").eq("is_active", true)),
     campaigns: await count("campaigns"),
-    leads: await count("leads"),
-    leads_passed: await count("leads", (q) => q.eq("screening_status", "passed")),
+    // Only real leads count (migration 109): rows with a data source or a source
+    // label. Seeded demo leads carry neither, so they never tick the checklist.
+    leads: await count("leads", (q) => q.or("data_source_id.not.is.null,source.not.is.null")),
+    leads_passed: await count("leads", (q) => q.or("data_source_id.not.is.null,source.not.is.null").eq("screening_status", "passed")),
     assignments: await count("campaign_assignments"),
     calls: await count("calls"),
   };
@@ -127,7 +129,7 @@ async function main() {
     check("ZZ owner can call setup_progress()", !error && !!row, error?.message);
     // Compare with the test workspace's own rows, never the demo's.
     const zzCampaigns = (await admin.from("campaigns").select("id", { count: "exact", head: true }).eq("workspace_id", zzProfile.workspace_id)).count ?? 0;
-    const zzLeads = (await admin.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", zzProfile.workspace_id)).count ?? 0;
+    const zzLeads = (await admin.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", zzProfile.workspace_id).or("data_source_id.not.is.null,source.not.is.null")).count ?? 0;
     const zzCalls = (await admin.from("calls").select("id", { count: "exact", head: true }).eq("workspace_id", zzProfile.workspace_id)).count ?? 0;
     if (row) {
       check(`ZZ campaigns = ${zzCampaigns} (not the demo's ${expected.campaigns})`, row.campaigns === Math.min(zzCampaigns, 1000), row.campaigns);

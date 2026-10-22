@@ -4,7 +4,7 @@ import { requireRealProfile } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { BrandForm } from "./brand-form";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Branding", robots: { index: false, follow: false } };
 
 // Real-workspace only, same as the rest of Phase 1's new surfaces (see
 // src/lib/supabase/real.ts) — not linked from a sales-demo persona's nav,

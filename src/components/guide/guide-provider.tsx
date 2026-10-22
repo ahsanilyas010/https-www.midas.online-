@@ -10,7 +10,7 @@ import {
   markTourCompleted,
   refreshSetupProgress,
 } from "@/lib/actions/guide";
-import { buildSetupSteps, doneCount, type SetupProgress, type SetupStep } from "@/lib/guide/checklist";
+import { buildSetupSteps, doneCount, requiredSteps, type SetupProgress, type SetupStep } from "@/lib/guide/checklist";
 import { tourFor } from "@/lib/guide/tours";
 import type { AppRole } from "@/lib/nav";
 import { TourOverlay } from "@/components/guide/tour-overlay";
@@ -62,7 +62,8 @@ export function GuideProvider({ init, children }: { init: GuideInit; children: R
 
   const steps = useMemo(() => (progress ? buildSetupSteps(progress) : null), [progress]);
   const done = steps ? doneCount(steps) : 0;
-  const allDone = steps ? done === steps.length : true;
+  const total = steps ? requiredSteps(steps).length : 0;
+  const allDone = steps ? done === total : true;
 
   // Keep the counts current: after navigating, when the tab regains focus and,
   // while setup is unfinished and the card or dialog is on screen, every 20s.
@@ -128,14 +129,14 @@ export function GuideProvider({ init, children }: { init: GuideInit; children: R
       hasTour,
       steps,
       done,
-      total: steps?.length ?? 0,
+      total,
       checklistHidden: hidden,
       startTour,
       openChecklist: () => setChecklistOpen(true),
       hideChecklist,
       showChecklist,
     }),
-    [hasTour, steps, done, hidden, startTour, hideChecklist, showChecklist],
+    [hasTour, steps, done, total, hidden, startTour, hideChecklist, showChecklist],
   );
 
   function closeWelcome() {
@@ -190,7 +191,7 @@ export function GuideProvider({ init, children }: { init: GuideInit; children: R
             <DialogHeader>
               <DialogTitle className="font-display text-xl">Setup guide</DialogTitle>
               <DialogDescription>
-                {done} of {steps.length} done. Work through these in order, or jump to any step.
+                {done} of {total} required steps done. Work through these in order, or jump to any step.
               </DialogDescription>
             </DialogHeader>
             <SetupChecklist steps={steps} onNavigate={() => setChecklistOpen(false)} />

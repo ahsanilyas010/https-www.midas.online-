@@ -3,6 +3,7 @@
 import { requireRealProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import type { RealTables } from "@/lib/supabase/real-types";
+import { diagnoseQueue, type QueueDiagnosisRow, type QueueReason } from "@/lib/dial/queue-diagnosis";
 
 const STAFF_ROLES = ["super_admin", "ops_manager", "team_lead", "agent", "qa_analyst"];
 
@@ -108,4 +109,15 @@ export async function snoozeCallback(callbackId: string): Promise<{ error?: stri
   const { error } = await supabase.from("callbacks").update({ due_at: dueAt, snooze_count: cb.snooze_count + 1 }).eq("id", callbackId);
   if (error) return { error: error.message };
   return {};
+}
+
+// Why the queue is empty, in one sentence a person can act on (migration 110).
+export async function getQueueReason(): Promise<{ reason?: QueueReason; error?: string }> {
+  await requireStaff();
+  const supabase = await createRealClient();
+  const { data, error } = await supabase.rpc("dial_queue_diagnosis");
+  if (error) return { error: error.message };
+  const row = data?.[0];
+  if (!row) return {};
+  return { reason: diagnoseQueue(row as unknown as QueueDiagnosisRow) };
 }

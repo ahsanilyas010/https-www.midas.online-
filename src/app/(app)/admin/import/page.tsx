@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { LeadImporter } from "@/components/leads/lead-importer";
-import { ScreenButton } from "../settings/leads/screen-button";
+import { ScreenButton } from "@/components/leads/screen-button";
 
 export const metadata: Metadata = { title: "Upload leads", robots: { index: false, follow: false } };
 
@@ -14,7 +14,7 @@ export default async function ImportLeadsPage() {
 
   const [{ data: campaigns }, { data: sources }, { data: batches }] = await Promise.all([
     supabase.from("campaigns").select("id, name, country").eq("workspace_id", ws).order("name"),
-    supabase.from("data_sources").select("id, name").eq("workspace_id", ws).eq("is_active", true).order("name"),
+    supabase.from("data_sources").select("id, name, lawful_basis").eq("workspace_id", ws).eq("is_active", true).order("name"),
     supabase
       .from("lead_batches")
       .select("id, source, row_count, status, screened_at, created_at")
@@ -49,14 +49,14 @@ export default async function ImportLeadsPage() {
           <LeadImporter
             isManager
             campaigns={campaigns ?? []}
-            dataSources={(sources ?? []).map((s) => ({ id: s.id, name: s.name }))}
+            dataSources={(sources ?? []).map((s) => ({ id: s.id, name: s.name, needsReview: s.lawful_basis === "unspecified" }))}
           />
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-sm">
         <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">Recent uploads</div>
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-canvas text-left text-xs font-semibold uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-2">File</th>

@@ -6,7 +6,7 @@ import { getClientPortalData } from "@/lib/actions/client-portal";
 import { PortalClient } from "./portal-client";
 import { ClientSelector } from "./client-selector";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Client reports", robots: { index: false, follow: false } };
 
 // Client reporting. A client login sees only their own campaigns; an admin
 // or ops manager previews any one client's report (?client=<id>). Read-only

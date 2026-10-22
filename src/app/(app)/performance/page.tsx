@@ -4,7 +4,7 @@ import { requireRealProfile } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { createRealClient } from "@/lib/supabase/real";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Performance", robots: { index: false, follow: false } };
 
 function formatMinutes(seconds: number) {
   const m = Math.floor(seconds / 60);

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { KeyRound, UserPlus } from "lucide-react";
 import { EmptyState } from "@/components/guide/empty-state";
 import { OpenDialogButton } from "@/components/guide/open-dialog-button";
@@ -10,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CreateUserDialog } from "./create-user-dialog";
 import { PeopleRowActions } from "./row-actions";
+
+export const metadata: Metadata = { title: "People" };
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super admin",
@@ -130,6 +133,7 @@ export default async function PeoplePage() {
                         userId={p.id}
                         userName={p.full_name}
                         isActive={p.is_active}
+                        canDeactivate={p.id !== profile.id && p.id !== workspace.created_by}
                         campaigns={p.role === "agent" ? (campaigns ?? []) : []}
                       />
                     </td>

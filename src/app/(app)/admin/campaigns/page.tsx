@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Megaphone } from "lucide-react";
 import { requireRole } from "@/lib/auth/current-profile";
@@ -11,6 +12,8 @@ import { countryLabel } from "@/lib/campaign-options";
 import { CreateCampaignDialog } from "./create-campaign-dialog";
 import { CreateClientDialog, EditClientDialog } from "./client-dialogs";
 import { InboundWebhookPanel } from "./inbound-webhook-panel";
+
+export const metadata: Metadata = { title: "Campaigns" };
 
 const STATUS_BADGE = {
   active: { variant: "confirm", label: "Live" },

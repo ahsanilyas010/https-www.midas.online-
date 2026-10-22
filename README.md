@@ -15,7 +15,7 @@ Product of **Assorted Business LLC** (name, address and contact details live in
 |---|---|---|
 | Upload leads | `/admin/import` | Mapped CSV/Excel importer (super admin, ops manager); also embedded in the Lead inbox and Data |
 | Dial workspace | `/dial` | Compliance-gated next-lead queue, Zoom Phone Smart Embed dial pad, dispositions, callbacks. Agents and, since migration 99, admins/ops managers |
-| My leads | `/workspace/leads` | Agent's assigned leads, status, edit, promote phone-less contacts |
+| Call sheet | `/callsheet` | Board of leads, a column per campaign (overdue and upcoming first); dial from a card, log the outcome, edit notes and next step, promote phone-less contacts |
 | Live floor | `/live` | Agent states, today's calls/connects/conversions (Realtime) |
 | Performance | `/performance` | Campaign funnels, agent scorecards |
 | People | `/admin/people` | Create users (one-time password), reset, deactivate, assign to campaigns |
@@ -198,7 +198,7 @@ in Supabase Vault and never returned to the browser). Scopes:
 `meeting:write:meeting:admin`, `meeting:read:meeting:admin`,
 `meeting:update:meeting:admin`, `meeting:delete:meeting:admin`,
 `user:read:user:admin`; then activate the app. Agents, team leads and managers
-book meetings from a lead (My leads, dial screen) and manage them on `/meetings`.
+book meetings from a lead (Call sheet, dial screen) and manage them on `/meetings`.
 The host is the booker, so their login email must match a Zoom user on the
 account. The host start link is fetched fresh from Zoom on every Start and is
 never stored. `ZOOM_OAUTH_BASE` / `ZOOM_API_BASE` override the Zoom base URLs

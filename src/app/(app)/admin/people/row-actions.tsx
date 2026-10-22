@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { MoreHorizontal, KeyRound, UserX, UserCheck, Copy, Check, Megaphone } from "lucide-react";
 import { resetPassword, type ResetPasswordResult } from "@/lib/actions/users";
 import { deactivateUser, reactivateUser } from "@/lib/actions/deactivate";
@@ -29,11 +30,14 @@ export function PeopleRowActions({
   userId,
   userName,
   isActive,
+  canDeactivate,
   campaigns,
 }: {
   userId: string;
   userName: string;
   isActive: boolean;
+  // False for yourself and the workspace owner: the server refuses those too.
+  canDeactivate: boolean;
   campaigns: { id: string; name: string; code?: string | null }[];
 }) {
   const router = useRouter();
@@ -47,7 +51,7 @@ export function PeopleRowActions({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" aria-label={`More actions for ${userName}`}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -59,19 +63,25 @@ export function PeopleRowActions({
             <Megaphone className="mr-2 h-3.5 w-3.5" /> Assign to campaign
           </DropdownMenuItem>
           {isActive ? (
-            <DropdownMenuItem
-              variant="danger"
-              onSelect={async () => {
-                await deactivateUser(userId);
-                router.refresh();
-              }}
-            >
-              <UserX className="mr-2 h-3.5 w-3.5" /> Deactivate
-            </DropdownMenuItem>
+            canDeactivate && (
+              <DropdownMenuItem
+                variant="danger"
+                onSelect={async () => {
+                  const res = await deactivateUser(userId);
+                  if (res.error) toast.error(res.error);
+                  else toast.success(`${userName} deactivated.`);
+                  router.refresh();
+                }}
+              >
+                <UserX className="mr-2 h-3.5 w-3.5" /> Deactivate
+              </DropdownMenuItem>
+            )
           ) : (
             <DropdownMenuItem
               onSelect={async () => {
-                await reactivateUser(userId);
+                const res = await reactivateUser(userId);
+                if (res.error) toast.error(res.error);
+                else toast.success(`${userName} reactivated.`);
                 router.refresh();
               }}
             >

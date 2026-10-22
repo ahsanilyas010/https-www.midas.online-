@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckCircle2, Users } from "lucide-react";
 import { requireProfile } from "@/lib/auth/current-profile";
@@ -8,6 +9,8 @@ import { createRealClient } from "@/lib/supabase/real";
 import { stripeConfigured } from "@/lib/billing/stripe";
 import { FREE_AGENT_SEATS, SELF_SERVE_MAX_AGENTS } from "@/lib/plan";
 import { ManageBillingButton, SeatPicker } from "./seat-picker";
+
+export const metadata: Metadata = { title: "Plan & billing" };
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const profile = await requireProfile();

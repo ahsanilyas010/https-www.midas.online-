@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
@@ -10,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddSuppressionDialog } from "./add-suppression-dialog";
 import { RunScreeningDialog } from "./run-screening-dialog";
 import { RemoveSuppressionButton } from "./remove-suppression-button";
+
+export const metadata: Metadata = { title: "Compliance" };
 
 const reasonLabel = new Map<string, string>(SUPPRESSION_REASONS.map((r) => [r.value, r.label]));
 

@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Video } from "lucide-react";
 import { requireRole } from "@/lib/auth/current-profile";
 import { listWorkspaceMeetings } from "@/lib/actions/zoom-meetings";
 import { createServiceClient } from "@/lib/supabase/service";
 import { MeetingsList } from "./meetings-list";
+
+export const metadata: Metadata = { title: "Meetings" };
 
 export default async function MeetingsPage() {
   const profile = await requireRole(["super_admin", "ops_manager", "team_lead", "agent"]);

@@ -58,11 +58,11 @@ This lets LeadCallient book Zoom meetings for your agents.
 2. Open **Dial workspace**. A **Zoom Phone** panel appears in the corner: **sign in to Zoom there** (once). It should say **Ready**.
 3. A lead appears. Click **Call**. The call should ring from Zoom, and you should hear it connect.
 4. When it ends, choose an **outcome**, add a note, and click **Save & next**.
-5. Open **My leads**, click **Book Zoom meeting** on a lead, pick a time, and save. Check it appears under **Meetings** and in your Zoom calendar.
+5. Open **Call sheet**, click **Book Zoom meeting** on a lead, pick a time, and save. Check it appears under **Meetings** and in your Zoom calendar.
 
 ## Part 6 — Check it worked
 - The call appears on the **Live floor** and in **Performance** (with outcome and length).
-- The lead's **attempts** went up on **My leads**.
+- The lead's **attempts** went up on the **Call sheet**.
 - The call and meeting appear in your **Zoom** history.
 - If your Zoom account records calls, a **recording link** appears on the call.
 

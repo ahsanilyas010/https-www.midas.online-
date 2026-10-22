@@ -5,7 +5,7 @@ import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { listDispositions, getDueCallbacks } from "@/lib/actions/dial-workspace";
 import { DialWorkspaceClient } from "./dial-workspace-client";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Dial workspace", robots: { index: false, follow: false } };
 
 const STAFF_ROLES = ["super_admin", "ops_manager", "team_lead", "agent", "qa_analyst"];
 

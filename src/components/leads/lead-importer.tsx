@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Headset, Loader2, Upload } from "lucide-react";
 import { previewLeadImport, runLeadImport, type ImportResponse } from "@/lib/actions/lead-import";
 import { screenLeadBatch } from "@/lib/actions/lead-upload";
+import { RegisterSourceDialog } from "@/components/leads/register-source-dialog";
 import {
   FIELD_LABELS,
   IMPORT_LIMITS,
@@ -40,9 +41,10 @@ interface CampaignOption {
 
 interface Props {
   campaigns: CampaignOption[];
-  // When given, a data source can (or, with requireSource, must) be chosen.
-  dataSources?: { id: string; name: string }[];
-  requireSource?: boolean;
+  // Every import names a data source (the lawful basis the list is held
+  // under). `needsReview` marks the auto-created legacy source, which cannot be
+  // used until its real basis is set under Data.
+  dataSources: { id: string; name: string; needsReview?: boolean }[];
   // Managers (super_admin / ops_manager) get the dial-it-myself and
   // screen-now options. Lead gen never sees them.
   isManager: boolean;
@@ -94,11 +96,12 @@ function toPick(p: { column: string } | { none: true } | { first: string; last: 
   return "combine";
 }
 
-export function LeadImporter({ campaigns, dataSources, requireSource, isManager, onFinished }: Props) {
+export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [head, setHead] = useState<FirstRowsPreview | null>(null);
   const [campaignId, setCampaignId] = useState("");
   const [dataSourceId, setDataSourceId] = useState("");
@@ -164,12 +167,24 @@ export function LeadImporter({ campaigns, dataSources, requireSource, isManager,
     if (file) fd.set("file", file);
     fd.set("campaign_id", campaignId);
     fd.set("mapping", JSON.stringify(mapping));
-    if (dataSourceId) fd.set("data_source_id", dataSourceId);
+    fd.set("data_source_id", dataSourceId);
     return fd;
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
+    await handleFile(e.target.files?.[0] ?? null);
+  }
+
+  function onDrop(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const dropped = e.dataTransfer.files;
+    if (dropped.length === 0) return;
+    if (fileRef.current) fileRef.current.files = dropped;
+    void handleFile(dropped[0]);
+  }
+
+  async function handleFile(f: File | null) {
     setError(null);
     setHead(null);
     setFile(null);
@@ -222,7 +237,7 @@ export function LeadImporter({ campaigns, dataSources, requireSource, isManager,
     setError(null);
     if (!file || !head) return setError("Choose a file first.");
     if (!campaignId) return setError("Choose the campaign these leads belong to.");
-    if (requireSource && !dataSourceId) return setError("Choose the data source this list came from.");
+    if (!dataSourceId) return setError("Choose the data source this list came from.");
     setTouched(false);
     setStep(2);
   }
@@ -326,18 +341,34 @@ export function LeadImporter({ campaigns, dataSources, requireSource, isManager,
             Nothing is saved until you press Import on the review step.
           </p>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="li-file" className="text-sm font-medium text-ink">
-              Lead file (.csv or .xlsx)
+            <span className="text-sm font-medium text-ink">
+              Lead file (.csv or .xlsx) <span aria-hidden className="text-danger">*</span>
+            </span>
+            <label
+              htmlFor="li-file"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors focus-within:ring-2 focus-within:ring-brand-blue ${
+                dragging ? "border-brand-blue bg-brand-blue-tint/40" : "border-line bg-canvas hover:border-brand-blue"
+              }`}
+            >
+              <Upload className="h-5 w-5 text-muted" aria-hidden />
+              {file ? (
+                <span className="font-medium text-ink">
+                  {file.name} <span className="font-normal text-muted">({(file.size / 1024).toFixed(0)} KB) ready</span>
+                </span>
+              ) : (
+                <span className="text-ink">
+                  <span className="font-medium text-brand-blue">Choose a file</span> or drop it here
+                </span>
+              )}
+              <span className="text-xs text-muted">{file ? "Choose another to replace it" : "CSV or Excel, up to 10 MB"}</span>
+              <input id="li-file" ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv" onChange={onFile} className="sr-only" />
             </label>
-            <input
-              id="li-file"
-              ref={fileRef}
-              type="file"
-              accept=".csv,.xlsx,.xls,text/csv"
-              onChange={onFile}
-              className="text-sm text-ink"
-            />
-            {file && <p className="text-xs text-muted">{file.name} ({(file.size / 1024).toFixed(0)} KB) ready.</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="li-campaign" className="text-sm font-medium text-ink">
@@ -358,26 +389,38 @@ export function LeadImporter({ campaigns, dataSources, requireSource, isManager,
               {campaigns.length === 0 && " You have no campaigns yet: create one first under Campaigns."}
             </p>
           </div>
-          {dataSources && (
-            <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-end justify-between gap-2">
               <label htmlFor="li-source" className="text-sm font-medium text-ink">
-                Data source{requireSource ? "" : " (optional)"}
+                Data source <span aria-hidden className="text-danger">*</span>
               </label>
-              <select id="li-source" value={dataSourceId} onChange={(e) => setDataSourceId(e.target.value)} className={selectCls}>
-                <option value="">{requireSource ? "Choose a data source..." : "None: my own list"}</option>
-                {dataSources.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted">
-                A source records where the list came from and its lawful basis. {requireSource && dataSources.length === 0 && "Register a data source first."}
-              </p>
+              <RegisterSourceDialog
+                label="Register a new source"
+                variant="secondary"
+                onCreated={(id) => setDataSourceId(id)}
+              />
             </div>
-          )}
+            <select
+              id="li-source"
+              value={dataSourceId}
+              onChange={(e) => setDataSourceId(e.target.value)}
+              className={selectCls}
+              aria-required="true"
+            >
+              <option value="">Choose a data source...</option>
+              {dataSources.map((d) => (
+                <option key={d.id} value={d.id} disabled={d.needsReview}>
+                  {d.needsReview ? `${d.name} (set its lawful basis under Data first)` : d.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted">
+              A source records where the list came from and the lawful basis it is held under. Every import needs one.
+              {dataSources.filter((d) => !d.needsReview).length === 0 && " You don't have a usable source yet: register one above."}
+            </p>
+          </div>
           <div>
-            <Button onClick={toMapping} disabled={!file || !campaignId}>
+            <Button onClick={toMapping} disabled={!file || !campaignId || !dataSourceId}>
               Next: match columns
             </Button>
           </div>

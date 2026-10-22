@@ -5,10 +5,13 @@ import { z } from "zod";
 import { parsePhoneNumberWithError } from "libphonenumber-js";
 import { requireRealProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
+import { isCountryCode } from "@/lib/countries";
 
 export interface ActionResult {
   error?: string;
   ok?: boolean;
+  // Set by registerDataSource so a form can select the source it just made.
+  id?: string;
 }
 
 const MANAGERS = ["super_admin", "ops_manager"];
@@ -30,8 +33,19 @@ const sourceSchema = z.object({
   name: z.string().trim().min(1, "A name is required.").max(120),
   source_type: z.enum(SOURCE_TYPES),
   lawful_basis: z.enum(LAWFUL_BASES, { message: "A lawful basis is required." }),
-  market: z.string().trim().max(20).optional(),
-  provider_url: z.string().trim().max(300).optional(),
+  // New sources use an ISO country code; older free-text markets stay as they are.
+  market: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((v) => isCountryCode(v), { message: "Choose a country for the market." })
+    .optional(),
+  provider_url: z
+    .string()
+    .trim()
+    .max(300)
+    .refine((v) => /^https?:\/\/[^\s]+$/i.test(v), { message: "Enter a full web address starting with http:// or https://." })
+    .optional(),
   notes: z.string().trim().max(1000).optional(),
 });
 
@@ -50,7 +64,9 @@ export async function registerDataSource(_prev: ActionResult, formData: FormData
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
   const supabase = await createRealClient();
-  const { error } = await supabase.from("data_sources").insert({
+  const { data: created, error } = await supabase
+    .from("data_sources")
+    .insert({
     workspace_id: profile.workspace_id,
     name: parsed.data.name,
     source_type: parsed.data.source_type,
@@ -59,11 +75,66 @@ export async function registerDataSource(_prev: ActionResult, formData: FormData
     provider_url: parsed.data.provider_url ?? null,
     notes: parsed.data.notes ?? null,
     created_by: profile.id,
-  });
-  if (error) return { error: error.code === "23505" ? "A source with that name already exists." : error.message };
+    })
+    .select("id")
+    .single();
+  if (error || !created) return { error: error?.code === "23505" ? "A source with that name already exists." : (error?.message ?? "Could not register the source.") };
   revalidatePath("/admin/data");
+  revalidatePath("/admin/import");
   revalidatePath("/leadgen/leads");
-  return { ok: true };
+  return { ok: true, id: created.id };
+}
+
+// Edit an existing source. This is how the auto-created "Legacy uploads (basis
+// unspecified)" source gets its real lawful basis. The database refuses to move
+// any source TO 'unspecified', so only real bases are accepted here.
+export async function updateDataSource(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const profile = await requireRealProfile();
+  if (!MANAGERS.includes(profile.role)) return { error: "Only an admin can edit data sources." };
+
+  const id = String(formData.get("id") ?? "");
+  if (!z.string().uuid().safeParse(id).success) return { error: "Unknown data source." };
+
+  const parsed = sourceSchema.safeParse({
+    name: formData.get("name"),
+    source_type: formData.get("source_type"),
+    lawful_basis: formData.get("lawful_basis"),
+    market: formData.get("market") || undefined,
+    provider_url: formData.get("provider_url") || undefined,
+    notes: formData.get("notes") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const supabase = await createRealClient();
+  const patch: {
+    name: string;
+    source_type: (typeof SOURCE_TYPES)[number];
+    lawful_basis: (typeof LAWFUL_BASES)[number];
+    provider_url: string | null;
+    notes: string | null;
+    market?: string;
+  } = {
+    name: parsed.data.name,
+    source_type: parsed.data.source_type,
+    lawful_basis: parsed.data.lawful_basis,
+    provider_url: parsed.data.provider_url ?? null,
+    notes: parsed.data.notes ?? null,
+  };
+  // An empty market leaves the stored value alone (older sources hold free text).
+  if (parsed.data.market) patch.market = parsed.data.market;
+
+  const { data, error } = await supabase
+    .from("data_sources")
+    .update(patch)
+    .eq("id", id)
+    .eq("workspace_id", profile.workspace_id)
+    .select("id");
+  if (error) return { error: error.code === "23505" ? "A source with that name already exists." : error.message };
+  if (!data || data.length === 0) return { error: "Data source not found." };
+  revalidatePath("/admin/data");
+  revalidatePath("/admin/import");
+  revalidatePath("/leadgen/leads");
+  return { ok: true, id };
 }
 
 export async function setDataSourceActive(id: string, active: boolean): Promise<ActionResult> {

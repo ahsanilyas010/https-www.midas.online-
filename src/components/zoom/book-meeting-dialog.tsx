@@ -22,7 +22,7 @@ function defaultStart(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Contract: other screens (the dial screen, My leads) import this from this
+// Contract: other screens (the dial screen, the call sheet) import this from this
 // path as <BookMeetingDialog leadId={string} leadName={string | null} />.
 export function BookMeetingDialog({ leadId, leadName }: { leadId: string; leadName: string | null }) {
   const [open, setOpen] = useState(false);

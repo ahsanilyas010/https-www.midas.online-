@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EMPTY_STATS, LEADGEN_ROLES, OutcomeBadge, fmtDateTime, type LeadGenStats } from "../ui";
 import { DryRunTester, PayloadReference, SetupGuides, TokenCard } from "./zapier-connector";
+
+export const metadata: Metadata = { title: "Connectors" };
 
 export default async function ConnectorsPage() {
   const profile = await requireRole([...LEADGEN_ROLES]);

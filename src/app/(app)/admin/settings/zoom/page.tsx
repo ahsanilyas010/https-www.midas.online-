@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { requireRole } from "@/lib/auth/current-profile";
 import { getCurrentWorkspace } from "@/lib/workspace/current";
 import { createRealClient } from "@/lib/supabase/real";
-import { siteUrl } from "@/lib/site";
 import { CopyField, ZoomActions, ZoomSettingsForm } from "./zoom-settings-form";
 
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Zoom", robots: { index: false, follow: false } };
 
 const SCOPES = [
   "meeting:write:meeting:admin",
@@ -30,7 +30,12 @@ export default async function ZoomSettingsPage() {
     .eq("workspace_id", workspace.id)
     .maybeSingle();
   const connected = cred?.status === "connected";
-  const site = siteUrl();
+  // The address this page was opened on, not a configured guess: Zoom checks
+  // the domain the embed is loaded from, so it has to be exactly this one.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const site = host ? `${proto}://${host}` : "";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
@@ -73,10 +78,19 @@ export default async function ZoomSettingsPage() {
         )}
         {cred && <ZoomActions />}
 
-        <div>
-          <h3 className="mb-2 text-sm font-medium text-ink">{cred ? "Replace credentials" : "Connect Zoom"}</h3>
-          <ZoomSettingsForm />
-        </div>
+        {cred ? (
+          <details className="rounded-lg border border-line px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium text-ink">Replace credentials</summary>
+            <div className="mt-3">
+              <ZoomSettingsForm />
+            </div>
+          </details>
+        ) : (
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-ink">Connect Zoom</h3>
+            <ZoomSettingsForm />
+          </div>
+        )}
 
         <div className="border-t border-line pt-4">
           <h3 className="text-sm font-medium text-ink">How to create the Zoom app</h3>
@@ -134,8 +148,9 @@ export default async function ZoomSettingsPage() {
             <strong>Automatically Call From Third Party Apps</strong>.
           </li>
           <li>
-            Add this site as an approved domain for the Smart Embed app:
-            <CopyField value={site} />
+            Add the address you are using right now as an approved domain for the Smart Embed app. Use exactly this one; if you
+            later move to a custom domain, add that too:
+            <CopyField value={host || site} />
           </li>
           <li>
             Agents use the Zoom desktop client <strong>version 5.9.0 or newer</strong> (keep it updated) or a supported browser.

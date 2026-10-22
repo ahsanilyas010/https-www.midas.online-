@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2, CircleDashed, Phone, Mail, CreditCard, Video } from "lucide-react";
@@ -7,6 +8,8 @@ import { createRealClient } from "@/lib/supabase/real";
 import { stripeConfigured } from "@/lib/billing/stripe";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+export const metadata: Metadata = { title: "Integrations" };
 
 function Status({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
   return ok ? (
@@ -96,7 +99,7 @@ export default async function IntegrationsPage() {
           <CardDescription>
             {resendConfigured
               ? `Sending from ${process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev (Resend's test sender)"}.`
-              : "RESEND_API_KEY is not set on the server, so emails cannot be sent."}
+              : "Email sending is not set up yet, so invitations and reports cannot be emailed. Ask whoever runs your deployment to add an email provider."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-1 text-xs text-muted">
@@ -118,7 +121,7 @@ export default async function IntegrationsPage() {
           <CardDescription>
             {stripeOn
               ? "Checkout and the billing webhook are available."
-              : "STRIPE_SECRET_KEY / STRIPE_PRICE_ID are not set, so checkout is unavailable."}
+              : "Online billing is not set up yet, so plan upgrades are unavailable. Ask whoever runs your deployment to add a payment provider."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-1 text-xs text-muted">

@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Supabase CLI local state
 supabase/.temp/
+
+# Parallel build output folders
+/.next-*/
