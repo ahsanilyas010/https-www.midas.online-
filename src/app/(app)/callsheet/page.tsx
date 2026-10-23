@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/current-profile";
 import { listDispositions } from "@/lib/actions/dial-workspace";
 import { loadCallSheet } from "@/lib/actions/callsheet";
+import { createRealClient } from "@/lib/supabase/real";
 import { CallSheetBoard } from "./callsheet-board";
 
 export const metadata: Metadata = { title: "Call sheet" };
@@ -11,7 +12,12 @@ export const metadata: Metadata = { title: "Call sheet" };
 // as the dial queue (claim_lead_for_call, migration 104).
 export default async function CallSheetPage() {
   const profile = await requireRole(["agent", "team_lead", "super_admin", "ops_manager"]);
-  const [sheet, dispositions] = await Promise.all([loadCallSheet(), listDispositions()]);
+  const supabase = await createRealClient();
+  const [sheet, dispositions, { data: templates }] = await Promise.all([
+    loadCallSheet(),
+    listDispositions(),
+    supabase.from("email_templates").select("id, name").eq("workspace_id", profile.workspace_id).eq("approved", true).order("name"),
+  ]);
 
   if (sheet.error) {
     return (
@@ -29,6 +35,7 @@ export default async function CallSheetPage() {
       total={sheet.total}
       dispositions={dispositions}
       timezone={profile.timezone}
+      emailTemplates={templates ?? []}
     />
   );
 }

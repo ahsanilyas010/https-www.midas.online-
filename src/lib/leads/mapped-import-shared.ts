@@ -306,6 +306,9 @@ export interface ImportPreview {
   duplicatesInFile: PreviewIssue[];
   duplicatesInFileCount: number;
   alreadyInWorkspace: number;
+  // Existing leads that belong to no campaign (so no campaign shows them);
+  // a manager's import attaches them to the chosen campaign.
+  adoptable: number;
   suppressed: number;
   ignoredEmails: number; // emails that didn't look like an email: left empty
   phonelessHeld: number;
@@ -343,6 +346,7 @@ export interface ImportResult {
   skippedExisting: number;
   skippedSuppressed: number;
   skippedUnknownCampaign: number;
+  adopted: number; // existing leads with no campaign, now attached to one
   assignedToMe: number;
   screened: number; // leads that became dialable via the screening option
   rosteredMe: boolean;

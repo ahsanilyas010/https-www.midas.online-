@@ -19,6 +19,7 @@ import {
 } from "@/lib/callsheet/derive";
 import type { ActiveCall } from "@/components/zoom-phone/zoom-phone-provider";
 import { EditLeadDialog } from "./edit-lead-dialog";
+import { SendEmailButton } from "../admin/campaigns/[id]/send-email-button";
 import { PromoteContactDialog } from "./promote-contact-dialog";
 import { LeadStatusSelect } from "./lead-status-select";
 
@@ -175,6 +176,7 @@ export function LeadCard({
   tz,
   now,
   dispositions,
+  emailTemplates,
   activeCall,
   isActive,
   dialBusy,
@@ -190,6 +192,7 @@ export function LeadCard({
   tz: string;
   now: number;
   dispositions: Disposition[];
+  emailTemplates: { id: string; name: string }[];
   activeCall: ActiveCall | null;
   isActive: boolean;
   dialBusy: boolean;
@@ -247,11 +250,7 @@ export function LeadCard({
       )}
 
       <div className="links">
-        {item.email && (
-          <a className="lk" href={`mailto:${item.email}`}>
-            Email
-          </a>
-        )}
+        {item.email && !isContact && <SendEmailButton variant="link" leadId={item.id} hasEmail templates={emailTemplates} />}
         <a
           className="lk"
           href={companySearchUrl(item)}
@@ -272,7 +271,7 @@ export function LeadCard({
       </div>
 
       <details className="more" open={open || showOutcome} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-        <summary>More information</summary>
+        <summary className="disclosure">More information</summary>
         <dl className="dl">
           {item.email && (
             <>

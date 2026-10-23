@@ -81,7 +81,7 @@ export default async function ZoomSettingsPage() {
 
         {cred ? (
           <details className="rounded-lg border border-line px-4 py-3">
-            <summary className="cursor-pointer text-sm font-medium text-ink">Replace credentials</summary>
+            <summary className="disclosure text-sm font-medium text-ink">Replace credentials</summary>
             <div className="mt-3">
               <ZoomSettingsForm />
             </div>

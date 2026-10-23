@@ -289,6 +289,7 @@
   flex-wrap: wrap;
 }
 .callsheet .lk {
+  font-family: inherit;
   display: inline-flex;
   align-items: center;
   min-height: 32px;

@@ -35,11 +35,13 @@ export function CallSheetBoard({
   total,
   dispositions,
   timezone,
+  emailTemplates,
 }: {
   initialItems: SheetItem[];
   total: number;
   dispositions: Disposition[];
   timezone: string;
+  emailTemplates: { id: string; name: string }[];
 }) {
   const [items, setItems] = useState(initialItems);
   const [now, setNow] = useState(() => Date.now());
@@ -259,6 +261,7 @@ export function CallSheetBoard({
                               tz={timezone}
                               now={now}
                               dispositions={dispositions}
+                              emailTemplates={emailTemplates}
                               activeCall={activeCall}
                               isActive={activeId === it.id}
                               dialBusy={dialBusy === it.id}

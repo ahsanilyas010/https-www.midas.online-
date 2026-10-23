@@ -160,7 +160,8 @@ function wallToUtc(y: number, mo: number, d: number, h: number, mi: number, sec:
 // Excel serial numbers. A time with no zone is read in the campaign's
 // timezone (UTC when that isn't known). Returns null when it can't be read.
 export function parseDateTime(raw: string, region: string, tz: string | null): Date | null {
-  const v = raw.trim();
+  // Drop a trailing remark such as "Oct 22 11:00 (today)".
+  const v = raw.replace(/\s*\([^)]*\)\s*$/, "").trim();
   if (!v) return null;
   const time = (h?: string, m?: string, sec?: string, ap?: string) => {
     let hh = h ? +h : 0;
@@ -226,6 +227,28 @@ export function parseDateTime(raw: string, region: string, tz: string | null): D
     if (!t) return null;
     return wallToUtc(+mm[3], mon, +dayStr, t.h, t.mi, t.s, tz);
   }
+
+  // No year ("Oct 8 13:00", "Sep 23", "23 Sep"): call sheets are written this
+  // way. Use whichever year lands the date nearest to today.
+  const yearless =
+    v.match(/^(?:[A-Za-z]{3,9},?\s+)?([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:[ ,]+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?$/i) ??
+    v.match(/^(?:[A-Za-z]{3,9},?\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?(?:[ ,]+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?$/i);
+  if (yearless) {
+    const monthFirstForm = /^\s*(?:[A-Za-z]{3,9},?\s+)?[A-Za-z]{3,9}\.?\s+\d/.test(v);
+    const monStr = (monthFirstForm ? yearless[1] : yearless[2]).slice(0, 3).toLowerCase();
+    const dayNum = +(monthFirstForm ? yearless[2] : yearless[1]);
+    const mon = MONTHS.indexOf(monStr) + 1;
+    if (mon === 0) return null;
+    const t = time(yearless[3], yearless[4], undefined, yearless[5]);
+    if (!t) return null;
+    const thisYear = new Date().getUTCFullYear();
+    let best: Date | null = null;
+    for (const y of [thisYear - 1, thisYear, thisYear + 1]) {
+      const d = wallToUtc(y, mon, dayNum, t.h, t.mi, t.s, tz);
+      if (d && (!best || Math.abs(d.getTime() - Date.now()) < Math.abs(best.getTime() - Date.now()))) best = d;
+    }
+    return best;
+  }
   return null;
 }
 
@@ -256,10 +279,16 @@ export interface PhonelessRow {
   region: string;
 }
 
+export interface AdoptRow {
+  leadId: string;
+  campaignId: string;
+}
+
 export interface Plan {
   preview: ImportPreview;
   toImport: CleanRow[];
   phoneless: PhonelessRow[];
+  adopt: AdoptRow[];
 }
 
 export interface PlanInput {
@@ -447,11 +476,29 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
       else existing.add(k.phone_hash);
     }
   }
+  // Existing leads with no campaign are invisible to every campaign and the
+  // dial queue. Managers can read them, so a re-import rescues them.
+  const orphans = new Map<string, string>(); // phone_hash -> lead id
+  if (isManagerRole(ctx.role) && existing.size > 0) {
+    const known = [...existing];
+    for (let i = 0; i < known.length; i += 200) {
+      const { data, error } = await ctx.supabase
+        .from("leads")
+        .select("id, phone_hash")
+        .eq("workspace_id", ctx.workspaceId)
+        .is("campaign_id", null)
+        .in("phone_hash", known.slice(i, i + 200));
+      if (error) throw new ImportError(`Couldn't check for existing leads: ${error.message}`);
+      for (const l of data ?? []) if (l.phone_hash && !orphans.has(l.phone_hash)) orphans.set(l.phone_hash, l.id);
+    }
+  }
   let alreadyInWorkspace = 0;
   let suppressedCount = 0;
   const toImport: CleanRow[] = [];
+  const adopt: AdoptRow[] = [];
   for (const u of unique) {
     if (suppressed.has(u.hash)) suppressedCount += 1;
+    else if (orphans.has(u.hash)) adopt.push({ leadId: orphans.get(u.hash)!, campaignId: u.campaignId });
     else if (existing.has(u.hash)) alreadyInWorkspace += 1;
     else toImport.push(u);
   }
@@ -466,9 +513,11 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
   return {
     toImport,
     phoneless,
+    adopt,
     preview: {
       totalRows: input.parsed.rows.length,
       willImport: toImport.length,
+      adoptable: adopt.length,
       invalid,
       invalidCount,
       duplicatesInFile: dupes,
@@ -542,14 +591,14 @@ export async function runMappedImport(
     throw new ImportError("Only an admin or ops manager can screen leads or assign them to themselves.");
   }
   const plan = opts.plan ?? (await buildPlan(ctx, opts));
-  if (plan.toImport.length === 0 && plan.phoneless.length === 0) {
+  if (plan.toImport.length === 0 && plan.phoneless.length === 0 && plan.adopt.length === 0) {
     throw new ImportError("Nothing to import: every row was invalid, a duplicate, already in your workspace, suppressed or had an unknown campaign.");
   }
 
   const sb = ctx.supabase;
   const ws = ctx.workspaceId;
   const p = plan.preview;
-  const campaignIds = [...new Set(plan.toImport.map((t) => t.campaignId))];
+  const campaignIds = [...new Set([...plan.toImport.map((t) => t.campaignId), ...plan.adopt.map((a) => a.campaignId)])];
 
   // 1. Call-myself roster membership first, so a failure creates nothing.
   let rosteredMe = false;
@@ -562,6 +611,24 @@ export async function runMappedImport(
       if (error) throw new ImportError(`Couldn't put you on this campaign's roster: ${error.message}`);
     }
     rosteredMe = campaignIds.length > 0;
+  }
+
+  // 1b. Attach campaign-less existing leads to their campaign. Only rows still
+  // without a campaign are touched, so this can't move a lead between campaigns.
+  let adopted = 0;
+  for (const campaignId of new Set(plan.adopt.map((a) => a.campaignId))) {
+    const ids = plan.adopt.filter((a) => a.campaignId === campaignId).map((a) => a.leadId);
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await sb
+        .from("leads")
+        .update({ campaign_id: campaignId })
+        .eq("workspace_id", ws)
+        .is("campaign_id", null)
+        .in("id", ids.slice(i, i + 200))
+        .select("id");
+      if (error) throw new ImportError(`Couldn't attach existing leads to the campaign: ${error.message}`);
+      adopted += data?.length ?? 0;
+    }
   }
 
   // 2. Keep the original file (same bucket/path convention as before).
@@ -651,6 +718,7 @@ export async function runMappedImport(
     skippedExisting: p.alreadyInWorkspace,
     skippedSuppressed: p.suppressed,
     skippedUnknownCampaign: p.unmatchedCampaignCount,
+    adopted,
     assignedToMe: opts.callMyself ? plan.toImport.length : 0,
     screened,
     rosteredMe,

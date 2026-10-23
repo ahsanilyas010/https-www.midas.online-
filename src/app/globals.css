@@ -418,3 +418,30 @@ html[data-zp-dock="open"] .app-main {
     padding-right: 22.5rem;
   }
 }
+
+/* One arrow for every expandable section (<details><summary class="disclosure">):
+   the browser's default triangle differs per browser and sits on the wrong side
+   in some. This chevron points right when closed and down when open. */
+summary.disclosure {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  cursor: pointer;
+}
+summary.disclosure::-webkit-details-marker {
+  display: none;
+}
+summary.disclosure::before {
+  content: "";
+  flex: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+details[open] > summary.disclosure::before {
+  transform: rotate(45deg);
+}

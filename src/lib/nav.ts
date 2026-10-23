@@ -51,7 +51,7 @@ export const NAV: NavItem[] = [
   { href: "/quality", label: "QA queue", icon: "ShieldCheck", roles: ["qa_analyst"] },
   { href: "/meetings", label: "Meetings", icon: "Video", roles: ["super_admin", "ops_manager", "team_lead", "agent"] },
   { href: "/live", label: "Live floor", icon: "Activity", roles: MANAGERS_AND_LEADS },
-  { href: "/performance", label: "Performance", icon: "BarChart3", roles: MANAGERS_AND_LEADS },
+  { href: "/performance", label: "Performance", icon: "BarChart3", roles: ["agent", ...MANAGERS_AND_LEADS] },
   { href: "/admin/people", label: "People", icon: "Users", roles: MANAGERS_AND_LEADS },
   { href: "/admin/campaigns", label: "Campaigns", icon: "Megaphone", roles: MANAGERS },
   { href: "/admin/leads", label: "Leads", icon: "Inbox", roles: MANAGERS },

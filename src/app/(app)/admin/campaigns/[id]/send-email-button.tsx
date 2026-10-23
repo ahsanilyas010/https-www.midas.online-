@@ -25,10 +25,13 @@ export function SendEmailButton({
   leadId,
   hasEmail,
   templates,
+  variant = "icon",
 }: {
   leadId: string;
   hasEmail: boolean;
   templates: { id: string; name: string }[];
+  // "link" matches the call sheet's text links.
+  variant?: "icon" | "link";
 }) {
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState("");
@@ -38,9 +41,15 @@ export function SendEmailButton({
 
   return (
     <>
-      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Send email">
-        <Mail className="h-3.5 w-3.5" />
-      </Button>
+      {variant === "link" ? (
+        <button type="button" className="lk" onClick={() => setOpen(true)}>
+          Email
+        </button>
+      ) : (
+        <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Send email">
+          <Mail className="h-3.5 w-3.5" />
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -63,7 +72,7 @@ export function SendEmailButton({
             </SelectContent>
           </Select>
           {templates.length === 0 && (
-            <p className="text-xs text-warning">No templates yet for this campaign.</p>
+            <p className="text-xs text-warning">No approved email templates yet. An admin creates and approves them under Settings, Email.</p>
           )}
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

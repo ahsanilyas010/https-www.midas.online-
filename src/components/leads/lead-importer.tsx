@@ -678,13 +678,24 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
             <Button variant="secondary" onClick={() => setStep(2)} disabled={pending}>
               Back
             </Button>
-            <Button onClick={doImport} disabled={pending || (preview.willImport === 0 && preview.phonelessHeld === 0)}>
+            <Button onClick={doImport} disabled={pending || (preview.willImport === 0 && preview.phonelessHeld === 0 && preview.adoptable === 0)}>
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Import {preview.willImport} lead
               {preview.willImport === 1 ? "" : "s"}
+              {preview.adoptable > 0 && ` and fix ${preview.adoptable} existing`}
             </Button>
           </div>
-          {preview.willImport === 0 && preview.phonelessHeld === 0 && (
-            <p className="text-xs text-danger">Nothing can be imported from this file. Go back and check the column choices.</p>
+          {preview.adoptable > 0 && (
+            <p className="text-xs text-muted">
+              {preview.adoptable} of these numbers are already leads in your workspace but belong to no campaign, so no campaign or Dial queue shows them.
+              Importing attaches them to {campaign?.name ?? "the chosen campaign"}.
+            </p>
+          )}
+          {preview.willImport === 0 && preview.phonelessHeld === 0 && preview.adoptable === 0 && (
+            <p className="text-xs text-danger">
+              {preview.alreadyInWorkspace > 0 && preview.alreadyInWorkspace + preview.suppressed + preview.duplicatesInFileCount >= preview.totalRows - preview.invalidCount
+                ? `Nothing new to import: ${preview.alreadyInWorkspace} of these numbers are already leads in your workspace (probably from an earlier import of this file). Find them under Leads, or upload a file with new numbers.`
+                : "Nothing can be imported from this file. Go back and check the column choices."}
+            </p>
           )}
         </section>
       )}
@@ -701,6 +712,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
             <li>{done.result.skippedInvalid} skipped: invalid or missing phone number</li>
             <li>{done.result.skippedDuplicates} skipped: repeated in the file</li>
             <li>{done.result.skippedExisting} skipped: already in your workspace</li>
+            {done.result.adopted > 0 && <li>{done.result.adopted} existing leads with no campaign were attached to {done.campaignName}</li>}
             <li>{done.result.skippedSuppressed} skipped: on the suppression list</li>
             {done.result.skippedUnknownCampaign > 0 && <li>{done.result.skippedUnknownCampaign} skipped: campaign name not found</li>}
             {done.result.campaigns.length > 1 &&
@@ -797,7 +809,7 @@ function Issues({
 }) {
   return (
     <details className={`rounded-lg border bg-white ${tone === "danger" ? "border-danger/40" : "border-line"}`} open={items.length <= 5}>
-      <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-ink">{title}</summary>
+      <summary className="disclosure px-3 py-2 text-sm font-medium text-ink">{title}</summary>
       <ul className="max-h-48 divide-y divide-line overflow-y-auto border-t border-line text-xs">
         {items.map((it, i) => (
           <li key={i} className="flex flex-wrap gap-x-3 px-3 py-1.5">

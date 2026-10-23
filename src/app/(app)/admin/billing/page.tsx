@@ -7,6 +7,7 @@ import { activeAgentCount } from "@/lib/workspace/limits";
 import { workspaceFromRow } from "@/lib/accounts/adapters";
 import { createRealClient } from "@/lib/supabase/real";
 import { stripeConfigured } from "@/lib/billing/stripe";
+import { bankTransferDetails } from "@/lib/billing/bank-transfer";
 import { FREE_AGENT_SEATS, SELF_SERVE_MAX_AGENTS } from "@/lib/plan";
 import { ManageBillingButton, SeatPicker } from "./seat-picker";
 
@@ -24,6 +25,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   // accounts always live in Supabase now, so an unconfigured deployment is
   // just "offline" rather than a special in-memory-only mode.
   const mode = stripeConfigured() ? "stripe" : "offline";
+  const bank = bankTransferDetails();
 
   return (
     <div className="space-y-4 p-4">
@@ -92,6 +94,25 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           />
         )}
       </div>
+
+      {bank && (
+        <div className="rounded-3xl bg-white p-6 ring-1 ring-line sm:p-8">
+          <h2 className="font-display text-xl font-semibold text-ink">Pay by bank transfer</h2>
+          <p className="mt-1 text-sm text-muted">
+            Prefer not to pay by card? Transfer to the account below, use <span className="font-medium text-ink">{workspace.name}</span> as the reference,
+            and we&apos;ll activate your seats once the payment arrives.
+          </p>
+          <dl className="mt-4 grid max-w-xl grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
+            {bank.rows.map((r) => (
+              <div key={r.label} className="contents">
+                <dt className="text-muted">{r.label}</dt>
+                <dd className="font-medium tabular text-ink">{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {bank.note && <p className="mt-4 text-xs text-muted">{bank.note}</p>}
+        </div>
+      )}
     </div>
   );
 }
