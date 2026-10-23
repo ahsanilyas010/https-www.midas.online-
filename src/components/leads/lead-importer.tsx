@@ -111,6 +111,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [holdInvalid, setHoldInvalid] = useState(true);
   const [callMyself, setCallMyself] = useState(false);
   const [screenNow, setScreenNow] = useState(false);
   const [done, setDone] = useState<Extract<ImportResponse, { ok: true }> | null>(null);
@@ -214,7 +215,9 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
     setError(null);
     if (Object.keys(errors).length > 0) return;
     startTransition(async () => {
-      const res = await previewLeadImport(makeForm());
+      const fd = makeForm();
+      if (holdInvalid) fd.set("hold_invalid", "1");
+      const res = await previewLeadImport(fd);
       if ("error" in res) {
         setError(res.error);
         return;
@@ -224,9 +227,22 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
     });
   }
 
+  function toggleHoldInvalid(on: boolean) {
+    setHoldInvalid(on);
+    setError(null);
+    startTransition(async () => {
+      const fd = makeForm();
+      if (on) fd.set("hold_invalid", "1");
+      const res = await previewLeadImport(fd);
+      if ("error" in res) setError(res.error);
+      else setPreview(res.preview);
+    });
+  }
+
   function doImport() {
     setError(null);
     const fd = makeForm();
+    if (holdInvalid) fd.set("hold_invalid", "1");
     if (isManager && callMyself) fd.set("call_myself", "1");
     if (isManager && screenNow) fd.set("screen_now", "1");
     startTransition(async () => {
@@ -544,7 +560,7 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
               <strong>
                 {preview.phonelessHeld} row{preview.phonelessHeld === 1 ? "" : "s"} will be kept as contacts without a number
               </strong>
-              {preview.noPhoneColumn ? " (this file has no phone column)." : " (no phone number in the row)."} They keep every other
+              {preview.noPhoneColumn ? " (this file has no phone column)." : " (no usable phone number in the row)."} They keep every other
               detail, show up under Leads and on the call sheet of the agent you assign them to, and become dialable leads once a
               number is added and screened.
               {preview.heldSample.length > 0 && (
@@ -642,9 +658,26 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
             </div>
           )}
 
-          {isManager && (
-            <fieldset className="flex flex-col gap-3 rounded-lg border border-line bg-white p-3">
-              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">Before you import (optional)</legend>
+          <fieldset className="flex flex-col gap-3 rounded-lg border border-line bg-white p-3">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">Before you import (optional)</legend>
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={holdInvalid}
+                disabled={pending}
+                onChange={(e) => toggleHoldInvalid(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">Also import rows with a missing or unreadable phone number</span>
+                <span className="block text-xs text-muted">
+                  They are kept as contacts with every other detail, and the original number text is saved on the lead. Add a valid
+                  number later to make them dialable. Untick to skip these rows instead.
+                </span>
+              </span>
+            </label>
+            {isManager && (
+              <>
               <label className="flex items-start gap-2 text-sm text-ink">
                 <input
                   type="checkbox"
@@ -671,8 +704,9 @@ export function LeadImporter({ campaigns, dataSources, isManager, onFinished }: 
                   </span>
                 </span>
               </label>
-            </fieldset>
-          )}
+              </>
+            )}
+          </fieldset>
 
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setStep(2)} disabled={pending}>

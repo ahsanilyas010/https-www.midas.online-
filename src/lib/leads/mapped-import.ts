@@ -269,6 +269,7 @@ export interface PlanInput {
   defaultCampaignId: string; // the campaign chosen in step 1
   timezone?: string | null; // default campaign's timezone, for dates with no zone
   holdPhoneless?: boolean; // vendor imports keep name/email-only rows as contacts
+  holdInvalid?: boolean; // also keep rows whose number is present but unreadable, as contacts
 }
 
 const INVALID_CAP = 50;
@@ -373,8 +374,10 @@ export async function buildPlan(ctx: ImportContext, input: PlanInput): Promise<P
       // company or any extra column) is held as a contact; its other mapped
       // details ride along in custom so nothing in the file is lost.
       const hasContent = Boolean(name || email || company || Object.keys(custom).length > 0);
-      if ((noPhoneColumn || !rawPhone.trim()) && (input.holdPhoneless || noPhoneColumn) && hasContent) {
+      const holdThis = noPhoneColumn || !rawPhone.trim() ? input.holdPhoneless || noPhoneColumn : input.holdInvalid;
+      if (holdThis && hasContent) {
         const held = { ...custom };
+        if (rawPhone.trim()) held["Phone (as in file)"] = rawPhone.trim().slice(0, CUSTOM_VALUE_MAX);
         const keep = (label: string, col: string | undefined, max: number) => {
           const v = text(r, col, max);
           if (v) held[label] = v;

@@ -99,6 +99,7 @@ export async function previewLeadImport(formData: FormData): Promise<PreviewResp
       defaultCampaignId: campaign.id,
       timezone,
       holdPhoneless: true,
+      holdInvalid: formData.get("hold_invalid") === "1",
     });
     return { ok: true, preview: plan.preview };
   } catch (e) {
@@ -119,6 +120,7 @@ export async function runLeadImport(formData: FormData): Promise<ImportResponse>
       defaultCampaignId: campaign.id,
       timezone,
       holdPhoneless: true,
+      holdInvalid: formData.get("hold_invalid") === "1",
       filename: file.name,
       fileBytes: bytes,
       contentType: file.type,
