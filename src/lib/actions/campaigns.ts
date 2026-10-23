@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/current-profile";
 import { createRealClient } from "@/lib/supabase/real";
+import { NEW_CLIENT } from "@/lib/campaign-options";
 
 export interface CreateCampaignResult {
   error?: string;
@@ -110,14 +111,45 @@ export async function createCampaign(
   const profile = await requireProfile();
   if (!MANAGER_ROLES.includes(profile.role)) return { error: "Only an admin can create campaigns." };
 
+  // "+ Create a new client" in the campaign form: the client is made together
+  // with the campaign. The campaign is validated first (against a stand-in client
+  // id) so a bad form never leaves a stray client behind.
+  const creatingClient = formData.get("client_id") === NEW_CLIENT;
+  let newClient: z.infer<typeof clientSchema> | null = null;
+  if (creatingClient) {
+    const c = clientSchema.safeParse({
+      name: String(formData.get("new_client_name") ?? ""),
+      country: "",
+      contact_name: "",
+      contact_email: String(formData.get("new_client_email") ?? ""),
+      is_data_controller: false,
+      dpa_signed_on: "",
+    });
+    if (!c.success) return { error: c.error.issues[0]?.message ?? "Invalid client." };
+    newClient = c.data;
+    formData.set("client_id", "00000000-0000-4000-8000-000000000000");
+  }
+
   const parsed = campaignInput(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid campaign." };
 
   const supabase = await createRealClient();
+  let clientId = parsed.data.client_id;
+  if (newClient) {
+    const { data: created, error: cErr } = await supabase
+      .from("clients")
+      .insert({ ...newClient, workspace_id: profile.workspace_id })
+      .select("id")
+      .single();
+    if (cErr || !created) return { error: cErr?.message ?? "Couldn't create the client." };
+    clientId = created.id;
+  }
+
   const { data, error } = await supabase
     .from("campaigns")
     .insert({
       ...parsed.data,
+      client_id: clientId,
       workspace_id: profile.workspace_id,
       // A new campaign starts paused: it only becomes dialable once a
       // manager deliberately activates it.
@@ -125,7 +157,10 @@ export async function createCampaign(
     })
     .select("id")
     .single();
-  if (error) return { error: dbMessage(error) };
+  if (error) {
+    if (newClient) await supabase.from("clients").delete().eq("id", clientId).eq("workspace_id", profile.workspace_id);
+    return { error: dbMessage(error) };
+  }
 
   revalidatePath("/admin/campaigns", "layout");
   return { ok: true, id: data.id };

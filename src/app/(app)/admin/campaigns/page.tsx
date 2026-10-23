@@ -74,18 +74,14 @@ export default async function CampaignsPage() {
               icon={Megaphone}
               title="Create your first campaign"
               action={
-                (clients ?? []).length === 0 ? (
-                  <CreateClientDialog label="Add your client first" primary />
-                ) : (
-                  <OpenDialogButton event="guide:new-campaign" icon={<Megaphone className="h-4 w-4" />}>
-                    Create your first campaign
-                  </OpenDialogButton>
-                )
+                <OpenDialogButton event="guide:new-campaign" icon={<Megaphone className="h-4 w-4" />}>
+                  Create your first campaign
+                </OpenDialogButton>
               }
             >
               A campaign is one calling project. It holds the leads, the script, the calling hours and the agents working it. Once it exists, bring leads in with Upload leads.
               {(clients ?? []).length === 0
-                ? " Every campaign belongs to a client, the company you are calling for. Add it first (use your own company if you call for yourself), then create the campaign."
+                ? " Every campaign belongs to a client, the company you are calling for. You can create the client in the same step (use your own company if you call for yourself)."
                 : ""}
             </EmptyState>
           ) : (

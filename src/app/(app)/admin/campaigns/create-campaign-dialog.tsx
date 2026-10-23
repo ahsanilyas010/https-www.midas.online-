@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Loader2, Megaphone } from "lucide-react";
@@ -50,6 +50,12 @@ export function CreateCampaignDialog({
   }, [openEvent]);
   const [state, formAction] = useActionState(createCampaign, initialState);
   const router = useRouter();
+  const errorRef = useRef<HTMLParagraphElement>(null);
+
+  // The form is taller than the dialog: bring the message into view.
+  useEffect(() => {
+    if (state.error) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [state]);
 
   useEffect(() => {
     if (state.ok && state.id) {
@@ -73,8 +79,12 @@ export function CreateCampaignDialog({
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-3">
-          <CampaignFormFields idPrefix="new_" clients={clients} />
-          {state.error && <p className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger">{state.error}</p>}
+          <CampaignFormFields idPrefix="new_" clients={clients} error={state.error} allowNewClient />
+          {state.error && (
+            <p ref={errorRef} role="alert" className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger">
+              {state.error}
+            </p>
+          )}
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel

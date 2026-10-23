@@ -56,3 +56,6 @@ export function countryLabel(country: string | null | undefined): string {
 export function toTimeInput(t: string | null | undefined): string {
   return t ? t.slice(0, 5) : "";
 }
+
+// Value of the "Create a new client" choice in the campaign form's client list.
+export const NEW_CLIENT = "__new__";

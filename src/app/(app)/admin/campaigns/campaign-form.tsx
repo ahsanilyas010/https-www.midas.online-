@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { COUNTRIES, TIMEZONES, VERTICALS, toTimeInput } from "@/lib/campaign-options";
+import { COUNTRIES, NEW_CLIENT, TIMEZONES, VERTICALS, toTimeInput } from "@/lib/campaign-options";
 
 export interface CampaignFormValues {
   name: string;
@@ -38,9 +38,14 @@ function Field({
   onChange,
   options,
   placeholder,
+  required,
+  error,
 }: {
   id: string;
   label: string;
+  // Shown with a star, and the field is outlined with the message below it.
+  required?: boolean;
+  error?: string | null;
   name: string;
   value: string;
   onChange: (v: string) => void;
@@ -49,9 +54,12 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required && <span className="text-danger"> *</span>}
+      </Label>
       <Select value={value || undefined} onValueChange={(v) => onChange(v === NONE ? "" : v)}>
-        <SelectTrigger id={id}>
+        <SelectTrigger id={id} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} className={error ? "border-danger ring-1 ring-danger" : undefined}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
@@ -63,6 +71,11 @@ function Field({
         </SelectContent>
       </Select>
       <input type="hidden" name={name} value={value} />
+      {error && (
+        <p id={`${id}-error`} role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -72,12 +85,20 @@ export function CampaignFormFields({
   clients,
   initial,
   showStatus,
+  error,
+  allowNewClient,
 }: {
   idPrefix: string;
+  // Offer "+ Create a new client" in the client list (the new-campaign form).
+  allowNewClient?: boolean;
   clients: { id: string; name: string }[];
   initial?: CampaignFormValues;
   showStatus?: boolean;
+  // The server's message; it is attached to the client or country field when it is about one of them.
+  error?: string | null;
 }) {
+  const clientError = error && /client/i.test(error) ? error : null;
+  const countryError = error && /country/i.test(error) ? error : null;
   const [clientId, setClientId] = useState(initial?.client_id ?? "");
   const [country, setCountry] = useState(initial?.country ?? "");
   const [audience, setAudience] = useState(initial?.audience ?? "B2C");
@@ -115,11 +136,33 @@ export function CampaignFormFields({
         name="client_id"
         value={clientId}
         onChange={setClientId}
-        options={clients.map((c) => ({ value: c.id, label: c.name }))}
-        placeholder="Select client"
+        options={[
+          ...clients.map((c) => ({ value: c.id, label: c.name })),
+          ...(allowNewClient ? [{ value: NEW_CLIENT, label: "+ Create a new client..." }] : []),
+        ]}
+        placeholder={clients.length === 0 && allowNewClient ? "Create a new client" : "Select client"}
+        required
+        error={clientError && !clientId ? clientError : null}
       />
-      {clients.length === 0 && (
-        <p className="-mt-2 text-[11px] text-warning">No clients yet. Add one on the Clients tab first.</p>
+      {allowNewClient && clientId === NEW_CLIENT && (
+        <div className="-mt-1 grid grid-cols-2 gap-3 rounded-lg border border-line bg-canvas p-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${idPrefix}new_client_name`}>
+              New client name<span className="text-danger"> *</span>
+            </Label>
+            <Input id={`${idPrefix}new_client_name`} name="new_client_name" placeholder="Acme Ltd" maxLength={120} required autoFocus />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${idPrefix}new_client_email`}>Contact email (optional)</Label>
+            <Input id={`${idPrefix}new_client_email`} name="new_client_email" type="email" placeholder="contact@client.com" maxLength={200} />
+          </div>
+          <p className="col-span-2 text-[11px] text-muted">
+            The client is created with this campaign. Add its contact person, country and DPA details later under Campaigns.
+          </p>
+        </div>
+      )}
+      {clients.length === 0 && !allowNewClient && (
+        <p className="-mt-2 text-[11px] text-warning">No clients yet. Add one on the Campaigns page first.</p>
       )}
 
       <div className="grid grid-cols-3 gap-3">
@@ -131,6 +174,8 @@ export function CampaignFormFields({
           onChange={setCountry}
           options={countryOptions}
           placeholder="Select"
+          required
+          error={countryError && !country ? countryError : null}
         />
         <Field
           id={`${idPrefix}audience`}

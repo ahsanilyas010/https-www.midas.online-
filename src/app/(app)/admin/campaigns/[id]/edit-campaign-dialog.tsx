@@ -68,6 +68,7 @@ export function EditCampaignDialog({
               clients={clients}
               initial={values}
               showStatus
+              error={state.error}
             />
           )}
           {state.error && <p className="rounded-md bg-danger-tint px-3 py-2 text-xs text-danger">{state.error}</p>}
